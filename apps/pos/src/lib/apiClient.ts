@@ -17,6 +17,7 @@ function addRefreshSubscriber(cb: (token: string) => void) {
 export const apiClient = axios.create({
   baseURL: API_BASE,
   headers: { 'Content-Type': 'application/json' },
+  timeout: 60000,
 })
 
 apiClient.interceptors.request.use((config) => {

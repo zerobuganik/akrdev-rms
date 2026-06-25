@@ -829,7 +829,7 @@ export default function ItemsPage() {
                     ...itemForm,
                     basePrice: hasVariations ? 0 : (Number(itemForm.basePrice) || 0),
                     kitchenId: itemKitchenId,
-                    variations: hasVariations ? itemVariations.map((v) => ({ name: v.name, priceAdjustment: v.priceAdjustment })) : undefined,
+                    variations: hasVariations ? itemVariations.map((v) => ({ id: v.id, name: v.name, priceAdjustment: v.priceAdjustment })) : undefined,
                     image: itemImageFile,
                   })
                 }}

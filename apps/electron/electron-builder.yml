@@ -1,6 +1,6 @@
 {
-  "appId": "com.akrdev.rms",
-  "productName": "AKRDev RMS",
+  "appId": "com.topshe.pos",
+  "productName": "Topshe POS",
   "directories": {
     "output": "release",
     "buildResources": "build"
@@ -8,7 +8,15 @@
   "files": [
     "dist/**/*",
     "data/**/*",
-    "!node_modules/**/*"
+    "!data/*.db-journal",
+    "node_modules/**/*",
+    "!node_modules/.cache/**"
+  ],
+  "asarUnpack": [
+    "node_modules/@luckykiet/node-printer/**",
+    "node_modules/argon2/**",
+    "node_modules/@prisma/adapter-libsql/**",
+    "data/**"
   ],
   "extraResources": [
     { "from": "../pos/dist", "to": "pos-dist" }
@@ -17,7 +25,8 @@
     "target": [
       { "target": "nsis", "arch": ["x64"] }
     ],
-    "icon": "build/icon.ico"
+    "icon": "build/icon.ico",
+    "signAndEditExecutable": false
   },
   "nsis": {
     "oneClick": false,

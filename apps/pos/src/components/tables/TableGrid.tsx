@@ -310,26 +310,13 @@ export function TableGrid() {
     },
   })
 
-  const createTakeawayMut = useMutation({
-    mutationFn: async () => {
-      const { data } = await apiClient.post('/orders/takeaway')
-      return data as { id: string }
-    },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['takeaway-orders'] })
-      navigate(`/cart/${data.id}`)
-    },
-    onError: (err: unknown) => {
-      const msg = (err as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error?.message
-        ?? (err as Error)?.message
-        ?? 'Failed to create takeaway order'
-      toast(msg, 'error')
-    },
-  })
-
   const handleTakeaway = useCallback(() => {
-    createTakeawayMut.mutate()
-  }, [createTakeawayMut])
+    navigate('/cart/takeaway-new')
+  }, [navigate])
+
+  const handleTakeawayTap = (orderId: string) => {
+    navigate(`/cart/${orderId}`)
+  }
 
   const handleMergeTable = (table: TableData) => {
     setMergeSourceTable(table)
@@ -375,8 +362,7 @@ export function TableGrid() {
           <TableStats total={tables.length} occupied={occupied} available={available} />
           <button
             onClick={handleTakeaway}
-            disabled={createTakeawayMut.isPending}
-            className="flex items-center gap-1 rounded-lg bg-amber-500 px-4 py-1.5 text-sm font-medium text-white hover:bg-amber-600 disabled:opacity-50"
+            className="flex items-center gap-1 rounded-lg bg-amber-500 px-4 py-1.5 text-sm font-medium text-white hover:bg-amber-600"
           >
             <ShoppingBag size={14} /> Takeaway
           </button>

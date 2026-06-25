@@ -7,6 +7,7 @@ import { useCartStore } from '@/stores/useCartStore'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { toast } from '@/stores/useToastStore'
 import { printerApi } from '@/lib/printerApi'
+import { formatPrintDate, formatPrintTime } from '@/lib/utils'
 import { SettlementModal } from '@/components/settlement/SettlementModal'
 import { PaymentChangeModal } from '@/components/settlement/PaymentChangeModal'
 
@@ -213,8 +214,8 @@ export function CartPanel({ tableId }: CartPanelProps) {
           lineTotal: m.lineTotal,
           note: m.note,
         })),
-        date: new Date().toLocaleString('en-IN'),
-        orderType: order.orderType || 'Dine In',
+        date: formatPrintDate(),
+          orderType: order.orderType === 'Takeaway' ? 'Takeaway' : 'Dine In',
       }).catch(() => {})
     },
     onError: () => {
@@ -263,8 +264,8 @@ export function CartPanel({ tableId }: CartPanelProps) {
           discountTotal: order.discountTotal,
           grandTotal: order.grandTotal,
           taxName: 'GST',
-          date: new Date().toLocaleString('en-IN', { hour12: false }),
-          orderType: order.status !== 'Settled' ? 'Dine In' : order.status,
+          date: formatPrintDate(),
+          orderType: order.orderType === 'Takeaway' ? 'Takeaway' : 'Dine In',
           logoUrl: settings?.printLogoUrl ?? undefined,
         }).catch(() => {})
       }).catch(() => {})
@@ -324,8 +325,8 @@ export function CartPanel({ tableId }: CartPanelProps) {
         discountTotal: orderData.discountTotal,
         grandTotal: orderData.grandTotal,
         taxName: 'GST',
-        date: new Date().toLocaleString('en-IN', { hour12: false }),
-        orderType: orderData.orderType || 'Dine In',
+        date: formatPrintDate(),
+        orderType: orderData.orderType === 'Takeaway' ? 'Takeaway' : 'Dine In',
         logoUrl: data?.printLogoUrl ?? undefined,
       }).catch(() => {})
     },

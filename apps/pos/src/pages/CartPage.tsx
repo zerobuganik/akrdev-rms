@@ -12,15 +12,41 @@ import type { AxiosError } from 'axios'
 export default function CartPage() {
   const { tableId: routeTableId } = useParams()
   const { setActiveTable } = useCartStore()
-  const [tableId, setTableId] = useState<string | null>(routeTableId ?? null)
+  const [tableId, setTableId] = useState<string | null>(null)
+  const [takeawayOrderId, setTakeawayOrderId] = useState<string | null>(null)
   const queryClient = useQueryClient()
+
+  // Handle takeaway-new: no order created yet, will create on first item add
+  const isTakeawayNew = routeTableId === 'takeaway-new'
+
+  const getOrCreateTakeawayOrder = async (): Promise<string> => {
+    if (takeawayOrderId) return takeawayOrderId
+    const { data } = await apiClient.post('/orders/takeaway')
+    const id = data.id as string
+    setTakeawayOrderId(id)
+    setTableId(id)
+    queryClient.invalidateQueries({ queryKey: ['takeaway-orders'] })
+    return id
+  }
+
+  // Set tableId on mount
+  useState(() => {
+    if (routeTableId && routeTableId !== 'takeaway-new') {
+      setTableId(routeTableId)
+    }
+  })
 
   const addItemMut = useMutation({
     mutationFn: async (payload: { tableId: string; itemId: string; variationId?: string }) => {
-      let orderRes = await apiClient.get(`/orders/${payload.tableId}/active`)
+      // For new takeaway, create order then add item
+      let targetTableId = payload.tableId
+      if (isTakeawayNew) {
+        targetTableId = await getOrCreateTakeawayOrder()
+      }
+      let orderRes = await apiClient.get(`/orders/${targetTableId}/active`)
       let orderId: string | undefined = orderRes.data?.id
       if (!orderId) {
-        const createRes = await apiClient.post('/orders', { tableId: payload.tableId })
+        const createRes = await apiClient.post('/orders', { tableId: targetTableId })
         orderId = createRes.data?.id
       }
       if (!orderId) return

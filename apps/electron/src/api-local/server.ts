@@ -892,8 +892,14 @@ app.get('/api/v1/print/history', async (req, res) => {
   }
 })
 
-app.all('/api/v1/*', async (req, res) => {
+app.use('/api/v1', async (req, res) => {
+  if (res.headersSent) return
   try {
+
+
+
+
+
     const targetUrl = `${CLOUD_API}${req.path}`
     const headers: Record<string, string> = { 'Content-Type': 'application/json' }
     if (req.headers.authorization) {

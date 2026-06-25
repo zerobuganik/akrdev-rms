@@ -507,10 +507,16 @@ export class PrintService {
 
     const lines: string[] = []
 
-    lines.push(
-      CMD.ALIGN_CENTER + CMD.DOUBLE_BOTH + (data.restaurantName ?? 'RESTAURANT').slice(0, w) + CMD.NORMAL,
-    )
+    // Logo is printed first via logoBuf (GS v 0 raster), then restaurant name
+    lines.push(CMD.ALIGN_CENTER)
+    if (!logoBuf) {
+      // Only add blank spacer if no logo
+      lines.push('')
+    }
 
+    if (data.restaurantName) {
+      lines.push(CMD.DOUBLE_BOTH + data.restaurantName.slice(0, w) + CMD.NORMAL)
+    }
     if (data.restaurantAddress) {
       lines.push(data.restaurantAddress.slice(0, w))
     }
@@ -543,7 +549,7 @@ export class PrintService {
       const rateW = 8
       const amtW = 8
       lines.push(
-        CMD.BOLD_ON + this.pad('Item', itemW) + ' ' + this.centerIn('Qty', qtyW) + '  ' + 'Rate'.padStart(rateW) + '  ' + 'Amount'.padStart(amtW) + CMD.BOLD_OFF,
+        CMD.BOLD_ON + this.pad('Item', itemW) + ' ' + this.centerIn('Qty', qtyW) + '  ' + this.pad('Rate', rateW) + '  ' + this.pad('Amount', amtW) + CMD.BOLD_OFF,
         CMD.DIVIDER.slice(0, w),
       )
 
@@ -555,8 +561,8 @@ export class PrintService {
           const nameMax = itemW - 1
           const nameLines = this.wrapText(item.name, nameMax)
           const qtyStr = this.centerIn(qty, qtyW)
-          const rateStr = rate.padStart(rateW)
-          const amtStr = amount.padStart(amtW)
+          const rateStr = this.pad(rate, rateW)
+          const amtStr = this.pad(amount, amtW)
           // First line: name + qty/rate/amount
           lines.push(' ' + this.pad(nameLines[0]!, itemW - 1) + qtyStr + '  ' + rateStr + '  ' + amtStr)
           // Continuation lines: just name, no columns
@@ -571,7 +577,7 @@ export class PrintService {
       const qtyW = 4
       const amtW = 8
       lines.push(
-        CMD.BOLD_ON + this.pad('Item', itemW) + ' ' + this.centerIn('Qty', qtyW) + '  ' + 'Amount'.padStart(amtW) + CMD.BOLD_OFF,
+        CMD.BOLD_ON + this.pad('Item', itemW) + ' ' + this.centerIn('Qty', qtyW) + '  ' + this.pad('Amount', amtW) + CMD.BOLD_OFF,
         CMD.DIVIDER.slice(0, w),
       )
 
@@ -582,7 +588,7 @@ export class PrintService {
           const nameMax = itemW - 1
           const nameLines = this.wrapText(item.name, nameMax)
           const qtyStr = this.centerIn(qty, qtyW)
-          const amtStr = amount.padStart(amtW)
+          const amtStr = this.pad(amount, amtW)
           lines.push(' ' + this.pad(nameLines[0]!, itemW - 1) + qtyStr + '  ' + amtStr)
           for (let li = 1; li < nameLines.length; li++) {
             lines.push(' ' + this.pad(nameLines[li]!, itemW - 1))
@@ -666,6 +672,8 @@ export class PrintService {
    */
   private formatTestPrint(): Buffer {
     const w = PAPER_80MM
+    const now = new Date()
+    const dateStr = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${String(now.getFullYear()).slice(2)}, ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
     const lines = [
       CMD.INIT,
       CMD.ALIGN_CENTER,
@@ -675,9 +683,9 @@ export class PrintService {
       '',
       CMD.ALIGN_LEFT,
       'This is a test print from',
-      'AKRDev RMS POS.',
+      'Topshe POS.',
       '',
-      this.center(`Date: ${new Date().toLocaleString()}`, w),
+      this.center(`Date: ${dateStr}`, w),
       '',
       CMD.DIVIDER,
       CMD.ALIGN_CENTER,

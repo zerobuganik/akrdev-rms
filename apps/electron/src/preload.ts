@@ -16,6 +16,9 @@ const ALLOWED_INVOKE_CHANNELS = [
   'print:get-stats',
   'print:get-history',
   'print:discover-system',
+  // Window
+  'window:close',
+  'window:minimize',
 ]
 
 const ALLOWED_ON_CHANNELS = [

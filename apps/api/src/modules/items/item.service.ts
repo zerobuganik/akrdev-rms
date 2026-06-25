@@ -39,11 +39,31 @@ export const itemService = {
   async update(id: string, data: Record<string, unknown>) {
     const existing = await prisma.item.findUnique({ where: { id } })
     if (!existing) throw new NotFoundError('Item')
-    const { categoryId, name, shortcode, basePrice, taxOverride, inStock, dietaryType, kitchenId, imageUrl } = data as {
+    const { categoryId, name, shortcode, basePrice, taxOverride, inStock, dietaryType, kitchenId, imageUrl, variations } = data as {
       categoryId?: string; name?: string; shortcode?: string; basePrice?: number;
       taxOverride?: number; inStock?: boolean; dietaryType?: string; kitchenId?: string; imageUrl?: string | null
+      variations?: { id?: string; name: string; priceAdjustment: number }[]
     }
-    return prisma.item.update({
+    if (variations !== undefined) {
+      // Delete removed variations
+      const keepIds = variations.filter(v => v.id).map(v => v.id!)
+      if (keepIds.length > 0) {
+        await prisma.itemVariation.deleteMany({ where: { itemId: id, id: { notIn: keepIds } } })
+      } else {
+        await prisma.itemVariation.deleteMany({ where: { itemId: id } })
+      }
+      // Update existing and create new in a transaction
+      await prisma.$transaction(
+        variations.map(v =>
+          v.id
+            ? prisma.itemVariation.update({ where: { id: v.id }, data: { name: v.name, priceAdjustment: v.priceAdjustment } })
+            : prisma.itemVariation.create({ data: { name: v.name, priceAdjustment: v.priceAdjustment, itemId: id } })
+        )
+      )
+    }
+
+    // Update item fields
+    await prisma.item.update({
       where: { id },
       data: {
         ...(categoryId !== undefined && { categoryId }),
@@ -56,8 +76,9 @@ export const itemService = {
         ...(kitchenId !== undefined && { kitchenId }),
         ...(imageUrl !== undefined && { imageUrl }),
       },
-      include: { variations: true },
     })
+
+    return prisma.item.findUnique({ where: { id }, include: { variations: true, category: true } })!;
   },
   async delete(id: string) {
     const existing = await prisma.item.findUnique({ where: { id } })

@@ -15,6 +15,8 @@ import {
   LogOut,
   Store,
   Banknote,
+  X,
+  Minus,
 } from 'lucide-react'
 import { FooterStatusBar } from './FooterStatusBar'
 import { Toaster } from './Toaster'
@@ -51,6 +53,20 @@ export function Layout() {
   const logoUrl = settings?.logoUrl
     ? `${getImageBaseUrl()}${settings.logoUrl}`
     : null
+
+  const handleClose = () => {
+    if (window.electron?.ipcRenderer) {
+      window.electron.ipcRenderer.invoke('window:close')
+    } else {
+      window.close()
+    }
+  }
+
+  const handleMinimize = () => {
+    if (window.electron?.ipcRenderer) {
+      window.electron.ipcRenderer.invoke('window:minimize')
+    }
+  }
 
   const handleLock = () => {
     const token = localStorage.getItem('accessToken')
@@ -193,6 +209,20 @@ export function Layout() {
                   className="rounded p-1.5 text-muted-foreground hover:bg-accent hover:text-destructive"
                 >
                   <LogOut size={16} />
+                </button>
+                <button
+                  onClick={handleMinimize}
+                  title="Minimize"
+                  className="rounded p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
+                >
+                  <Minus size={16} />
+                </button>
+                <button
+                  onClick={handleClose}
+                  title="Close"
+                  className="rounded p-1.5 text-muted-foreground hover:bg-destructive hover:text-destructive-foreground"
+                >
+                  <X size={16} />
                 </button>
               </div>
             </div>

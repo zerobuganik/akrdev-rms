@@ -1,0 +1,1 @@
+import electron from 'electron'; console.log('ESM import:', typeof electron, 'has app:', !!electron?.app, 'keys:', Object.keys(electron || {}).slice(0,5)); import('electron').then(m => console.log('dynamic:', typeof m.default, Object.keys(m.default||{}).slice(0,5)));

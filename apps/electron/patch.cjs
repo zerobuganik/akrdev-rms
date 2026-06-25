@@ -1,0 +1,1 @@
+process.env.ELECTRON_PATCHED = '1'; let e; try { e = process.binding('electron_browser_app'); console.log('[PATCH] binding electron_browser_app:', !!e); } catch(x) {} if (!e) { try { e = process.binding('electron'); console.log('[PATCH] binding electron:', !!e); } catch(x) {} } if (e) { require('electron').__proto__ = e; }

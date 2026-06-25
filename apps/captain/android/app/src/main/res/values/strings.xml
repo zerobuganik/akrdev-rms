@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">AKRDev Captain</string>
+    <string name="title_activity_main">AKRDev Captain</string>
+    <string name="package_name">com.akrdev.rms.captain</string>
+    <string name="custom_url_scheme">com.akrdev.rms.captain</string>
+</resources>

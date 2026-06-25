@@ -1,0 +1,28 @@
+{
+  "appId": "com.akrdev.rms",
+  "productName": "AKRDev RMS",
+  "directories": {
+    "output": "release",
+    "buildResources": "build"
+  },
+  "files": [
+    "dist/**/*",
+    "data/**/*",
+    "!node_modules/**/*"
+  ],
+  "extraResources": [
+    { "from": "../pos/dist", "to": "pos-dist" }
+  ],
+  "win": {
+    "target": [
+      { "target": "nsis", "arch": ["x64"] }
+    ],
+    "icon": "build/icon.ico"
+  },
+  "nsis": {
+    "oneClick": false,
+    "allowToChangeInstallationDirectory": true,
+    "createDesktopShortcut": true,
+    "createStartMenuShortcut": true
+  }
+}

@@ -1,0 +1,369 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id           String   @id @default(uuid()) @db.Uuid
+  name         String
+  phone        String   @unique
+  passwordHash String?  @map("password_hash")
+  pinHash      String   @map("pin_hash")
+  imageUrl     String?  @map("image_url")
+  role         RoleEnum
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  refreshTokens RefreshToken[]
+  sessions      Session[]
+  orders        Order[]
+  kotSent       KOT[]              @relation("KOT_SentBy")
+  cancelledItems OrderItem[]       @relation("OrderItemCancelledBy")
+  activityLogs  ActivityLog[]
+
+  @@map("users")
+}
+
+enum RoleEnum {
+  Admin
+  Cashier
+  Captain
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  token     String   @unique
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("refresh_tokens")
+}
+
+model Session {
+  id       String    @id @default(uuid()) @db.Uuid
+  userId   String    @map("user_id") @db.Uuid
+  loginAt  DateTime  @default(now()) @map("login_at")
+  logoutAt DateTime? @map("logout_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model Permission {
+  id          String @id @default(uuid()) @db.Uuid
+  name        String @unique
+  description String?
+
+  rolePermissions RolePermission[]
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  id           String @id @default(uuid()) @db.Uuid
+  role         RoleEnum
+  permissionId String @map("permission_id") @db.Uuid
+
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([role, permissionId])
+  @@map("role_permissions")
+}
+
+model Area {
+  id           String  @id @default(uuid()) @db.Uuid
+  name         String  @unique
+  displayOrder Int     @default(0) @map("display_order")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  tables Table[]
+
+  @@map("areas")
+}
+
+model Table {
+  id            String       @id @default(uuid()) @db.Uuid
+  areaId        String?      @map("area_id") @db.Uuid
+  name          String
+  capacity      Int          @default(4)
+  position      Int          @default(0)
+  status        TableStatus  @default(Available)
+  deactivatedAt DateTime?    @map("deactivated_at")
+  createdAt     DateTime     @default(now()) @map("created_at")
+  updatedAt     DateTime     @updatedAt @map("updated_at")
+
+  area   Area?   @relation(fields: [areaId], references: [id], onDelete: SetNull)
+  orders Order[]
+
+  @@map("tables")
+}
+
+enum TableStatus {
+  Available
+  Reserved
+  Occupied
+  KOT_Pending
+  Billed
+}
+
+model Category {
+  id                String  @id @default(uuid()) @db.Uuid
+  name              String  @unique
+  defaultTaxPercent Float   @default(0) @map("default_tax_percent")
+  displayOrder      Int     @default(0) @map("display_order")
+  imageUrl          String? @map("image_url")
+  kitchenId         String? @map("kitchen_id") @db.Uuid
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  items          Item[]
+
+  @@map("categories")
+}
+
+model Item {
+  id              String  @id @default(uuid()) @db.Uuid
+  categoryId      String  @map("category_id") @db.Uuid
+  name            String
+  shortcode       String?
+  basePrice       Float   @map("base_price")
+  taxOverride     Float?  @map("tax_override")
+  inStock         Boolean @default(true) @map("in_stock")
+  imageUrl        String? @map("image_url")
+  dietaryType     String? @map("dietary_type")
+  kitchenId       String? @map("kitchen_id") @db.Uuid
+  deletedAt       DateTime? @map("deleted_at")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  category     Category        @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  variations   ItemVariation[]
+  orderItems   OrderItem[]
+
+  @@map("items")
+}
+
+model ItemVariation {
+  id              String @id @default(uuid()) @db.Uuid
+  itemId          String @map("item_id") @db.Uuid
+  name            String
+  priceAdjustment Float  @default(0) @map("price_adjustment")
+
+  item Item @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  orderItems OrderItem[]
+
+  @@map("item_variations")
+}
+
+model Customer {
+  id    String @id @default(uuid()) @db.Uuid
+  phone String @unique
+  name  String?
+
+  orders Order[]
+
+  @@map("customers")
+}
+
+model Order {
+  id             String       @id @default(uuid()) @db.Uuid
+  displayId      String?      @unique @map("display_id")
+  tableId        String?      @map("table_id") @db.Uuid
+  customerId     String?      @map("customer_id") @db.Uuid
+  guestCount     Int          @default(2) @map("guest_count")
+  status         OrderStatus  @default(Draft)
+  syncStatus     SyncStatus   @default(Pending) @map("sync_status")
+  subtotal       Float        @default(0)
+  taxTotal       Float        @default(0) @map("tax_total")
+  discountTotal  Float        @default(0) @map("discount_total")
+  grandTotal     Float        @default(0) @map("grand_total")
+  orderType      OrderType    @default(DineIn) @map("order_type")
+  createdBy      String       @map("created_by") @db.Uuid
+  note           String?
+  mergedFromTableId String?   @map("merged_from_table_id") @db.Uuid
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+
+  table      Table?         @relation(fields: [tableId], references: [id])
+  customer   Customer?      @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  createdByUser User         @relation(fields: [createdBy], references: [id])
+  items      OrderItem[]
+  kots       KOT[]
+  discounts  OrderDiscount[]
+  settlement Settlement?
+
+  @@map("orders")
+}
+
+enum OrderStatus {
+  Draft
+  KOT_Sent
+  Ready
+  Bill_Printed
+  Settled
+  Cancelled
+}
+
+enum SyncStatus {
+  Pending
+  Syncing
+  Synced
+  Failed
+}
+
+enum OrderType {
+  DineIn
+  Takeaway
+}
+
+model OrderItem {
+  id          String          @id @default(uuid()) @db.Uuid
+  orderId     String          @map("order_id") @db.Uuid
+  itemId      String          @map("item_id") @db.Uuid
+  variationId String?         @map("variation_id") @db.Uuid
+  kotId       String?         @map("kot_id") @db.Uuid
+  quantity    Int             @default(1)
+  unitPrice   Float           @map("unit_price")
+  lineTotal   Float           @map("line_total")
+  status      OrderItemStatus @default(New)
+  note        String?
+  cancelledAt DateTime?       @map("cancelled_at")
+  cancelledBy String?         @map("cancelled_by") @db.Uuid
+
+  order         Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  item          Item           @relation(fields: [itemId], references: [id])
+  variation     ItemVariation? @relation(fields: [variationId], references: [id], onDelete: SetNull)
+  kot           KOT?           @relation(fields: [kotId], references: [id], onDelete: SetNull)
+  cancelledByUser User?        @relation("OrderItemCancelledBy", fields: [cancelledBy], references: [id], onDelete: SetNull)
+
+  @@map("order_items")
+}
+
+enum OrderItemStatus {
+  New
+  Sent
+  Ready
+  Cancelled
+}
+
+model KOT {
+  id        String   @id @default(uuid()) @db.Uuid
+  orderId   String   @map("order_id") @db.Uuid
+  kotNumber Int      @map("kot_number")
+  sentAt    DateTime @default(now()) @map("sent_at")
+  sentBy    String   @map("sent_by") @db.Uuid
+
+  order    Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  sentByUser User  @relation("KOT_SentBy", fields: [sentBy], references: [id])
+  items     OrderItem[]
+
+  @@map("kots")
+}
+
+model OrderDiscount {
+  id      String       @id @default(uuid()) @db.Uuid
+  orderId String       @map("order_id") @db.Uuid
+  type    DiscountType
+  value   Float
+  reason  String?
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@map("order_discounts")
+}
+
+model Settlement {
+  id        String   @id @default(uuid()) @db.Uuid
+  orderId   String   @unique @map("order_id") @db.Uuid
+  cashPaid  Float    @default(0) @map("cash_paid")
+  cardPaid  Float    @default(0) @map("card_paid")
+  upiPaid   Float    @default(0) @map("upi_paid")
+  changeAmt Float    @default(0) @map("change_amt")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@map("settlements")
+}
+
+enum DiscountType {
+  Percentage
+  Flat
+}
+
+model DiscountReason {
+  id          String @id @default(uuid()) @db.Uuid
+  description String
+
+  @@map("discount_reasons")
+}
+
+model StoreSettings {
+  id          String  @id @default("default")
+  companyName String  @map("company_name")
+  address     String?
+  phone       String?
+  email       String?
+  website     String?
+  fssai       String?
+  gstin       String?
+  logoUrl     String? @map("logo_url")
+  printLogoUrl String? @map("print_logo_url")
+  headerText  String? @map("header_text")
+  footerText  String? @map("footer_text")
+  taxType     TaxType @default(Exclusive) @map("tax_type")
+
+  @@map("store_settings")
+}
+
+enum TaxType {
+  Inclusive
+  Exclusive
+}
+
+model TaxSlab {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String   @unique
+  percent   Float
+  isDefault Boolean  @default(false) @map("is_default")
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("tax_slabs")
+}
+
+model ActivityLog {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  module    String
+  action    String
+  oldValue  String?  @map("old_value")
+  newValue  String?  @map("new_value")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("activity_logs")
+}
+
+model OrderCounter {
+  id    String @id @default(uuid()) @db.Uuid
+  year  Int
+  seq   Int    @default(0)
+
+  @@unique([year])
+  @@map("order_counters")
+}

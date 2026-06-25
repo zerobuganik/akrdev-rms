@@ -1,0 +1,1 @@
+var e = require('electron'); console.log('ownProperties:', Object.getOwnPropertyNames(e).length); console.log('ownPropertyDescriptors:', JSON.stringify(Object.getOwnPropertyDescriptors(e)).substr(0,200)); console.log('Symbol keys:', Object.getOwnPropertySymbols(e).length);

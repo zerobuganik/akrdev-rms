@@ -1,0 +1,51 @@
+{
+  "name": "@akrdev/electron",
+  "version": "0.0.0",
+  "private": true,
+  "main": "./dist/main.js",
+  "scripts": {
+    "predev": "prisma db push && tsc && node scripts/copy-prisma.js",
+    "dev": "electron .",
+    "start": "set NODE_ENV=production && ..\\..\\node_modules\\.pnpm\\electron@33.4.11\\node_modules\\electron\\dist\\electron.exe .",
+    "build": "prisma db push && tsc && node scripts/copy-prisma.js",
+    "dist": "electron-builder --config electron-builder.yml",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src/",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "postinstall": "node scripts/patch-electron.js && electron-rebuild -f -w @akrdev/electron"
+  },
+  "dependencies": {
+    "@akrdev/schemas": "workspace:*",
+    "@akrdev/shared": "workspace:*",
+    "@akrdev/types": "workspace:*",
+    "@node-escpos/network-adapter": "^0.0.1",
+    "@node-escpos/usb-adapter": "^0.0.1",
+    "@prisma/adapter-libsql": "^7.8.0",
+    "@prisma/client": "^7.8.0",
+    "@prisma/client-runtime-utils": "7.8.0",
+    "@thiagoelg/node-printer": "0.5.8",
+    "argon2": "^0.44.0",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "electron": "^33.4.11",
+    "express": "^5.2.1",
+    "multicast-dns": "^7.2.5",
+    "pngjs": "^7.0.0",
+    "prisma": "^7.8.0",
+    "socket.io": "^4.8.3",
+    "socket.io-client": "^4.8.3",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "@akrdev/tsconfig": "workspace:*",
+    "@electron/rebuild": "^4.0.4",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/multicast-dns": "^7.2.4",
+    "@types/node": "^22.0.0",
+    "electron-builder": "^26.8.1",
+    "tsx": "^4.22.3",
+    "typescript": "^6.0.0"
+  }
+}

@@ -586,14 +586,14 @@ app.post('/api/v1/cart/cancel-item', async (req, res) => {
 
 app.post('/api/v1/kot/send', async (req, res) => {
   try {
-    const { orderId } = req.body
+    const { orderId, sentBy } = req.body
     const order = await localPrisma.localOrder.findUnique({ where: { id: orderId }, include: { kots: true, items: true } })
     if (!order) {
       res.status(404).json({ error: 'Order not found' })
       return
     }
     const nextKotNumber = order.kots.length > 0 ? Math.max(...order.kots.map((k) => k.kotNumber)) + 1 : 1
-    const kot = await localPrisma.localKOT.create({ data: { orderId, kotNumber: nextKotNumber, sentBy: 'captain' } })
+    const kot = await localPrisma.localKOT.create({ data: { orderId, kotNumber: nextKotNumber, sentBy: sentBy || 'user' } })
 
     const newItems = order.items.filter((i) => i.status === 'New')
     for (const item of newItems) {

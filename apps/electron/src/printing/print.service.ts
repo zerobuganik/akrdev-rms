@@ -216,21 +216,31 @@ export class PrintService {
     isKitchen?: boolean
     isBilling?: boolean
   }) {
-    if (data.isDefault) {
+    // If this is a billing printer, clear existing billing flag
+    if (data.isBilling) {
       await localPrisma.printerConfig.updateMany({
-        where: { isDefault: true },
+        where: { isBilling: true },
+        data: { isBilling: false },
+      })
+    }
+    // If this is a default kitchen printer, clear existing default kitchen
+    if (data.isDefault && data.isKitchen) {
+      await localPrisma.printerConfig.updateMany({
+        where: { isDefault: true, isKitchen: true },
         data: { isDefault: false },
       })
     }
 
     if (data.id) {
+      const { id, ...rest } = data
       return localPrisma.printerConfig.update({
-        where: { id: data.id },
-        data,
+        where: { id },
+        data: rest,
       })
     }
 
-    return localPrisma.printerConfig.create({ data: data as unknown as Prisma.PrinterConfigCreateInput })
+    const { id: _id, ...rest } = data
+    return localPrisma.printerConfig.create({ data: rest })
   }
 
   /**

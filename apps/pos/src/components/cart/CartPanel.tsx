@@ -190,7 +190,7 @@ export function CartPanel({ tableId }: CartPanelProps) {
 
   const sendKOT = useMutation({
     mutationFn: async () => {
-      const { data } = await apiClient.post('/kot/send', { orderId: order!.id })
+      const { data } = await apiClient.post('/kot/send', { orderId: order!.id, sentBy: user?.name ?? 'User' })
       return data as { kotId: string; kotNumber: number; itemsSent: number }
     },
     onSuccess: (result: { kotId: string; kotNumber: number; itemsSent: number }) => {

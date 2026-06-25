@@ -20,7 +20,7 @@ export const kotService = {
     }
 
     const kot = await prisma.kOT.create({
-      data: { orderId, kotNumber: nextKotNumber, sentBy },
+      data: { orderId, kotNumber: nextKotNumber, sentBy: sentBy || 'user' },
     })
 
     // Update items and order status

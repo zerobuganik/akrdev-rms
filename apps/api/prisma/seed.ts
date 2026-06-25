@@ -1,4 +1,4 @@
-import { PrismaClient } from '../src/generated/prisma/index.js'
+import { PrismaClient } from '../dist/generated/prisma/index.js'
 import { PrismaPg } from '@prisma/adapter-pg'
 import * as argon2 from 'argon2'
 import 'dotenv/config'

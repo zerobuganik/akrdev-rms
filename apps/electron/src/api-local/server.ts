@@ -845,24 +845,21 @@ app.get('/api/v1/print/printers', async (_req, res) => {
 })
 
 // System printer discovery — accessible via local HTTP from POS renderer
+// Uses Electron's main process webContents API to fetch system printers.
+// mainWindow must be passed from main.ts since import('electron') doesn't work in bundled context.
+let _systemPrinterResolver: (() => Promise<unknown[]>) | null = null
+export function setSystemPrinterResolver(resolver: () => Promise<unknown[]>) {
+  _systemPrinterResolver = resolver
+}
+
 app.get('/api/v1/print/discover-system', async (_req, res) => {
   try {
-    const { BrowserWindow } = await import('electron')
-    const wins = BrowserWindow.getAllWindows()
-    if (wins.length === 0) { res.json([]); return }
-    const systemPrinters = await wins[0]!.webContents.getPrintersAsync()
-    const configured = await printService.getPrinters().catch(() => [])
-    const configuredNames = new Set(configured.map((p) => p.name.toLowerCase()))
-
-    const discovered = systemPrinters.map((p: Electron.PrinterInfo) => ({
-      name: p.name,
-      displayName: p.displayName,
-      isDefault: p.isDefault,
-      status: p.status === 0 ? 'Ready' as const : 'Error' as const,
-      description: p.description,
-      isConfigured: configuredNames.has(p.name.toLowerCase()),
-    }))
-    res.json(discovered)
+    if (_systemPrinterResolver) {
+      const discovered = await _systemPrinterResolver()
+      res.json(discovered)
+      return
+    }
+    res.json([])
   } catch {
     res.json([])
   }

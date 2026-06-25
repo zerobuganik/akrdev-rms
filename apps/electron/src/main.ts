@@ -1,6 +1,6 @@
 import { app, BrowserWindow as BW, ipcMain, type BrowserWindow } from 'electron'
 import path from 'path'
-import { createLocalApiServer } from './api-local/server.js'
+import { createLocalApiServer, setSystemPrinterResolver } from './api-local/server.js'
 import { startMDNS, stopMDNS } from './services/mdns.service.js'
 import { printService, type PrintData } from './printing/print.service.js'
 
@@ -23,6 +23,12 @@ function createWindow() {
     frame: false,
     resizable: false,
     title: 'Topshe POS v1.0',
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      contextIsolation: true,
+      sandbox: false,
+      nodeIntegration: false,
+    },
   })
 
   // Allow Alt+F4 to close
@@ -167,6 +173,9 @@ app.whenReady().then(async () => {
   // Always initialize printing
   try { await printService.initialize() } catch (err) { console.error('[Main] Print service init failed:', err) }
   retryInterval = setInterval(() => printService.processRetries().catch(() => {}), 30_000)
+
+  // Set system printer resolver for local API HTTP endpoint
+  setSystemPrinterResolver(discoverSystemPrinters)
 
   // Start local API + mDNS for Captain pairing and offline mode
   if (process.env.CLOUD_API_URL) {

@@ -126,25 +126,38 @@ function registerIpcHandlers() {
 
   ipcMain.handle('print:discover-system', async () => {
     try {
-      if (!mainWindow) return { ok: true, data: [] }
-      const systemPrinters = await mainWindow.webContents.getPrintersAsync()
-      const configured = await printService.getPrinters().catch(() => [])
-      const configuredNames = new Set(configured.map((p: { name: string }) => p.name.toLowerCase()))
-
-      const discovered = systemPrinters.map((p: Electron.PrinterInfo) => ({
-        name: p.name,
-        displayName: p.displayName,
-        isDefault: p.isDefault,
-        status: p.status === 0 ? 'Ready' as const : 'Error' as const,
-        description: p.description,
-        isConfigured: configuredNames.has(p.name.toLowerCase()),
-      }))
-
+      const discovered = await discoverSystemPrinters()
       return { ok: true, data: discovered }
     } catch {
       return { ok: true, data: [] }
     }
   })
+
+  // Also handle from local API renderer (non-electron HTTP fallback)
+  ipcMain.handle('print:discover-system-http', async () => {
+    try {
+      const discovered = await discoverSystemPrinters()
+      return discovered
+    } catch {
+      return []
+    }
+  })
+}
+
+async function discoverSystemPrinters() {
+  if (!mainWindow) return []
+  const systemPrinters = await mainWindow.webContents.getPrintersAsync()
+  const configured = await printService.getPrinters().catch(() => [])
+  const configuredNames = new Set(configured.map((p: { name: string }) => p.name.toLowerCase()))
+
+  return systemPrinters.map((p: Electron.PrinterInfo) => ({
+    name: p.name,
+    displayName: p.displayName,
+    isDefault: p.isDefault,
+    status: p.status === 0 ? 'Ready' as const : 'Error' as const,
+    description: p.description,
+    isConfigured: configuredNames.has(p.name.toLowerCase()),
+  }))
 }
 
 app.whenReady().then(async () => {

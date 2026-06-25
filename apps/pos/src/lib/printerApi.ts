@@ -173,7 +173,8 @@ async function httpCall<T>(channel: string, ...args: unknown[]): Promise<IpcResp
         return { ok: true, data: data as T }
       }
       case 'print:discover-system': {
-        return { ok: true, data: [] as T }
+        const { data } = await axios.get<SystemPrinter[]>(`${LOCAL_API}/print/discover-system`)
+        return { ok: true, data: data as T }
       }
       default:
         return { ok: false, error: `Unknown channel: ${channel}` }

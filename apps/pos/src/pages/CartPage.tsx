@@ -37,10 +37,9 @@ export default function CartPage() {
   })
 
   const addItemMut = useMutation({
-    mutationFn: async (payload: { tableId: string; itemId: string; variationId?: string }) => {
-      // For new takeaway, create order then add item
-      let targetTableId = payload.tableId
-      if (isTakeawayNew) {
+    mutationFn: async (payload: { itemId: string; variationId?: string }) => {
+      let targetTableId: string | null = tableId
+      if (isTakeawayNew || !targetTableId) {
         targetTableId = await getOrCreateTakeawayOrder()
       }
       let orderRes = await apiClient.get(`/orders/${targetTableId}/active`)
@@ -67,20 +66,20 @@ export default function CartPage() {
     },
   })
 
+  const handleAddItem = useCallback(
+    (item: { id: string }, variationId?: string) => {
+      if (!tableId && !isTakeawayNew) return
+      addItemMut.mutate({ itemId: item.id, variationId })
+    },
+    [tableId, isTakeawayNew, addItemMut],
+  )
+
   const handleSelectTable = useCallback(
     (tId: string) => {
       setTableId(tId)
       setActiveTable(tId)
     },
     [setActiveTable],
-  )
-
-  const handleAddItem = useCallback(
-    (item: { id: string }, variationId?: string) => {
-      if (!tableId) return
-      addItemMut.mutate({ tableId, itemId: item.id, variationId })
-    },
-    [tableId, addItemMut],
   )
 
   return (

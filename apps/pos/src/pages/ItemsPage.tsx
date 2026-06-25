@@ -54,6 +54,7 @@ export default function ItemsPage() {
   const [itemForm, setItemForm] = useState({ name: '', basePrice: '', categoryId: '', taxOverride: '', dietaryType: '' as '' | typeof DIETARY_TYPES[number] })
   const [itemVarForm, setItemVarForm] = useState({ name: '', priceAdjustment: '' })
   const [itemVariations, setItemVariations] = useState<Array<{ name: string; priceAdjustment: number; id?: string }>>([])
+  const [editingVarIndex, setEditingVarIndex] = useState<number | null>(null)
   const [hasVariations, setHasVariations] = useState(false)
   const [itemKitchenId, setItemKitchenId] = useState<string | null>(null)
   const [itemImage, setItemImage] = useState<string | null>(null)
@@ -332,7 +333,7 @@ export default function ItemsPage() {
     return true
   }
 
-  const resetForm = () => { setNewItem(false); setEditingItem(null); setHasVariations(false); setItemVariations([]); setItemImage(null); setItemImageFile(null) }
+  const resetForm = () => { setNewItem(false); setEditingItem(null); setHasVariations(false); setItemVariations([]); setEditingVarIndex(null); setItemVarForm({ name: '', priceAdjustment: '' }); setItemImage(null); setItemImageFile(null) }
 
   return (
     <div className="flex h-full flex-col">
@@ -576,7 +577,7 @@ export default function ItemsPage() {
 
       {/* Item form modal popup */}
       {(newItem || editingItem) && (
-        <div className="fixed inset-0 z-40 flex items-start justify-center p-4 sm:p-6 lg:p-8 overflow-auto" onClick={(e) => { if (e.target === e.currentTarget) resetForm() }}>
+        <div key={editingItem?.id ?? 'new'} className="fixed inset-0 z-40 flex items-start justify-center p-4 sm:p-6 lg:p-8 overflow-auto" onClick={(e) => { if (e.target === e.currentTarget) resetForm() }}>
           <div className="absolute inset-0 bg-black/50" />
           <div className="relative z-10 w-full max-w-4xl bg-background rounded-xl shadow-2xl overflow-hidden">
             {/* Modal Header */}
@@ -642,6 +643,8 @@ export default function ItemsPage() {
                           if (hasVariations) {
                             setHasVariations(false)
                             setItemVariations([])
+                            setEditingVarIndex(null)
+                            setItemVarForm({ name: '', priceAdjustment: '' })
                             setItemForm((f) => ({ ...f, basePrice: '' }))
                           }
                         }}
@@ -777,20 +780,43 @@ export default function ItemsPage() {
                       <button
                         type="button"
                         onClick={() => {
+                          if (editingVarIndex !== null) {
+                            if (!itemVarForm.name.trim()) { toast('Enter a variation name', 'error'); return }
+                            setItemVariations((v) => v.map((v2, i) => i === editingVarIndex ? { ...v2, name: itemVarForm.name.trim(), priceAdjustment: Number(itemVarForm.priceAdjustment) || 0 } : v2))
+                            setItemVarForm({ name: '', priceAdjustment: '' })
+                            setEditingVarIndex(null)
+                            return
+                          }
                           if (!itemVarForm.name.trim()) { toast('Enter a variation name', 'error'); return }
                           setItemVariations((v) => [...v, { name: itemVarForm.name.trim(), priceAdjustment: Number(itemVarForm.priceAdjustment) || 0 }])
                           setItemVarForm({ name: '', priceAdjustment: '' })
                         }}
                         className="rounded-lg bg-gray-900 px-5 py-2.5 text-sm font-medium text-white hover:bg-gray-800"
                       >
-                        Add
+                        {editingVarIndex !== null ? 'Update' : 'Add'}
                       </button>
+                      {editingVarIndex !== null && (
+                        <button
+                          type="button"
+                          onClick={() => { setItemVarForm({ name: '', priceAdjustment: '' }); setEditingVarIndex(null) }}
+                          className="rounded-lg border px-4 py-2.5 text-sm font-medium text-muted-foreground hover:bg-muted"
+                        >
+                          Cancel
+                        </button>
+                      )}
                     </div>
                     {itemVariations.length > 0 && (
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         {itemVariations.map((v, idx) => (
-                          <div key={v.id ?? idx} className="flex items-center justify-between bg-muted/50 px-4 py-2.5 rounded-lg border">
-                            <div className="flex items-center gap-2 min-w-0">
+                          <div key={v.id ?? idx} className={`flex items-center justify-between bg-muted/50 px-4 py-2.5 rounded-lg border cursor-pointer hover:bg-muted transition-colors ${editingVarIndex === idx ? 'ring-2 ring-primary border-primary' : ''}`}>
+                            <div
+                              className="flex items-center gap-2 min-w-0 flex-1"
+                              onClick={() => {
+                                setEditingVarIndex(idx)
+                                setItemVarForm({ name: v.name, priceAdjustment: String(v.priceAdjustment) })
+                              }}
+                            >
+                              <Pencil size={12} className="text-muted-foreground shrink-0" />
                               <span className="font-medium truncate">{v.name}</span>
                               <span className="text-xs text-muted-foreground shrink-0">
                                 ₹{v.priceAdjustment.toLocaleString()}

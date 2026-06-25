@@ -7,6 +7,8 @@ import { SpoolerAdapter } from './spooler.adapter.js'
 import { printQueueService } from './print-queue.service.js'
 import fs from 'fs'
 import path from 'path'
+import http from 'http'
+import https from 'https'
 import { PNG } from 'pngjs'
 
 /**
@@ -149,8 +151,8 @@ export class PrintService {
     }
 
     for (const printer of defaultPrinters) {
-      await this.printToPrinter(printer.id, data, () =>
-        this.formatBill(data, printer.paperWidth),
+      await this.printToPrinter(printer.id, data, async () =>
+        await this.formatBill(data, printer.paperWidth),
       )
     }
   }
@@ -169,8 +171,8 @@ export class PrintService {
     }
 
     for (const printer of printers) {
-      await this.printToPrinter(printer.id, data, () =>
-        this.formatReprint(data, printer.paperWidth),
+      await this.printToPrinter(printer.id, data, async () =>
+        await this.formatReprint(data, printer.paperWidth),
       )
     }
   }
@@ -287,7 +289,7 @@ export class PrintService {
   private async printToPrinter(
     printerId: string,
     data: PrintData,
-    formatFn: () => Buffer,
+    formatFn: () => Buffer | Promise<Buffer>,
   ): Promise<void> {
     const job = await printQueueService.enqueue(
       printerId,
@@ -303,7 +305,7 @@ export class PrintService {
     }
 
     try {
-      const buffer = formatFn()
+      const buffer = await formatFn()
       await adapter.write(buffer)
       await adapter.cut?.()
       await printQueueService.markCompleted(job.id)
@@ -426,12 +428,27 @@ export class PrintService {
    * Resolves the logo file relative to the API's public uploads directory.
    * Returns null if the logo cannot be loaded or is too small.
    */
-  private encodeLogo(logoUrl: string, paperWidth: number): Buffer | null {
+  private async encodeLogo(logoUrl: string, paperWidth: number): Promise<Buffer | null> {
     try {
-      const filePath = path.resolve(__dirname, '..', '..', '..', 'api', 'public', logoUrl.replace(/^\//, ''))
-      if (!fs.existsSync(filePath)) return null
+      let pngBuffer: Buffer
 
-      const png = PNG.sync.read(fs.readFileSync(filePath))
+      if (logoUrl.startsWith('http://') || logoUrl.startsWith('https://')) {
+        pngBuffer = await new Promise<Buffer>((resolve, reject) => {
+          const get = logoUrl.startsWith('https://') ? https.get : http.get
+          get(logoUrl, (res) => {
+            if (res.statusCode !== 200) { reject(new Error(`HTTP ${res.statusCode}`)); return }
+            const chunks: Buffer[] = []
+            res.on('data', (c: Buffer) => chunks.push(c))
+            res.on('end', () => resolve(Buffer.concat(chunks)))
+          }).on('error', reject)
+        })
+      } else {
+        const filePath = path.resolve(__dirname, '..', '..', '..', 'api', 'public', logoUrl.replace(/^\//, ''))
+        if (!fs.existsSync(filePath)) return null
+        pngBuffer = fs.readFileSync(filePath)
+      }
+
+      const png = PNG.sync.read(pngBuffer)
       
       // CRITICAL FIX: Standard hardware dot widths for thermal print heads
       // 80mm = 576 dots across
@@ -496,13 +513,13 @@ export class PrintService {
     }
   }
 
-  private formatBill(data: PrintData, paperWidth: number): Buffer {
+  private async formatBill(data: PrintData, paperWidth: number): Promise<Buffer> {
     const w = this.width(paperWidth)
     const is80mm = paperWidth !== 58
 
     let logoBuf: Buffer | null = null
     if (data.logoUrl) {
-      logoBuf = this.encodeLogo(data.logoUrl, paperWidth)
+      logoBuf = await this.encodeLogo(data.logoUrl, paperWidth)
     }
 
     const lines: string[] = []
@@ -614,7 +631,7 @@ export class PrintService {
     lines.push(CMD.DIVIDER.slice(0, w))
     if (data.grandTotal != null) {
       lines.push(
-        CMD.BOLD_ON + this.lineLeftRight(' GRAND TOTAL', `Rs. ${data.grandTotal.toFixed(2)}`, w) + CMD.BOLD_OFF,
+        CMD.BOLD_ON + this.lineLeftRight(' GRAND TOTAL', `Rs. ${Math.round(data.grandTotal).toFixed(2)}`, w) + CMD.BOLD_OFF,
       )
     }
     lines.push(CMD.DIVIDER.slice(0, w))
@@ -648,9 +665,9 @@ export class PrintService {
   /**
    * Format reprint — same as bill but with REPRINT watermark.
    */
-  private formatReprint(data: PrintData, paperWidth: number): Buffer {
+  private async formatReprint(data: PrintData, paperWidth: number): Promise<Buffer> {
     const w = this.width(paperWidth)
-    const original = this.formatBill(data, paperWidth)
+    const original = await this.formatBill(data, paperWidth)
     const header = Buffer.from(
       [
         CMD.INIT,

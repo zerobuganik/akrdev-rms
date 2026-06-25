@@ -82,35 +82,47 @@ export function Layout() {
     : 'RMS'
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
+    <div className="flex h-screen overflow-hidden bg-background flex-col">
+      {/* ---- Title Bar (frameless window controls) ---- */}
+      <div className="flex items-center justify-between h-10 px-3 bg-sidebar border-b select-none drag-region flex-shrink-0">
+        <div className="flex items-center gap-2 no-drag">
+          <div
+            onClick={() => setCollapsed(!collapsed)}
+            className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md bg-primary text-xs font-bold text-primary-foreground overflow-hidden cursor-pointer"
+          >
+            {logoUrl ? (
+              <img src={logoUrl} alt="Logo" className="h-full w-full object-cover" />
+            ) : (
+              <span>{restaurantName?.[0] ?? <Store size={14} />}</span>
+            )}
+          </div>
+          <span className="text-xs font-semibold text-sidebar-foreground truncate max-w-[200px]">{restaurantName || 'Topshe POS'}</span>
+        </div>
+        <div className="flex items-center gap-0.5 no-drag">
+          <button
+            onClick={handleMinimize}
+            title="Minimize"
+            className="flex items-center justify-center h-7 w-10 rounded hover:bg-accent text-sidebar-foreground/70 hover:text-sidebar-foreground"
+          >
+            <Minus size={14} />
+          </button>
+          <button
+            onClick={handleClose}
+            title="Close"
+            className="flex items-center justify-center h-7 w-10 rounded hover:bg-destructive hover:text-destructive-foreground text-sidebar-foreground/70"
+          >
+            <X size={14} />
+          </button>
+        </div>
+      </div>
+
+      <div className="flex flex-1 overflow-hidden">
       <aside
         className={cn(
           'flex flex-col border-r bg-sidebar transition-all duration-200',
           collapsed ? 'w-[60px]' : 'w-[240px]',
         )}
       >
-        {/* ---- Header: Logo + Restaurant Short Name ---- */}
-        <div
-          onClick={() => setCollapsed(!collapsed)}
-          className={cn(
-            'flex items-center gap-3 border-b px-3 py-3 cursor-pointer',
-            collapsed && 'justify-center px-1',
-          )}
-        >
-          <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-md bg-primary text-sm font-bold text-primary-foreground overflow-hidden">
-            {logoUrl ? (
-              <img src={logoUrl} alt="Logo" className="h-full w-full object-cover" />
-            ) : (
-              <span>{restaurantName?.[0] ?? <Store size={18} />}</span>
-            )}
-          </div>
-          {!collapsed && (
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-semibold leading-tight">{restaurantName}</p>
-            </div>
-          )}
-        </div>
-
         {/* ---- Navigation ---- */}
         <nav className="flex-1 space-y-0.5 overflow-y-auto p-2">
           {navItems.map((item) => {
@@ -210,20 +222,6 @@ export function Layout() {
                 >
                   <LogOut size={16} />
                 </button>
-                <button
-                  onClick={handleMinimize}
-                  title="Minimize"
-                  className="rounded p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
-                >
-                  <Minus size={16} />
-                </button>
-                <button
-                  onClick={handleClose}
-                  title="Close"
-                  className="rounded p-1.5 text-muted-foreground hover:bg-destructive hover:text-destructive-foreground"
-                >
-                  <X size={16} />
-                </button>
               </div>
             </div>
           )}
@@ -236,6 +234,7 @@ export function Layout() {
         </div>
         <FooterStatusBar />
       </main>
+      </div>
 
       <Toaster />
       {showProfile && <ProfilePopup onClose={() => setShowProfile(false)} />}

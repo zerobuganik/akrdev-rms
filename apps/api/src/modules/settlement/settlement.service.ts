@@ -48,9 +48,11 @@ export const settlementService = {
       return sum + (d.type === 'Percentage' ? (subtotal * d.value / 100) : d.value)
     }, 0)
 
-    const grandTotal = settings?.taxType === 'Inclusive'
-      ? subtotal - discountTotal
-      : subtotal + taxTotal - discountTotal
+    const grandTotal = Math.round(
+      settings?.taxType === 'Inclusive'
+        ? subtotal - discountTotal
+        : subtotal + taxTotal - discountTotal
+    )
     const payments = data.payments
     const totalPaid = (payments.cash ?? 0) + (payments.card ?? 0) + (payments.upi ?? 0)
 

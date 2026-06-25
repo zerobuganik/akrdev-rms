@@ -30,9 +30,11 @@ export function SettlementModal({ order, tableName, taxType, onClose, onSettled 
     ? (order.subtotal * discountValue) / 100
     : discountValue
 
-  const grandTotal = taxType === 'Inclusive'
-    ? order.subtotal - discountAmount
-    : order.subtotal + order.taxTotal - discountAmount
+  const grandTotal = Math.round(
+    taxType === 'Inclusive'
+      ? order.subtotal - discountAmount
+      : order.subtotal + order.taxTotal - discountAmount
+  )
   const totalPaid = cash + card + upi
   const change = totalPaid - grandTotal
 

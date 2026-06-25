@@ -201,9 +201,11 @@ async function recalculateTotals(orderId: string) {
     return sum + (d.type === 'Percentage' ? (subtotal * d.value / 100) : d.value)
   }, 0)
 
-  const grandTotal = settings?.taxType === 'Inclusive'
-    ? subtotal - discountTotal
-    : subtotal + taxTotal - discountTotal
+  const grandTotal = Math.round(
+    settings?.taxType === 'Inclusive'
+      ? subtotal - discountTotal
+      : subtotal + taxTotal - discountTotal
+  )
 
   await prisma.order.update({
     where: { id: orderId },

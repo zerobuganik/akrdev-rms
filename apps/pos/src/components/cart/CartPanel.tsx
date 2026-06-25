@@ -8,6 +8,7 @@ import { useAuthStore } from '@/stores/useAuthStore'
 import { toast } from '@/stores/useToastStore'
 import { printerApi } from '@/lib/printerApi'
 import { formatPrintDate, formatPrintTime } from '@/lib/utils'
+import { getImageBaseUrl } from '@/lib/imageBaseUrl'
 import { SettlementModal } from '@/components/settlement/SettlementModal'
 import { PaymentChangeModal } from '@/components/settlement/PaymentChangeModal'
 
@@ -193,6 +194,26 @@ export function CartPanel({ tableId }: CartPanelProps) {
     },
     onSuccess: (result: { kotId: string; kotNumber: number; itemsSent: number }) => {
       toast('KOT sent successfully', 'success')
+      // Optimistically move New items to Sent for instant UI feedback
+      queryClient.setQueryData(['order', tableId], (old: Order | undefined) => {
+        if (!old) return old
+        const sentItemIds = old.items.filter(i => i.status === 'New').map(i => i.id)
+        return {
+          ...old,
+          status: 'KOT_Sent',
+          items: old.items.map(i =>
+            sentItemIds.includes(i.id)
+              ? { ...i, status: 'Sent', kotId: result.kotId }
+              : i,
+          ),
+          kots: [...old.kots, {
+            id: result.kotId,
+            kotNumber: result.kotNumber,
+            sentAt: new Date().toISOString(),
+            sentBy: '',
+          }],
+        }
+      })
       queryClient.invalidateQueries({ queryKey: ['order', tableId] })
       queryClient.invalidateQueries({ queryKey: ['tables'] })
       queryClient.invalidateQueries({ queryKey: ['takeaway-orders'] })
@@ -266,7 +287,7 @@ export function CartPanel({ tableId }: CartPanelProps) {
           taxName: 'GST',
           date: formatPrintDate(),
           orderType: order.orderType === 'Takeaway' ? 'Takeaway' : 'Dine In',
-          logoUrl: settings?.printLogoUrl ?? undefined,
+          logoUrl: settings?.printLogoUrl ? `${getImageBaseUrl()}${settings.printLogoUrl}` : undefined,
         }).catch(() => {})
       }).catch(() => {})
     },
@@ -327,7 +348,7 @@ export function CartPanel({ tableId }: CartPanelProps) {
         taxName: 'GST',
         date: formatPrintDate(),
         orderType: orderData.orderType === 'Takeaway' ? 'Takeaway' : 'Dine In',
-        logoUrl: data?.printLogoUrl ?? undefined,
+        logoUrl: data?.printLogoUrl ? `${getImageBaseUrl()}${data.printLogoUrl}` : undefined,
       }).catch(() => {})
     },
     onSuccess: () => {

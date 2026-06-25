@@ -104,16 +104,7 @@ git push -u origin main
 6. Copy the URL at the top (e.g. `https://akrdev-api.onrender.com`). **Save it in Notepad.**
 7. Test: open browser → go to `https://akrdev-api.onrender.com/api/v1/health` → should show `{"status":"ok"}`
 
----
-
-## Step 5: Create Admin User
-
-1. Render → click `akrdev-api` → click **Shell** (right side)
-2. A black terminal opens. Type:
-   ```
-   npx tsx prisma/seed.ts
-   ```
-   Press Enter. Wait for "Seeding complete."
+The admin user is created automatically during deployment.
 
 Admin login:
 - **Phone:** `7001181474`
@@ -122,9 +113,9 @@ Admin login:
 
 ---
 
-## Step 6: Configure API URL
+## Step 5: Configure API URL
 
-Open this file in Notepad:
+On your PC, open this file in Notepad:
 ```
 D:\AI Project\AKRDev RMS\apps\electron\.env
 ```
@@ -133,13 +124,12 @@ Change the first line to your Render URL:
 ```
 CLOUD_API_URL=https://akrdev-api.onrender.com/api/v1
 ```
-Replace `akrdev-api.onrender.com` with YOUR actual Render URL.
 
 Save and close.
 
 ---
 
-## Step 7: Build the EXE
+## Step 6: Build the EXE
 
 Open PowerShell in the project folder. Run one by one:
 
@@ -163,7 +153,7 @@ D:\AI Project\AKRDev RMS\apps\electron\release\AKRDev RMS Setup.exe
 
 ---
 
-## Step 8: Install on Restaurant PC
+## Step 7: Install on Restaurant PC
 
 1. Copy `AKRDev RMS Setup.exe` to the restaurant PC (USB drive)
 2. Double-click to install
@@ -174,7 +164,7 @@ D:\AI Project\AKRDev RMS\apps\electron\release\AKRDev RMS Setup.exe
 
 ---
 
-## Step 9: Change Admin Password
+## Step 8: Change Admin Password
 
 1. Click your avatar (bottom-left sidebar)
 2. Change name, phone, password, PIN
@@ -182,7 +172,7 @@ D:\AI Project\AKRDev RMS\apps\electron\release\AKRDev RMS Setup.exe
 
 ---
 
-## Step 10: Setup Thermal Printer
+## Step 9: Setup Thermal Printer
 
 1. Inside POS → **Settings** → **Printer Setup** tab
 2. Add printer (USB or Network)

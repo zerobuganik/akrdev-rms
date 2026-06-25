@@ -1,14 +1,14 @@
 import type { PrinterAdapter } from './printer-adapter.interface.js'
 import type { PrinterConfig } from '../generated/prisma/index.js'
 
-let printerModule: typeof import('@thiagoelg/node-printer')['default'] | null = null
+let printerModule: typeof import('@luckykiet/node-printer')['default'] | null = null
 let loadError: Error | null = null
 
 async function getPrinter() {
   if (printerModule) return printerModule
   if (loadError) throw loadError
   try {
-    const mod = await import('@thiagoelg/node-printer')
+    const mod = await import('@luckykiet/node-printer')
     printerModule = mod.default
     return printerModule
   } catch (err) {
@@ -44,7 +44,7 @@ export class SpoolerAdapter implements PrinterAdapter {
 
     // Guard: native module loaded but binding is broken (e.g. incompatible Node version)
     if (typeof printer.printDirect !== 'function') {
-      const msg = `[Print] UNSUPPORTED — Native printer module (@thiagoelg/node-printer) is not installed. ` +
+      const msg = `[Print] UNSUPPORTED — Native printer module (@luckykiet/node-printer) is not installed. ` +
         `Spooler/RAW printing to "${printerName}" requires a compatible native binding. ` +
         `Use ESC/POS (USB) or ESC/POS (Network) connection type as an alternative.`
       console.error(msg)

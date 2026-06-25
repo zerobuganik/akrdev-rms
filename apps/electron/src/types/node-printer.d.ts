@@ -1,4 +1,4 @@
-declare module '@thiagoelg/node-printer' {
+declare module '@luckykiet/node-printer' {
   export function getPrinters(): PrinterDetails[]
   export function getPrinter(printerName: string): PrinterDetails
   export function getPrinterDriverOptions(printerName: string): PrinterDriverOptions

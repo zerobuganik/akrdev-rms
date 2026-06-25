@@ -105,8 +105,8 @@ git push -u origin main
    |-------|-------------|
    | **Name** | `akrdev-api` |
    | **Root Directory** | `apps/api` |
-   | **Build Command** | `npm install -g pnpm && pnpm install --frozen-lockfile && npx prisma generate && npx prisma migrate deploy` |
-   | **Start Command** | `node dist/index.js` |
+   | **Build Command** | `pnpm install --frozen-lockfile && pnpm build` |
+   | **Start Command** | `pnpm start` |
    | **Plan** | Free |
 
 4. Scroll down to **Environment Variables**. Click **Add Environment Variable** and add these one by one:

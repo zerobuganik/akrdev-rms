@@ -581,16 +581,24 @@ export class PrintService {
     lines.push(this.lineLeftRight(orderIdLeft, typeRight, w))
     lines.push(CMD.DIVIDER.slice(0, w))
 
-    // Column header
+    // Column header and item rows — mathematically strict, every line sums to w
     if (is80mm) {
       // 80mm: Item | Qty | Rate | Amount
-      // Amount should be flush-right like subtotal/gst lines
       const qtyW = 4
-      const rateW = 8
-      const amtW = 10
-      const itemW = w - 3 - qtyW - 2 - rateW - 2 - amtW
+      const rateW = 9
+      const amtW = 11
+      // 3 gaps of '  ' (2 chars each) = 6 chars total
+      const itemW = w - qtyW - rateW - amtW - 6
+
+      // Header: Item (padEnd) + '  ' + Qty (centerIn) + '  ' + Rate (padLeft) + '  ' + Amount (padLeft)
+      // Sum: itemW + 2 + qtyW + 2 + rateW + 2 + amtW = itemW + qtyW + rateW + amtW + 6 = w ✓
       lines.push(
-        CMD.BOLD_ON + this.pad('Item', itemW) + ' ' + this.centerIn('Qty', qtyW) + '  ' + this.padLeft('Rate', rateW) + '  ' + this.padLeft('Amount', amtW) + CMD.BOLD_OFF,
+        CMD.BOLD_ON +
+        this.pad('Item', itemW) + '  ' +
+        this.centerIn('Qty', qtyW) + '  ' +
+        this.padLeft('Rate', rateW) + '  ' +
+        this.padLeft('Amount', amtW) +
+        CMD.BOLD_OFF,
         CMD.DIVIDER.slice(0, w),
       )
 
@@ -599,25 +607,37 @@ export class PrintService {
           const amount = (item.lineTotal ?? (item.unitPrice ?? 0) * item.quantity).toFixed(2)
           const rate = item.unitPrice != null ? item.unitPrice.toFixed(2) : ''
           const qty = item.quantity.toString()
-          const nameMax = itemW - 1
-          const nameLines = this.wrapText(item.name, nameMax)
           const qtyStr = this.centerIn(qty, qtyW)
           const rateStr = this.padLeft(rate, rateW)
           const amtStr = this.padLeft(amount, amtW)
-          // Amount left-aligned but the column itself is flush to right edge
-          lines.push(' ' + this.pad(nameLines[0]!, itemW - 1) + qtyStr + '  ' + rateStr + '  ' + amtStr)
+          // nameLines respects updated itemW
+          const nameLines = this.wrapText(item.name, itemW)
+          // Strict format: this.pad(name, itemW) + '  ' + qtyStr + '  ' + rateStr + '  ' + amtStr
+          // Sum: itemW + 2 + qtyW + 2 + rateW + 2 + amtW = itemW + qtyW + rateW + amtW + 6 = w ✓
+          lines.push(
+            this.pad(nameLines[0]!, itemW) + '  ' + qtyStr + '  ' + rateStr + '  ' + amtStr,
+          )
+          // Continuation lines: name only, no column data (line length < w is acceptable for wrapped lines)
           for (let li = 1; li < nameLines.length; li++) {
-            lines.push(' ' + this.pad(nameLines[li]!, itemW - 1))
+            lines.push(this.pad(nameLines[li]!, itemW))
           }
         }
       }
     } else {
       // 58mm: Item | Qty | Amount (no Rate column)
       const qtyW = 4
-      const amtW = 10
-      const itemW = w - 3 - qtyW - 2 - amtW
+      const amtW = 11
+      // 2 gaps of '  ' (2 chars each) = 4 chars total
+      const itemW = w - qtyW - amtW - 4
+
+      // Header: Item (padEnd) + '  ' + Qty (centerIn) + '  ' + Amount (padLeft)
+      // Sum: itemW + 2 + qtyW + 2 + amtW = itemW + qtyW + amtW + 4 = w ✓
       lines.push(
-        CMD.BOLD_ON + this.pad('Item', itemW) + ' ' + this.centerIn('Qty', qtyW) + '  ' + this.padLeft('Amount', amtW) + CMD.BOLD_OFF,
+        CMD.BOLD_ON +
+        this.pad('Item', itemW) + '  ' +
+        this.centerIn('Qty', qtyW) + '  ' +
+        this.padLeft('Amount', amtW) +
+        CMD.BOLD_OFF,
         CMD.DIVIDER.slice(0, w),
       )
 
@@ -625,13 +645,18 @@ export class PrintService {
         for (const item of data.items) {
           const amount = (item.lineTotal ?? (item.unitPrice ?? 0) * item.quantity).toFixed(2)
           const qty = item.quantity.toString()
-          const nameMax = itemW - 1
-          const nameLines = this.wrapText(item.name, nameMax)
           const qtyStr = this.centerIn(qty, qtyW)
           const amtStr = this.padLeft(amount, amtW)
-          lines.push(' ' + this.pad(nameLines[0]!, itemW - 1) + qtyStr + '  ' + amtStr)
+          // nameLines respects updated itemW
+          const nameLines = this.wrapText(item.name, itemW)
+          // Strict format: this.pad(name, itemW) + '  ' + qtyStr + '  ' + amtStr
+          // Sum: itemW + 2 + qtyW + 2 + amtW = itemW + qtyW + amtW + 4 = w ✓
+          lines.push(
+            this.pad(nameLines[0]!, itemW) + '  ' + qtyStr + '  ' + amtStr,
+          )
+          // Continuation lines: name only
           for (let li = 1; li < nameLines.length; li++) {
-            lines.push(' ' + this.pad(nameLines[li]!, itemW - 1))
+            lines.push(this.pad(nameLines[li]!, itemW))
           }
         }
       }

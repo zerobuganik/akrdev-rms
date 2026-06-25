@@ -195,6 +195,7 @@ export default function SettingsPage() {
 
   const logoUploadMut = useMutation({
     mutationFn: async (file: File) => {
+      if (file.size > 200 * 1024) throw new Error('File size must be under 200 KB')
       return new Promise<string>((resolve, reject) => {
         const reader = new FileReader()
         reader.onload = async () => {
@@ -213,7 +214,7 @@ export default function SettingsPage() {
       )
       toast('Color logo uploaded', 'success')
     },
-    onError: () => toast('Logo upload failed', 'error'),
+    onError: (err: Error) => toast(err.message || 'Logo upload failed', 'error'),
   })
 
   const printLogoUploadMut = useMutation({
@@ -374,7 +375,7 @@ export default function SettingsPage() {
                     >
                       <Camera className="mb-1 text-muted-foreground" size={24} />
                       <p className="text-[10px] font-semibold uppercase tracking-[0.05em] text-muted-foreground leading-tight">Upload Logo</p>
-                      <p className="text-[9px] text-muted-foreground mt-0.5">Max 1 MB</p>
+                      <p className="text-[9px] text-muted-foreground mt-0.5">Max 200 KB</p>
                     </div>
                   )}
                 </div>

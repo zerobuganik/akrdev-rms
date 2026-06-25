@@ -23,13 +23,6 @@ function createWindow() {
     frame: false,
     resizable: false,
     title: 'Topshe POS v1.0',
-    webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
-      contextIsolation: true,
-      sandbox: true,
-      nodeIntegration: false,
-    },
-    title: 'Topshe POS',
   })
 
   // Allow Alt+F4 to close

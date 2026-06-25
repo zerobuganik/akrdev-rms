@@ -188,6 +188,7 @@ model Order {
   taxTotal       Float        @default(0) @map("tax_total")
   discountTotal  Float        @default(0) @map("discount_total")
   grandTotal     Float        @default(0) @map("grand_total")
+  roundingAdjustment Float   @default(0) @map("rounding_adjustment")
   orderType      OrderType    @default(DineIn) @map("order_type")
   createdBy      String       @map("created_by") @db.Uuid
   note           String?

@@ -302,8 +302,15 @@ export default function ItemsPage() {
   const categoryName = (catId: string) => categories.find((c) => c.id === catId)?.name ?? '—'
 
   const openEdit = (item: Item) => {
-    setEditingItem(item)
+    // Reset all state first to avoid stale data
     setNewItem(false)
+    setHasVariations(false)
+    setItemVariations([])
+    setEditingVarIndex(null)
+    setItemVarForm({ name: '', priceAdjustment: '' })
+    setItemImage(null)
+    setItemImageFile(null)
+    // Now set the item data
     const hasVars = item.variations.length > 0
     setHasVariations(hasVars)
     setItemVariations(item.variations.map((v) => ({ id: v.id, name: v.name, priceAdjustment: v.priceAdjustment })))
@@ -315,7 +322,8 @@ export default function ItemsPage() {
     })
     setItemKitchenId(kitchenPrinters[0]?.id ?? null)
     setItemImage(item.imageUrl ? `${API_BASE}${item.imageUrl}` : null)
-    setItemImageFile(null)
+    // Set editingItem last to ensure above state is flushed
+    setEditingItem(item)
   }
 
   const validateItemForm = (): boolean => {

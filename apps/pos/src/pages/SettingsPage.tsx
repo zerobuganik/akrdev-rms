@@ -218,7 +218,7 @@ export default function SettingsPage() {
 
   const printLogoUploadMut = useMutation({
     mutationFn: async (file: File) => {
-      if (file.size > 1024 * 1024) throw new Error('File size must be under 1 MB')
+      if (file.size > 200 * 1024) throw new Error('File size must be under 200 KB')
       return new Promise<string>((resolve, reject) => {
         const reader = new FileReader()
         reader.onload = async () => {
@@ -427,8 +427,8 @@ export default function SettingsPage() {
                       className="w-full h-full bg-muted/50 flex flex-col items-center justify-center border-2 border-dashed border-border rounded-xl hover:border-primary cursor-pointer transition-colors"
                     >
                       <Camera className="mb-1 text-muted-foreground" size={24} />
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.05em] text-muted-foreground leading-tight">Upload</p>
-                      <p className="text-[9px] text-muted-foreground mt-0.5">Max 1 MB</p>
+                       <p className="text-[10px] font-semibold uppercase tracking-[0.05em] text-muted-foreground leading-tight">Upload</p>
+                      <p className="text-[9px] text-muted-foreground mt-0.5">Max 200 KB</p>
                     </div>
                   )}
                 </div>

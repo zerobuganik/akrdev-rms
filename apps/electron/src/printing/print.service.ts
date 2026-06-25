@@ -43,6 +43,7 @@ export interface PrintData {
   taxTotal?: number
   discountTotal?: number
   grandTotal?: number
+  roundingAdjustment?: number
   payments?: Array<{ method: string; amount: number }>
   paymentChange?: number
   taxName?: string
@@ -83,6 +84,7 @@ const CMD = {
 
 export class PrintService {
   private adapters = new Map<string, PrinterAdapter>()
+  private logoCache = new Map<string, Buffer>()
 
   /**
    * Initialize all configured printers.
@@ -327,6 +329,11 @@ export class PrintService {
     return s.padEnd(length)
   }
 
+  private padLeft(s: string, length: number): string {
+    if (s.length > length) return s.slice(0, length)
+    return s.padStart(length)
+  }
+
   private center(text: string, w: number): string {
     const padSize = Math.max(0, Math.floor((w - text.length) / 2))
     return ' '.repeat(padSize) + text
@@ -380,7 +387,7 @@ export class PrintService {
     const kotLeft = `KOT #${data.kotNumber ?? '—'}`
     const dateLeft = data.date ?? ''
     const typeRight = data.orderType ? `Type: ${data.orderType}` : ''
-    const byRight = data.serverName ? `By: ${data.serverName}` : ''
+    const byRight = data.serverName ? `By: ${data.serverName}` : (data.serverName === '' ? '' : '')
 
     lines.push(CMD.ALIGN_LEFT)
     lines.push(this.lineLeftRight(kotLeft, typeRight, w))
@@ -430,6 +437,10 @@ export class PrintService {
    */
   private async encodeLogo(logoUrl: string, paperWidth: number): Promise<Buffer | null> {
     try {
+      const cacheKey = `${logoUrl}-${paperWidth}`
+      const cached = this.logoCache.get(cacheKey)
+      if (cached) return cached
+
       let pngBuffer: Buffer
 
       if (logoUrl.startsWith('http://') || logoUrl.startsWith('https://')) {
@@ -504,10 +515,9 @@ export class PrintService {
         h & 0xff, (h >> 8) & 0xff,
       ])
       
-      // Add a spacer after the logo so it doesn't touch the text
-      const spacerBuf = Buffer.from('\n', 'utf-8')
-      
-      return Buffer.concat([gsv0, Buffer.from(raster), spacerBuf])
+      const result = Buffer.concat([gsv0, Buffer.from(raster)])
+      this.logoCache.set(cacheKey, result)
+      return result
     } catch {
       return null
     }
@@ -526,8 +536,10 @@ export class PrintService {
 
     // Logo is printed first via logoBuf (GS v 0 raster), then restaurant name
     lines.push(CMD.ALIGN_CENTER)
-    if (!logoBuf) {
-      // Only add blank spacer if no logo
+    if (logoBuf) {
+      // Minimal space after logo — just 1 line feed
+      lines.push('')
+    } else {
       lines.push('')
     }
 
@@ -535,6 +547,7 @@ export class PrintService {
       lines.push(CMD.DOUBLE_BOTH + data.restaurantName.slice(0, w) + CMD.NORMAL)
     }
     if (data.restaurantAddress) {
+      lines.push('')
       lines.push(data.restaurantAddress.slice(0, w))
     }
     if (data.phone) lines.push(`Ph: ${data.phone}`)
@@ -566,7 +579,7 @@ export class PrintService {
       const rateW = 8
       const amtW = 8
       lines.push(
-        CMD.BOLD_ON + this.pad('Item', itemW) + ' ' + this.centerIn('Qty', qtyW) + '  ' + this.pad('Rate', rateW) + '  ' + this.pad('Amount', amtW) + CMD.BOLD_OFF,
+        CMD.BOLD_ON + this.pad('Item', itemW) + ' ' + this.centerIn('Qty', qtyW) + '  ' + this.padLeft('Rate', rateW) + '  ' + this.padLeft('Amount', amtW) + CMD.BOLD_OFF,
         CMD.DIVIDER.slice(0, w),
       )
 
@@ -578,8 +591,8 @@ export class PrintService {
           const nameMax = itemW - 1
           const nameLines = this.wrapText(item.name, nameMax)
           const qtyStr = this.centerIn(qty, qtyW)
-          const rateStr = this.pad(rate, rateW)
-          const amtStr = this.pad(amount, amtW)
+          const rateStr = this.padLeft(rate, rateW)
+          const amtStr = this.padLeft(amount, amtW)
           // First line: name + qty/rate/amount
           lines.push(' ' + this.pad(nameLines[0]!, itemW - 1) + qtyStr + '  ' + rateStr + '  ' + amtStr)
           // Continuation lines: just name, no columns
@@ -594,7 +607,7 @@ export class PrintService {
       const qtyW = 4
       const amtW = 8
       lines.push(
-        CMD.BOLD_ON + this.pad('Item', itemW) + ' ' + this.centerIn('Qty', qtyW) + '  ' + this.pad('Amount', amtW) + CMD.BOLD_OFF,
+        CMD.BOLD_ON + this.pad('Item', itemW) + ' ' + this.centerIn('Qty', qtyW) + '  ' + this.padLeft('Amount', amtW) + CMD.BOLD_OFF,
         CMD.DIVIDER.slice(0, w),
       )
 
@@ -605,7 +618,7 @@ export class PrintService {
           const nameMax = itemW - 1
           const nameLines = this.wrapText(item.name, nameMax)
           const qtyStr = this.centerIn(qty, qtyW)
-          const amtStr = this.pad(amount, amtW)
+          const amtStr = this.padLeft(amount, amtW)
           lines.push(' ' + this.pad(nameLines[0]!, itemW - 1) + qtyStr + '  ' + amtStr)
           for (let li = 1; li < nameLines.length; li++) {
             lines.push(' ' + this.pad(nameLines[li]!, itemW - 1))
@@ -633,6 +646,10 @@ export class PrintService {
       lines.push(
         CMD.BOLD_ON + this.lineLeftRight(' GRAND TOTAL', `Rs. ${Math.round(data.grandTotal).toFixed(2)}`, w) + CMD.BOLD_OFF,
       )
+    }
+    if (data.roundingAdjustment != null && data.roundingAdjustment !== 0) {
+      const sign = data.roundingAdjustment > 0 ? '+' : ''
+      lines.push(this.lineLeftRight(' Rounding', `${sign}${data.roundingAdjustment.toFixed(2)}`, w))
     }
     lines.push(CMD.DIVIDER.slice(0, w))
 

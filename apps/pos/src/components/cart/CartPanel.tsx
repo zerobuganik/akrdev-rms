@@ -55,6 +55,7 @@ interface Order {
   taxTotal: number
   discountTotal: number
   grandTotal: number
+  roundingAdjustment?: number
   status: string
   note?: string
   orderType?: string
@@ -211,6 +212,7 @@ export function CartPanel({ tableId }: CartPanelProps) {
             kotNumber: result.kotNumber,
             sentAt: new Date().toISOString(),
             sentBy: '',
+            sentByUser: { name: user?.name ?? 'User' },
           }],
         }
       })
@@ -284,6 +286,7 @@ export function CartPanel({ tableId }: CartPanelProps) {
           taxTotal: order.taxTotal,
           discountTotal: order.discountTotal,
           grandTotal: order.grandTotal,
+          roundingAdjustment: order.roundingAdjustment ?? 0,
           taxName: 'GST',
           date: formatPrintDate(),
           orderType: order.orderType === 'Takeaway' ? 'Takeaway' : 'Dine In',
@@ -345,6 +348,7 @@ export function CartPanel({ tableId }: CartPanelProps) {
         taxTotal: orderData.taxTotal,
         discountTotal: orderData.discountTotal,
         grandTotal: orderData.grandTotal,
+        roundingAdjustment: orderData.roundingAdjustment ?? 0,
         taxName: 'GST',
         date: formatPrintDate(),
         orderType: orderData.orderType === 'Takeaway' ? 'Takeaway' : 'Dine In',
@@ -635,6 +639,12 @@ export function CartPanel({ tableId }: CartPanelProps) {
             <div className="flex justify-between text-red-500">
               <span>Discount</span>
               <span>−₹{order.discountTotal.toLocaleString()}</span>
+            </div>
+          )}
+          {order.roundingAdjustment != null && order.roundingAdjustment !== 0 && (
+            <div className="flex justify-between text-blue-500 text-xs">
+              <span>Rounding ({order.roundingAdjustment > 0 ? '+' : ''}{order.roundingAdjustment.toFixed(2)})</span>
+              <span>{order.roundingAdjustment > 0 ? '+' : ''}₹{order.roundingAdjustment.toFixed(2)}</span>
             </div>
           )}
           <div className="flex justify-between border-t pt-1 font-bold">

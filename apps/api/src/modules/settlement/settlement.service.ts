@@ -48,11 +48,11 @@ export const settlementService = {
       return sum + (d.type === 'Percentage' ? (subtotal * d.value / 100) : d.value)
     }, 0)
 
-    const grandTotal = Math.round(
-      settings?.taxType === 'Inclusive'
-        ? subtotal - discountTotal
-        : subtotal + taxTotal - discountTotal
-    )
+    const exactGrandTotal = settings?.taxType === 'Inclusive'
+      ? subtotal - discountTotal
+      : subtotal + taxTotal - discountTotal
+    const grandTotal = Math.round(exactGrandTotal)
+    const roundingAdjustment = grandTotal - exactGrandTotal
     const payments = data.payments
     const totalPaid = (payments.cash ?? 0) + (payments.card ?? 0) + (payments.upi ?? 0)
 
@@ -65,7 +65,7 @@ export const settlementService = {
     await prisma.$transaction([
       prisma.order.update({
         where: { id: orderId },
-        data: { status: 'Settled', subtotal, taxTotal, discountTotal, grandTotal, syncStatus: 'Pending' },
+        data: { status: 'Settled', subtotal, taxTotal, discountTotal, grandTotal, roundingAdjustment, syncStatus: 'Pending' },
       }),
       prisma.settlement.upsert({
         where: { orderId },

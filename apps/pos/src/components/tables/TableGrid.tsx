@@ -76,7 +76,8 @@ export function TableGrid() {
       const { data } = await apiClient.get('/tables', { params })
       return data
     },
-    refetchInterval: 10_000,
+    refetchInterval: 3_000,
+    staleTime: 0,
   })
 
   const { data: settings } = useQuery<{ taxType?: string }>({
@@ -94,7 +95,7 @@ export function TableGrid() {
       const { data } = await apiClient.get('/orders/takeaway/active')
       return data ?? []
     },
-    refetchInterval: 5_000,
+    refetchInterval: 3_000,
     staleTime: 0,
   })
 

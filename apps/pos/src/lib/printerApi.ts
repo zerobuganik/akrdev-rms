@@ -96,6 +96,7 @@ export interface PrintBillData {
   taxTotal?: number
   discountTotal?: number
   grandTotal?: number
+  roundingAdjustment?: number
   payments?: Array<{ method: string; amount: number }>
   paymentChange?: number
   taxName?: string

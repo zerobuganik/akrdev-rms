@@ -28,7 +28,6 @@
     "argon2": "^0.44.0",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
-    "electron": "^33.4.11",
     "express": "^5.2.1",
     "multicast-dns": "^7.2.5",
     "pngjs": "^7.0.0",
@@ -44,6 +43,7 @@
     "@types/express": "^5.0.6",
     "@types/multicast-dns": "^7.2.4",
     "@types/node": "^22.0.0",
+    "electron": "^33.4.11",
     "electron-builder": "^26.8.1",
     "tsx": "^4.22.3",
     "typescript": "^6.0.0"

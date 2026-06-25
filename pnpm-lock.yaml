@@ -455,9 +455,6 @@ importers:
       dotenv:
         specifier: ^17.4.2
         version: 17.4.2
-      electron:
-        specifier: ^33.4.11
-        version: 33.4.11
       express:
         specifier: ^5.2.1
         version: 5.2.1
@@ -498,6 +495,9 @@ importers:
       '@types/node':
         specifier: ^22.0.0
         version: 22.19.19
+      electron:
+        specifier: ^33.4.11
+        version: 33.4.11
       electron-builder:
         specifier: ^26.8.1
         version: 26.8.1(electron-builder-squirrel-windows@26.8.1)

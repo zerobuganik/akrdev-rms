@@ -574,10 +574,11 @@ export class PrintService {
     // Column header
     if (is80mm) {
       // 80mm: Item | Qty | Rate | Amount
-      const itemW = w - 26
+      // Amount should be flush-right like subtotal/gst lines
       const qtyW = 4
       const rateW = 8
-      const amtW = 8
+      const amtW = 10
+      const itemW = w - 3 - qtyW - 2 - rateW - 2 - amtW
       lines.push(
         CMD.BOLD_ON + this.pad('Item', itemW) + ' ' + this.centerIn('Qty', qtyW) + '  ' + this.padLeft('Rate', rateW) + '  ' + this.padLeft('Amount', amtW) + CMD.BOLD_OFF,
         CMD.DIVIDER.slice(0, w),
@@ -593,9 +594,8 @@ export class PrintService {
           const qtyStr = this.centerIn(qty, qtyW)
           const rateStr = this.padLeft(rate, rateW)
           const amtStr = this.padLeft(amount, amtW)
-          // First line: name + qty/rate/amount
+          // Amount left-aligned but the column itself is flush to right edge
           lines.push(' ' + this.pad(nameLines[0]!, itemW - 1) + qtyStr + '  ' + rateStr + '  ' + amtStr)
-          // Continuation lines: just name, no columns
           for (let li = 1; li < nameLines.length; li++) {
             lines.push(' ' + this.pad(nameLines[li]!, itemW - 1))
           }
@@ -603,9 +603,9 @@ export class PrintService {
       }
     } else {
       // 58mm: Item | Qty | Amount (no Rate column)
-      const itemW = w - 16
       const qtyW = 4
-      const amtW = 8
+      const amtW = 10
+      const itemW = w - 3 - qtyW - 2 - amtW
       lines.push(
         CMD.BOLD_ON + this.pad('Item', itemW) + ' ' + this.centerIn('Qty', qtyW) + '  ' + this.padLeft('Amount', amtW) + CMD.BOLD_OFF,
         CMD.DIVIDER.slice(0, w),

@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { flushSync } from 'react-dom'
 import { apiClient } from '@/lib/apiClient'
 import { printerApi } from '@/lib/printerApi'
 import { getImageBaseUrl } from '@/lib/imageBaseUrl'
@@ -302,28 +303,27 @@ export default function ItemsPage() {
   const categoryName = (catId: string) => categories.find((c) => c.id === catId)?.name ?? '—'
 
   const openEdit = (item: Item) => {
-    // Reset all state first to avoid stale data
-    setNewItem(false)
-    setHasVariations(false)
-    setItemVariations([])
-    setEditingVarIndex(null)
-    setItemVarForm({ name: '', priceAdjustment: '' })
-    setItemImage(null)
-    setItemImageFile(null)
-    // Now set the item data
-    const hasVars = item.variations.length > 0
-    setHasVariations(hasVars)
-    setItemVariations(item.variations.map((v) => ({ id: v.id, name: v.name, priceAdjustment: v.priceAdjustment })))
-    setItemForm({
-      name: item.name,
-      basePrice: String(item.basePrice), categoryId: item.categoryId,
-      taxOverride: item.taxOverride?.toString() ?? '',
-      dietaryType: (item as any).dietaryType ?? '',
+    // Use flushSync to force synchronous DOM update before modal renders
+    flushSync(() => {
+      setNewItem(false)
+      setEditingItem(null)
+      resetForm()
     })
-    setItemKitchenId(kitchenPrinters[0]?.id ?? null)
-    setItemImage(item.imageUrl ? `${API_BASE}${item.imageUrl}` : null)
-    // Set editingItem last to ensure above state is flushed
-    setEditingItem(item)
+    // Now set the item data in a new synchronous batch
+    const hasVars = item.variations.length > 0
+    flushSync(() => {
+      setHasVariations(hasVars)
+      setItemVariations(item.variations.map((v) => ({ id: v.id, name: v.name, priceAdjustment: v.priceAdjustment })))
+      setItemForm({
+        name: item.name,
+        basePrice: String(item.basePrice), categoryId: item.categoryId,
+        taxOverride: item.taxOverride?.toString() ?? '',
+        dietaryType: (item as any).dietaryType ?? '',
+      })
+      setItemKitchenId(kitchenPrinters[0]?.id ?? null)
+      setItemImage(item.imageUrl ? `${API_BASE}${item.imageUrl}` : null)
+      setEditingItem(item)
+    })
   }
 
   const validateItemForm = (): boolean => {

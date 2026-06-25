@@ -105,7 +105,7 @@ git push -u origin main
    |-------|-------------|
    | **Name** | `akrdev-api` |
    | **Root Directory** | `apps/api` |
-   | **Build Command** | `pnpm install --frozen-lockfile && pnpm build` |
+   | **Build Command** | `pnpm install --frozen-lockfile --filter @akrdev/api... && pnpm --filter @akrdev/api build` |
    | **Start Command** | `pnpm start` |
    | **Plan** | Free |
 

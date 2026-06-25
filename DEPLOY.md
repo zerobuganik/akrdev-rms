@@ -134,7 +134,7 @@ Save and close.
 Open PowerShell in the project folder. Run one by one:
 
 ```powershell
-copy /Y apps\pos\.env.electron apps\pos\.env
+Copy-Item -LiteralPath "apps\pos\.env.electron" -Destination "apps\pos\.env" -Force
 ```
 ```powershell
 pnpm --filter @akrdev/pos build
@@ -196,4 +196,4 @@ Install the EXE on another PC. Login. **All data is there** — menu, tables, or
 | Render deploy fails | Check DATABASE_URL has no extra spaces |
 | `pnpm` not found | Run `npm install -g pnpm` first, then restart PowerShell |
 | EXE won't start | Check `apps\electron\.env` has correct `CLOUD_API_URL` |
-| Login fails | Did you run `npx tsx prisma/seed.ts` in Step 5? |
+| Login fails | Check DATABASE_URL is correct. Re-deploy to run seed again. |

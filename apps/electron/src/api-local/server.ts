@@ -4,6 +4,7 @@ import { Server as SocketIOServer } from 'socket.io'
 import { tableLockService, setSocketIO } from '../services/table-lock.service.js'
 import { localPrisma } from '../lib/local-prisma.js'
 import { printService } from '../printing/print.service.js'
+import { calculateTax, calculateRounding } from '@akrdev/shared'
 
 
 let io: SocketIOServer | null = null

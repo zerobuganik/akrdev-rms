@@ -1,5 +1,5 @@
 {
-  "extends": "@akrdev/tsconfig/tsconfig.react.json",
+  "extends": "@akrdev/tsconfig/tsconfig.node.json",
   "compilerOptions": {
     "outDir": "./dist",
     "rootDir": "./src"

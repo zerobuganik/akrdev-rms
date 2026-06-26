@@ -1,6 +1,7 @@
 import { prisma } from '../../lib/prisma.js'
 import { NotFoundError, ValidationError } from '../../lib/errors.js'
 import { taxSlabService } from '../tax-slabs/tax-slab.service.js'
+import { calculateTax, calculateRounding } from '@akrdev/shared'
 
 export const cartService = {
   async addItem(orderId: string, data: {
@@ -207,12 +208,7 @@ async function recalculateTotals(orderId: string) {
   const settings = await prisma.storeSettings.findUnique({ where: { id: 'default' } })
   const taxPercent = await taxSlabService.getDefaultTaxPercent()
 
-  let taxTotal: number
-  if (settings?.taxType === 'Inclusive') {
-    taxTotal = subtotal - subtotal / (1 + taxPercent / 100)
-  } else {
-    taxTotal = subtotal * (taxPercent / 100)
-  }
+  const { taxTotal } = calculateTax(subtotal, taxPercent, settings?.taxType ?? 'Exclusive')
 
   const discountTotal = order.discounts.reduce((sum, d) => {
     return sum + (d.type === 'Percentage' ? (subtotal * d.value / 100) : d.value)
@@ -221,8 +217,7 @@ async function recalculateTotals(orderId: string) {
   const exactGrandTotal = settings?.taxType === 'Inclusive'
     ? subtotal - discountTotal
     : subtotal + taxTotal - discountTotal
-  const grandTotal = Math.round(exactGrandTotal)
-  const roundingAdjustment = grandTotal - exactGrandTotal
+  const { grandTotal, roundingAdjustment } = calculateRounding(exactGrandTotal)
 
   await prisma.order.update({
     where: { id: orderId },

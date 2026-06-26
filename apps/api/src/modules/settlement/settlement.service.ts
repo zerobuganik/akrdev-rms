@@ -1,6 +1,7 @@
 import { prisma } from '../../lib/prisma.js'
 import { NotFoundError, ValidationError } from '../../lib/errors.js'
 import { taxSlabService } from '../tax-slabs/tax-slab.service.js'
+import { calculateTax, calculateRounding } from '@akrdev/shared'
 
 export const settlementService = {
   async settle(orderId: string, data: {
@@ -36,12 +37,7 @@ export const settlementService = {
     const settings = await prisma.storeSettings.findUnique({ where: { id: 'default' } })
     const taxPercent = await taxSlabService.getDefaultTaxPercent()
 
-    let taxTotal: number
-    if (settings?.taxType === 'Inclusive') {
-      taxTotal = subtotal - subtotal / (1 + taxPercent / 100)
-    } else {
-      taxTotal = subtotal * (taxPercent / 100)
-    }
+    const { taxTotal } = calculateTax(subtotal, taxPercent, settings?.taxType ?? 'Exclusive')
 
     const allDiscounts = await prisma.orderDiscount.findMany({ where: { orderId } })
     const discountTotal = allDiscounts.reduce((sum, d) => {
@@ -51,8 +47,7 @@ export const settlementService = {
     const exactGrandTotal = settings?.taxType === 'Inclusive'
       ? subtotal - discountTotal
       : subtotal + taxTotal - discountTotal
-    const grandTotal = Math.round(exactGrandTotal)
-    const roundingAdjustment = grandTotal - exactGrandTotal
+    const { grandTotal, roundingAdjustment } = calculateRounding(exactGrandTotal)
     const payments = data.payments
     const totalPaid = (payments.cash ?? 0) + (payments.card ?? 0) + (payments.upi ?? 0)
 

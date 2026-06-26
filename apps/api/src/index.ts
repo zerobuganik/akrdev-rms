@@ -6,6 +6,7 @@ import path from 'path'
 import { validateEnv } from './env.js'
 import logger from './lib/logger.js'
 import { errorHandler, notFoundHandler } from './middleware/error-handler.js'
+import { rateLimit } from './middleware/rate-limit.js'
 import authRoutes from './modules/auth/auth.routes.js'
 import settingsRoutes from './modules/settings/settings.routes.js'
 import employeeRoutes from './modules/employees/employee.routes.js'
@@ -39,6 +40,7 @@ app.use(
   }),
 )
 app.use(express.json())
+app.use(rateLimit())
 app.use('/uploads', express.static(path.join(process.cwd(), 'public', 'uploads')))
 
 app.get('/api/v1/health', (_req, res) => {

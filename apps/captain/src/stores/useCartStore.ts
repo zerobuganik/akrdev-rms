@@ -1,10 +1,11 @@
 import { create } from 'zustand'
+import type { OrderItem } from '@akrdev/types'
 
 interface CartState {
   activeTableId: string | null
   activeOrderId: string | null
   guestCount: number
-  items: Array<{ id: string; name: string; quantity: number; unitPrice: number; lineTotal: number; variationName?: string; status: string }>
+  items: Pick<OrderItem, 'id' | 'quantity' | 'unitPrice' | 'lineTotal' | 'status'>[] & Array<{ name: string; variationName?: string }>
   clearCart: () => void
   setActiveTable: (tableId: string) => void
   setActiveOrder: (orderId: string) => void

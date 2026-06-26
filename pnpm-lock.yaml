@@ -328,6 +328,9 @@ importers:
 
   apps/captain:
     dependencies:
+      '@akrdev/types':
+        specifier: workspace:*
+        version: link:../../packages/types
       '@capacitor/android':
         specifier: ^8.4.1
         version: 8.4.1(@capacitor/core@8.4.1)

@@ -1,16 +1,10 @@
 import { create } from 'zustand'
+import type { OrderItem } from '@akrdev/types'
 
-interface CartItem {
-  id: string
+interface CartItem extends Pick<OrderItem, 'id' | 'itemId' | 'quantity' | 'unitPrice' | 'lineTotal' | 'status' | 'note'> {
   orderId: string
-  itemId: string
   itemName: string
   variationName?: string
-  quantity: number
-  unitPrice: number
-  lineTotal: number
-  status: string
-  note?: string
 }
 
 interface CartState {

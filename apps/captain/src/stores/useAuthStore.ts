@@ -1,16 +1,10 @@
 import { create } from 'zustand'
-
-interface UserInfo {
-  id: string
-  name: string
-  phone?: string
-  role: string
-  imageUrl?: string | null
-}
+import { apiClient } from '@/lib/apiClient'
+import type { User } from '@akrdev/types'
 
 interface AuthState {
   token: string | null
-  user: UserInfo | null
+  user: User | null
   isAuthenticated: boolean
   isLoading: boolean
   error: string | null
@@ -31,7 +25,7 @@ function safeParse<T>(key: string, fallback: T): T {
 
 export const useAuthStore = create<AuthState>((set) => ({
   token: localStorage.getItem('accessToken'),
-  user: safeParse<UserInfo | null>('user', null),
+  user: safeParse<User | null>('user', null),
   isAuthenticated: !!localStorage.getItem('accessToken'),
   isLoading: false,
   error: null,
@@ -39,12 +33,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   login: async (phone, pin) => {
     set({ isLoading: true, error: null })
     try {
-      const axiosModule = await import('axios')
-      const axios = axiosModule.default
-      const { getBaseUrl } = await import('../lib/connection-manager.js')
-      const baseUrl = getBaseUrl()
-      if (!baseUrl) throw new Error('No connection')
-      const { data } = await axios.post(`${baseUrl}/api/v1/auth/login`, { phone, pin })
+      const { data } = await apiClient.post('/auth/login', { phone, pin })
       localStorage.setItem('accessToken', data.accessToken)
       localStorage.setItem('refreshToken', data.refreshToken)
       localStorage.setItem('user', JSON.stringify(data.user))

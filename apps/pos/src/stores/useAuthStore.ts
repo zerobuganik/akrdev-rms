@@ -1,17 +1,10 @@
 import { create } from 'zustand'
 import { apiClient } from '@/lib/apiClient'
-
-interface UserInfo {
-  id: string
-  name: string
-  phone: string
-  role: string
-  imageUrl?: string | null
-}
+import type { User } from '@akrdev/types'
 
 interface AuthState {
   token: string | null
-  user: UserInfo | null
+  user: User | null
   isAuthenticated: boolean
   isLoading: boolean
   error: string | null
@@ -19,7 +12,7 @@ interface AuthState {
   login: (phone: string, password: string) => Promise<void>
   loginWithPin: (phone: string, pin: string) => Promise<void>
   setPin: (pin: string) => Promise<void>
-  updateUser: (user: UserInfo) => void
+  updateUser: (user: User) => void
   logout: () => void
   clearError: () => void
 }
@@ -36,7 +29,7 @@ function safeParse<T>(key: string, fallback: T): T {
 
 export const useAuthStore = create<AuthState>((set, get) => ({
   token: localStorage.getItem('accessToken'),
-  user: safeParse<UserInfo | null>('user', null),
+  user: safeParse<User | null>('user', null),
   isAuthenticated: !!localStorage.getItem('accessToken'),
   isLoading: false,
   error: null,
@@ -94,7 +87,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ needsPinSetup: false })
   },
 
-  updateUser: (user: UserInfo) => {
+  updateUser: (user: User) => {
     localStorage.setItem('user', JSON.stringify(user))
     set({ user })
   },

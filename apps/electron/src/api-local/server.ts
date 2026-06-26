@@ -44,21 +44,6 @@ app.use((_req, res, next) => {
   next()
 })
 
-// Catch-all: gracefully handle unmatched routes without blocking on cloud
-app.use('/api/v1', async (req, res) => {
-  if (res.headersSent) return
-  // Queue unknown writes for background sync (fire-and-forget)
-  if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(req.method)) {
-    syncQueueService.enqueue('admin-crud', {
-      method: req.method, path: req.path, body: req.body as Record<string, unknown>,
-    }).catch(() => {})
-    res.json({ ok: true, queued: true })
-    return
-  }
-  // For unknown GETs, return empty/404 instead of blocking on cloud
-  res.status(404).json({ error: { message: 'Not found in local API', statusCode: 404 } })
-})
-
 app.get('/api/v1/pair/generate', (_req, res) => {
   cleanExpiredCodes()
   const code = generatePairingCode()
@@ -1184,37 +1169,17 @@ app.get('/api/v1/print/history', async (req, res) => {
   }
 })
 
+// Final catch-all for unmatched /api/v1 routes — queue writes, 404 for unknown GETs
 app.use('/api/v1', async (req, res) => {
   if (res.headersSent) return
-  try {
-
-
-
-
-
-    const targetUrl = `${CLOUD_API}${req.path}`
-    const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-    if (req.headers.authorization) {
-      headers['Authorization'] = req.headers.authorization
-    }
-    const body = ['GET', 'HEAD'].includes(req.method) ? undefined : JSON.stringify(req.body)
-    const response = await fetch(targetUrl, {
-      method: req.method,
-      headers,
-      body,
-      signal: AbortSignal.timeout(15000),
-    })
-    const contentType = response.headers.get('content-type') ?? ''
-    if (contentType.includes('application/json')) {
-      const data = await response.json()
-      res.status(response.status).json(data)
-    } else {
-      const text = await response.text()
-      res.status(response.status).send(text)
-    }
-  } catch {
-    res.status(502).json({ error: { message: 'Cloud API unreachable', statusCode: 502 } })
+  if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(req.method)) {
+    syncQueueService.enqueue('admin-crud', {
+      method: req.method, path: req.path, body: req.body as Record<string, unknown>,
+    }).catch(() => {})
+    res.json({ ok: true, queued: true })
+    return
   }
+  res.status(404).json({ error: { message: `Route ${req.method} ${req.path} not found in local API`, statusCode: 404 } })
 })
 
 export function createLocalApiServer() {

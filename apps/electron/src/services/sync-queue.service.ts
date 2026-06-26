@@ -1,14 +1,14 @@
 import { localPrisma } from '../lib/local-prisma.js'
 
-type SyncAction = 'create-order' | 'add-item' | 'remove-item' | 'send-kot' | 'settle'
+type SyncAction = 'create-order' | 'add-item' | 'remove-item' | 'send-kot' | 'settle' | string
 
 interface SyncRecord {
-  action: SyncAction
+  action: string
   payload: Record<string, unknown>
 }
 
 export class SyncQueueService {
-  async enqueue(action: SyncAction, payload: Record<string, unknown>) {
+  async enqueue(action: string, payload: Record<string, unknown>) {
     return localPrisma.syncQueue.create({
       data: {
         action,

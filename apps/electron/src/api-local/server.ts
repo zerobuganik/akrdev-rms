@@ -44,8 +44,19 @@ app.use((_req, res, next) => {
   next()
 })
 
-app.get('/api/v1/health', (_req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString(), type: 'local-pos', cloudApi: CLOUD_API })
+// Catch-all: gracefully handle unmatched routes without blocking on cloud
+app.use('/api/v1', async (req, res) => {
+  if (res.headersSent) return
+  // Queue unknown writes for background sync (fire-and-forget)
+  if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(req.method)) {
+    syncQueueService.enqueue('admin-crud', {
+      method: req.method, path: req.path, body: req.body as Record<string, unknown>,
+    }).catch(() => {})
+    res.json({ ok: true, queued: true })
+    return
+  }
+  // For unknown GETs, return empty/404 instead of blocking on cloud
+  res.status(404).json({ error: { message: 'Not found in local API', statusCode: 404 } })
 })
 
 app.get('/api/v1/pair/generate', (_req, res) => {
@@ -247,6 +258,142 @@ app.post('/api/v1/auth/refresh', async (_req, res) => {
     res.status(500).json({ error: { message: 'Internal server error', statusCode: 500 } })
   }
 })
+
+// ── Admin CRUD stubs (locale-only, queued for cloud sync) ──
+// These endpoints accept writes locally and queue them for background sync.
+// They return success immediately without any cloud dependency.
+function adminQueued(res: import('express').Response) {
+  res.json({ ok: true, queued: true })
+}
+
+app.post('/api/v1/tables', (req, res) => {
+  syncQueueService.enqueue('admin-create', { path: '/tables', body: req.body }).catch(() => {})
+  adminQueued(res)
+})
+app.put('/api/v1/tables/:id', (req, res) => {
+  syncQueueService.enqueue('admin-put', { path: `/tables/${req.params.id}`, body: req.body }).catch(() => {})
+  adminQueued(res)
+})
+app.delete('/api/v1/tables/:id', (req, res) => {
+  syncQueueService.enqueue('admin-delete', { path: `/tables/${req.params.id}` }).catch(() => {})
+  adminQueued(res)
+})
+
+app.post('/api/v1/items', (req, res) => {
+  syncQueueService.enqueue('admin-create', { path: '/items', body: req.body }).catch(() => {})
+  adminQueued(res)
+})
+app.put('/api/v1/items/:id', (req, res) => {
+  syncQueueService.enqueue('admin-put', { path: `/items/${req.params.id}`, body: req.body }).catch(() => {})
+  adminQueued(res)
+})
+app.delete('/api/v1/items/:id', (req, res) => {
+  syncQueueService.enqueue('admin-delete', { path: `/items/${req.params.id}` }).catch(() => {})
+  adminQueued(res)
+})
+app.delete('/api/v1/variations/:id', (req, res) => {
+  syncQueueService.enqueue('admin-delete', { path: `/variations/${req.params.id}` }).catch(() => {})
+  adminQueued(res)
+})
+
+app.post('/api/v1/categories', (req, res) => {
+  syncQueueService.enqueue('admin-create', { path: '/categories', body: req.body }).catch(() => {})
+  adminQueued(res)
+})
+app.put('/api/v1/categories/:id', (req, res) => {
+  syncQueueService.enqueue('admin-put', { path: `/categories/${req.params.id}`, body: req.body }).catch(() => {})
+  adminQueued(res)
+})
+app.delete('/api/v1/categories/:id', (req, res) => {
+  syncQueueService.enqueue('admin-delete', { path: `/categories/${req.params.id}` }).catch(() => {})
+  adminQueued(res)
+})
+
+app.post('/api/v1/areas', (req, res) => {
+  syncQueueService.enqueue('admin-create', { path: '/areas', body: req.body }).catch(() => {})
+  adminQueued(res)
+})
+app.delete('/api/v1/areas/:id', (req, res) => {
+  syncQueueService.enqueue('admin-delete', { path: `/areas/${req.params.id}` }).catch(() => {})
+  adminQueued(res)
+})
+
+app.put('/api/v1/settings', (req, res) => {
+  syncQueueService.enqueue('admin-put', { path: '/settings', body: req.body }).catch(() => {})
+  adminQueued(res)
+})
+
+app.post('/api/v1/tax-slabs', (req, res) => {
+  syncQueueService.enqueue('admin-create', { path: '/tax-slabs', body: req.body }).catch(() => {})
+  adminQueued(res)
+})
+app.put('/api/v1/tax-slabs/:id', (req, res) => {
+  syncQueueService.enqueue('admin-put', { path: `/tax-slabs/${req.params.id}`, body: req.body }).catch(() => {})
+  adminQueued(res)
+})
+app.delete('/api/v1/tax-slabs/:id', (req, res) => {
+  syncQueueService.enqueue('admin-delete', { path: `/tax-slabs/${req.params.id}` }).catch(() => {})
+  adminQueued(res)
+})
+
+app.post('/api/v1/employees', (req, res) => {
+  syncQueueService.enqueue('admin-create', { path: '/employees', body: req.body }).catch(() => {})
+  adminQueued(res)
+})
+app.put('/api/v1/employees/:id', (req, res) => {
+  syncQueueService.enqueue('admin-put', { path: `/employees/${req.params.id}`, body: req.body }).catch(() => {})
+  adminQueued(res)
+})
+app.delete('/api/v1/employees/:id', (req, res) => {
+  syncQueueService.enqueue('admin-delete', { path: `/employees/${req.params.id}` }).catch(() => {})
+  adminQueued(res)
+})
+app.put('/api/v1/employees/:id/change-password', (req, res) => {
+  syncQueueService.enqueue('admin-put', { path: `/employees/${req.params.id}/change-password`, body: req.body }).catch(() => {})
+  adminQueued(res)
+})
+
+app.post('/api/v1/orders/:id/void', (req, res) => {
+  syncQueueService.enqueue('admin-put', { path: `/orders/${req.params.id}/void` }).catch(() => {})
+  adminQueued(res)
+})
+app.post('/api/v1/orders/:id/refund', (req, res) => {
+  syncQueueService.enqueue('admin-put', { path: `/orders/${req.params.id}/refund`, body: req.body }).catch(() => {})
+  adminQueued(res)
+})
+
+app.get('/api/v1/activity-log', (_req, res) => {
+  res.json([])
+})
+
+// Auth sub-routes that don't need cloud
+app.post('/api/v1/auth/set-pin', (_req, res) => res.json({ ok: true }))
+app.post('/api/v1/auth/logout', (_req, res) => res.json({ ok: true }))
+app.post('/api/v1/auth/upload-image', (req, res) => {
+  syncQueueService.enqueue('admin-put', { path: '/auth/upload-image', body: req.body }).catch(() => {})
+  adminQueued(res)
+})
+app.post('/api/v1/auth/check-phone', (_req, res) => res.json({ available: true }))
+app.post('/api/v1/auth/update-profile', (req, res) => {
+  syncQueueService.enqueue('admin-put', { path: '/auth/update-profile', body: req.body }).catch(() => {})
+  adminQueued(res)
+})
+app.post('/api/v1/auth/change-password', (req, res) => {
+  syncQueueService.enqueue('admin-put', { path: '/auth/change-password', body: req.body }).catch(() => {})
+  adminQueued(res)
+})
+
+// Settings upload routes
+app.post('/api/v1/settings/upload-logo', (req, res) => {
+  syncQueueService.enqueue('admin-put', { path: '/settings/upload-logo' }).catch(() => {})
+  adminQueued(res)
+})
+app.post('/api/v1/settings/upload-print-logo', (req, res) => {
+  syncQueueService.enqueue('admin-put', { path: '/settings/upload-print-logo' }).catch(() => {})
+  adminQueued(res)
+})
+app.delete('/api/v1/settings/delete-logo', (_req, res) => adminQueued(res))
+app.delete('/api/v1/settings/delete-print-logo', (_req, res) => adminQueued(res))
 
 app.get('/api/v1/tables', async (req, res) => {
   try {

@@ -45,7 +45,7 @@ Open PowerShell, paste this, press Enter:
 
 ## Step 3: Push Code to GitHub
 
-Open PowerShell in the project folder (`D:\AI Project\AKRDev RMS`). Run one by one:
+Open PowerShell in the project folder. Run one by one:
 
 ```powershell
 git init
@@ -62,10 +62,10 @@ Now on GitHub: click your profile icon → **Your repositories** → **New** (gr
 - Check **Private**
 - Click **Create repository**
 
-Back in PowerShell (replace `zerobuganik` with your GitHub username):
+Back in PowerShell (replace with your GitHub username):
 
 ```powershell
-git remote add origin https://github.com/zerobuganik/akrdev-rms.git
+git remote add origin https://github.com/YOUR_USERNAME/akrdev-rms.git
 ```
 ```powershell
 git branch -M main
@@ -85,19 +85,21 @@ git push -u origin main
 | Field | Value |
 |-------|-------|
 | **Name** | `akrdev-api` |
-| **Root Directory** | `apps/api` |
+| **Root Directory** | (leave empty — use repository root) |
 | **Build Command** | `pnpm install --frozen-lockfile --filter @akrdev/api... && pnpm --filter @akrdev/api build:full` |
-| **Start Command** | `pnpm --filter @akrdev/api start` |
+| **Start Command** | `pnpm --filter @akrdev/api deploy && pnpm --filter @akrdev/api start` |
 | **Plan** | Free |
 
-4. Click **Environment Variables** → **Add Environment Variable**. Add these 5:
+4. Click **Environment Variables** → **Add Environment Variable**. Add these 7:
 
 | Key | Value |
 |-----|-------|
 | `DATABASE_URL` | (paste Internal Database URL from Step 1) |
 | `JWT_ACCESS_SECRET` | (paste JWT Secret 1 from Step 2) |
 | `JWT_REFRESH_SECRET` | (paste JWT Secret 2 from Step 2) |
-| `CORS_ORIGINS` | `*` |
+| `JWT_ACCESS_EXPIRY` | `15m` |
+| `JWT_REFRESH_EXPIRY` | `7d` |
+| `CORS_ORIGINS` | (your domain, or `*` for testing — restrict in production) |
 | `NODE_ENV` | `production` |
 
 5. Click **Create Web Service**. Wait ~5 minutes until "Deploy successful".
@@ -106,10 +108,11 @@ git push -u origin main
 
 The admin user is created automatically during deployment.
 
-Admin login:
+Default admin login:
 - **Phone:** `7001181474`
-- **Password:** `admin123`
 - **PIN:** `1234`
+
+**IMPORTANT: Change the admin credentials immediately after first login** (see Step 8).
 
 ---
 
@@ -117,15 +120,15 @@ Admin login:
 
 On your PC, open this file in Notepad:
 ```
-D:\AI Project\AKRDev RMS\apps\electron\.env
+apps\electron\.env
 ```
 
-Change the first line to your Render URL:
+Set the first line to your Render URL:
 ```
 CLOUD_API_URL=https://akrdev-api.onrender.com/api/v1
 ```
 
-Save and close.
+Replace with the actual URL from Step 4.
 
 ---
 
@@ -148,7 +151,7 @@ pnpm --filter @akrdev/electron dist
 
 Wait ~5 minutes. The EXE installer is at:
 ```
-D:\AI Project\AKRDev RMS\apps\electron\release\AKRDev RMS Setup.exe
+apps\electron\release\AKRDev RMS Setup.exe
 ```
 
 ---
@@ -158,7 +161,7 @@ D:\AI Project\AKRDev RMS\apps\electron\release\AKRDev RMS Setup.exe
 1. Copy `AKRDev RMS Setup.exe` to the restaurant PC (USB drive)
 2. Double-click to install
 3. Opens in fullscreen — no browser, no menu bar
-4. Login: phone `7001181474`, password `admin123`
+4. Login: phone `7001181474`, PIN `1234`
 
 **Lock the terminal:** Click the lock icon in the sidebar when stepping away.
 
@@ -193,7 +196,8 @@ Install the EXE on another PC. Login. **All data is there** — menu, tables, or
 
 | Problem | Fix |
 |---------|-----|
-| Render deploy fails | Check DATABASE_URL has no extra spaces |
+| Render deploy fails | Check DATABASE_URL has no extra spaces. Ensure Root Directory is empty (repo root). |
 | `pnpm` not found | Run `npm install -g pnpm` first, then restart PowerShell |
 | EXE won't start | Check `apps\electron\.env` has correct `CLOUD_API_URL` |
 | Login fails | Check DATABASE_URL is correct. Re-deploy to run seed again. |
+| CORS errors in browser | Set `CORS_ORIGINS` to your frontend domain instead of `*` |

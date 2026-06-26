@@ -107,9 +107,9 @@ Every order must strictly flow through these statuses:
 * Order Types: Dine-In and Takeaway.  
 * Multi-Kitchen KOT Routing & Bill Printing.
 
-**Phase 2 (Future Additions \- Keep codebase prepared):**
+**Phase 2 (Planned — not yet implemented):**
 
-* **Future Inventory Compatibility:** Ensure the database structure remains logically compatible with future additions of Inventory, Recipe Management, Stock Deduction, and Purchase Management.  
+* **Inventory Management:** The schema can be extended with Recipe, Stock Deduction, and Purchase Management tables in a future phase.  
 * Delivery Order Workflow.  
 * Multi-branch Owner Dashboard.  
 * Customer-facing User App & Website.

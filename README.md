@@ -46,12 +46,11 @@ pnpm --filter @akrdev/captain dev
 
 ```bash
 cd apps/api
-cp .env.example .env
 npx prisma migrate dev
 npx prisma db seed
 ```
 
-Default admin: Phone `0000000000`, PIN `1234`
+Default admin: Phone `7001181474`, PIN `1234`
 
 ### Testing
 
@@ -84,7 +83,7 @@ bash scripts/deploy-vps.sh
 ```bash
 pnpm --filter @akrdev/pos build
 pnpm --filter @akrdev/electron build
-npx electron-builder --config apps/electron/electron-builder.yml
+pnpm --filter @akrdev/electron dist
 ```
 
 Output: `apps/electron/release/AKRDev RMS Setup.exe`

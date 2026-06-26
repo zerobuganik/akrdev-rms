@@ -6,8 +6,9 @@
   "main": "./src/index.ts",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "prisma generate && tsc && prisma migrate deploy && tsx prisma/seed.ts",
+    "build": "prisma generate && tsc",
     "build:full": "pnpm --filter @akrdev/types --filter @akrdev/shared --filter @akrdev/schemas build && pnpm build",
+    "deploy": "prisma migrate deploy && tsx prisma/seed.ts",
     "start": "node dist/index.js",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src/",

@@ -2,7 +2,6 @@ packages:
   - "apps/*"
   - "packages/*"
 allowBuilds:
-  '@prisma/engines': true
   argon2: true
   electron: true
   electron-winstaller: true
@@ -11,4 +10,4 @@ allowBuilds:
   prisma: true
   usb: true
   'node-hid': true
-  '@thiagoelg/node-printer': true
+  '@luckykiet/node-printer': true

@@ -13,7 +13,6 @@ export const settlementSchema = z.object({
 })
 
 export const paymentUpdateSchema = z.object({
-  orderId: z.string().uuid(),
   cash: z.number().min(0).optional(),
   card: z.number().min(0).optional(),
   upi: z.number().min(0).optional(),

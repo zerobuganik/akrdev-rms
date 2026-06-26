@@ -2,14 +2,14 @@ import { PrismaClient } from '../generated/prisma/index.js'
 import { PrismaLibSql } from '@prisma/adapter-libsql'
 import path from 'path'
 import fs from 'fs'
+import { createRequire } from 'module'
 
 function resolveDbPath(): string {
-  // userData path is preferred (set by initDatabase before PrismaClient is created)
   if (process.env.SQLITE_DB_PATH) return process.env.SQLITE_DB_PATH
 
-  // In packaged app, use app.getPath('userData')
   try {
-    const { app } = require('electron')
+    const req = createRequire(import.meta.url)
+    const { app } = req('electron') as { app: { isPackaged: boolean; getPath: (name: string) => string } }
     if (app?.isPackaged) {
       const userData = app.getPath('userData')
       const dbPath = path.join(userData, 'local.db')

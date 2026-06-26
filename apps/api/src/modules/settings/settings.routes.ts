@@ -91,8 +91,6 @@ router.post('/upload-print-logo', requireRole('Admin'), async (req, res) => {
   }
 })
 
-export default router
-
 router.delete('/delete-logo', requireRole('Admin'), async (req, res) => {
   try {
     const current = await prisma.storeSettings.findUnique({ where: { id: 'default' }, select: { logoUrl: true } })
@@ -128,3 +126,5 @@ router.delete('/delete-print-logo', requireRole('Admin'), async (req, res) => {
     res.status(500).json({ error: { message: 'Delete failed', statusCode: 500 } })
   }
 })
+
+export default router

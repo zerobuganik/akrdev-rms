@@ -32,7 +32,7 @@
 
 ### **1.1A - 30-May-2026 03:43 IST**
 
-* **Action Taken:** Installed ESLint 10, Prettier 3, eslint-config-turbo, @typescript-eslint plugins, and TypeScript 6 as root devDependencies. Created `.eslint.config.js` (flat config with turbo preset), `.prettierrc`, and `.prettierignore`.
+* **Action Taken:** Installed ESLint 10, Prettier 3, eslint-config-turbo, @typescript-eslint plugins, and TypeScript 6 as root devDependencies. Created eslint.config.js (flat config with turbo preset), `.prettierrc`, and `.prettierignore`.
 * **Issues Faced:** None.  
 * **Resolution:** N/A.
 

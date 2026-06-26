@@ -5,9 +5,9 @@
 1. Execute strictly **ONE sub-step** at a time. Do not combine tasks.  
 2. Wait for user verification before moving to the next sub-step.  
 3. If a step involves frontend, verify the backend API/schema exists first.  
-4. **Architecture Rule:** Always read docs/1\_Project\_Overview.md and docs/2\_Tech\_Stack.md before generating foundational or backend code.  
-5. **UI & Logic Rule:** Always read docs/3\_Detailed\_POS\_Screen\_&\_Features.md for exact UI layouts, button names, and component behaviors before generating any React frontend code.  
-6. **Progress Tracking:** Update docs/5\_Project\_Log.md (once created) as each phase is completed.
+4. **Architecture Rule:** Always read Docs/1\_Project\_Overview.md and Docs/2\_Tech\_Stack.md before generating foundational or backend code.  
+5. **UI & Logic Rule:** Always read Docs/3\_Detailed\_POS\_Screen\_and\_Features.md for exact UI layouts, button names, and component behaviors before generating any React frontend code.  
+6. **Progress Tracking:** Update Docs/5\_Project\_Log.md (once created) as each phase is completed.
 
 ## **Phase 1: Workspace & Monorepo Foundation**
 

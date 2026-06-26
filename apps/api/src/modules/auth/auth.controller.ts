@@ -5,6 +5,10 @@ export const authController = {
   async login(req: Request, res: Response, next: NextFunction) {
     try {
       const { phone, password, pin } = req.body
+      if (!phone || typeof phone !== 'string') {
+        res.status(400).json({ error: { message: 'Phone number is required', statusCode: 400 } })
+        return
+      }
       if (password) {
         const result = await authService.login(phone, password)
         res.json(result)

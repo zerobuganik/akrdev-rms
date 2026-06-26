@@ -14,7 +14,6 @@
 * **Shared Packages Structure:**  
   * /packages/types \- Shared TypeScript interfaces.  
   * /packages/schemas \- Shared Zod validation schemas.  
-  * /packages/ui \- Shared UI components (React/Tailwind).  
   * /packages/shared \- Shared utilities and constants.
 
 ## **3\. Cloud Backend (Main Server)**

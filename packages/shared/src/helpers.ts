@@ -6,8 +6,9 @@ export function safeParseJSON<T>(raw: string, fallback: T): T {
   }
 }
 
-export function safeParseZod<T>(raw: unknown, fallback: T): T {
-  return (raw as T) ?? fallback
+export function safeParseZod<T>(raw: unknown, schema: { safeParse: (data: unknown) => { success: boolean; data?: T } }, fallback: T): T {
+  const result = schema.safeParse(raw)
+  return result.success ? (result.data as T) : fallback
 }
 
 export function debounce<T extends (...args: unknown[]) => unknown>(fn: T, ms: number): (...args: Parameters<T>) => void {
@@ -19,6 +20,7 @@ export function debounce<T extends (...args: unknown[]) => unknown>(fn: T, ms: n
 }
 
 export function truncate(str: string, maxLength: number): string {
+  if (maxLength < 1) return str
   if (str.length <= maxLength) return str
-  return str.slice(0, maxLength - 1) + '…'
+  return str.slice(0, maxLength - 1) + '\u2026'
 }

@@ -10,7 +10,7 @@ export const storeSettingsSchema = z.object({
   gstin: z.string().max(20).optional(),
   headerText: z.string().max(200).optional(),
   footerText: z.string().max(200).optional(),
-  taxType: z.enum(['Inclusive', 'Exclusive']).optional(),
+  taxType: z.enum(['Inclusive', 'Exclusive']).default('Exclusive'),
 })
 
 export type StoreSettingsInput = z.infer<typeof storeSettingsSchema>

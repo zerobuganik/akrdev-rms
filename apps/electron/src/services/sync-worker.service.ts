@@ -3,7 +3,7 @@ import { getAccessToken } from '../lib/token-store.js'
 
 const CLOUD_API_URL = process.env.CLOUD_API_URL ?? 'http://localhost:3000/api/v1'
 const HEALTH_CHECK_INTERVAL = 60_000
-const SYNC_INTERVAL = 3_600_000
+const SYNC_INTERVAL = 5_000
 const MAX_RETRIES = 5
 
 export class SyncWorkerService {
@@ -100,6 +100,27 @@ export class SyncWorkerService {
       case 'settle': {
         await this.fetchWithRetry(`${CLOUD_API_URL}/settlement`, {
           method: 'POST', headers, body: JSON.stringify(payload),
+        })
+        break
+      }
+      case 'admin-create': {
+        const pathCreate = payload.path as string
+        await this.fetchWithRetry(`${CLOUD_API_URL}${pathCreate}`, {
+          method: 'POST', headers, body: JSON.stringify(payload.body ?? {}),
+        })
+        break
+      }
+      case 'admin-put': {
+        const pathPut = payload.path as string
+        await this.fetchWithRetry(`${CLOUD_API_URL}${pathPut}`, {
+          method: 'PUT', headers, body: JSON.stringify(payload.body ?? {}),
+        })
+        break
+      }
+      case 'admin-delete': {
+        const pathDelete = payload.path as string
+        await this.fetchWithRetry(`${CLOUD_API_URL}${pathDelete}`, {
+          method: 'DELETE', headers,
         })
         break
       }

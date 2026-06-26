@@ -19,7 +19,7 @@ setInterval(() => {
 
 export function rateLimit(maxRequests = MAX_REQUESTS, windowMs = WINDOW_MS) {
   return (req: Request, res: Response, next: NextFunction) => {
-    const key = req.ip ?? req.socket.remoteAddress ?? 'unknown'
+    const key = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ?? req.ip ?? req.socket.remoteAddress ?? 'unknown'
     const now = Date.now()
     const entry = store.get(key)
 

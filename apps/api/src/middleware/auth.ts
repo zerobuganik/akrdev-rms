@@ -45,5 +45,11 @@ export function authMiddleware(req: Request, _res: Response, next: NextFunction)
       if (!user.active) throw new UnauthorizedError('Account deactivated')
       next()
     })
-    .catch(next)
+    .catch((err) => {
+      if (err instanceof UnauthorizedError) {
+        next(err)
+        return
+      }
+      next()
+    })
 }

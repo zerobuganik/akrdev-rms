@@ -2,14 +2,14 @@ import eslintConfigTurbo from 'eslint-config-turbo/flat'
 
 export default [
   {
-    ignores: ['**/node_modules/**', '**/dist/**', '**/.turbo/**'],
+    ignores: ['**/node_modules/**', '**/dist/**', '**/.turbo/**', '**/.next/**'],
   },
   ...eslintConfigTurbo,
   {
     files: ['**/*.ts', '**/*.tsx'],
     languageOptions: {
       parserOptions: {
-        project: './tsconfig.json',
+        projectService: true,
         ecmaVersion: 'latest',
         sourceType: 'module',
       },

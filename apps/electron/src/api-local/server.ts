@@ -1,5 +1,6 @@
 import express from 'express'
 import http from 'http'
+import crypto from 'crypto'
 import * as argon2 from 'argon2'
 import { Server as SocketIOServer } from 'socket.io'
 import { tableLockService, setSocketIO } from '../services/table-lock.service.js'
@@ -10,6 +11,8 @@ import { syncQueueService } from '../services/sync-queue.service.js'
 
 
 let io: SocketIOServer | null = null
+
+const LOCAL_TOKEN_SECRET = crypto.randomBytes(32).toString('hex')
 
 interface PairingEntry {
   code: string
@@ -129,9 +132,32 @@ restoreLocalCache().catch(() => {})
 
 // Generate a simple local JWT token
 function generateLocalToken(user: { id: string; name: string; phone: string; role: string }): { accessToken: string; refreshToken: string } {
-  const payload = JSON.stringify({ userId: user.id, role: user.role, local: true })
-  const token = Buffer.from(payload).toString('base64')
-  return { accessToken: token, refreshToken: token }
+  const payload = JSON.stringify({ userId: user.id, role: user.role, iat: Date.now(), type: 'access' })
+  const signature = crypto.createHmac('sha256', LOCAL_TOKEN_SECRET).update(payload).digest('hex')
+  const token = Buffer.from(`${payload}.${signature}`).toString('base64')
+
+  const refreshPayload = JSON.stringify({ userId: user.id, role: user.role, iat: Date.now(), type: 'refresh' })
+  const refreshSignature = crypto.createHmac('sha256', LOCAL_TOKEN_SECRET).update(refreshPayload).digest('hex')
+  const refreshToken = Buffer.from(`${refreshPayload}.${refreshSignature}`).toString('base64')
+
+  return { accessToken: token, refreshToken }
+}
+
+function verifyLocalToken(token: string): { userId: string; role: string } | null {
+  try {
+    const decoded = Buffer.from(token, 'base64').toString('utf-8')
+    const lastDot = decoded.lastIndexOf('.')
+    if (lastDot === -1) return null
+    const payload = decoded.slice(0, lastDot)
+    const signature = decoded.slice(lastDot + 1)
+    const expected = crypto.createHmac('sha256', LOCAL_TOKEN_SECRET).update(payload).digest('hex')
+    if (signature !== expected) return null
+    const data = JSON.parse(payload) as { userId: string; role: string; iat: number; type: string }
+    if (data.type !== 'access') return null
+    return { userId: data.userId, role: data.role }
+  } catch {
+    return null
+  }
 }
 
 // Background: fetch data from cloud (non-blocking, non-essential)
@@ -140,11 +166,13 @@ async function backgroundCloudSync(accessToken: string) {
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), 8000)
     const headers = { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' }
-    const [tablesRes, areasRes, itemsRes, settingsRes] = await Promise.all([
+    const [tablesRes, areasRes, itemsRes, settingsRes, categoriesRes, taxSlabsRes] = await Promise.all([
       fetch(`${CLOUD_API}/tables`, { headers, signal: controller.signal }),
       fetch(`${CLOUD_API}/areas`, { headers, signal: controller.signal }),
       fetch(`${CLOUD_API}/items`, { headers, signal: controller.signal }),
       fetch(`${CLOUD_API}/settings`, { headers, signal: controller.signal }),
+      fetch(`${CLOUD_API}/categories`, { headers, signal: controller.signal }),
+      fetch(`${CLOUD_API}/tax-slabs`, { headers, signal: controller.signal }),
     ])
     clearTimeout(timeout)
     if (tablesRes.ok) {
@@ -162,7 +190,9 @@ async function backgroundCloudSync(accessToken: string) {
       cachedCloudItems = Array.isArray(raw) ? raw : null
     }
     if (settingsRes.ok) cachedSettings = await settingsRes.json()
-    console.log(`[bg-sync] Fetched: tables=${cachedCloudTables?.length ?? 0}, items=${cachedCloudItems?.length ?? 0}, settings=${!!cachedSettings}`)
+    if (categoriesRes.ok) cachedCategories = await categoriesRes.json()
+    if (taxSlabsRes.ok) cachedTaxSlabs = await taxSlabsRes.json()
+    console.log(`[bg-sync] Fetched: tables=${cachedCloudTables?.length ?? 0}, items=${cachedCloudItems?.length ?? 0}, settings=${!!cachedSettings}, categories=${(cachedCategories as unknown[])?.length ?? 0}, taxSlabs=${(cachedTaxSlabs as unknown[])?.length ?? 0}`)
   } catch {
     // Silently fail — background sync is non-essential
   }
@@ -177,7 +207,7 @@ async function ensureLocalAdmin() {
       await localPrisma.localCredential.create({
         data: { phone: '7001181474', passwordHash: hash, name: 'Admin', role: 'Admin' },
       })
-      console.log('[auth] Created default local admin: 7001181474 / admin123')
+      console.log('[auth] Created default local admin user')
     }
   } catch (err) {
     console.error('[auth] Failed to seed local admin:', (err as Error).message)
@@ -249,6 +279,22 @@ app.post('/api/v1/auth/refresh', async (_req, res) => {
 // They return success immediately without any cloud dependency.
 function adminQueued(res: import('express').Response) {
   res.json({ ok: true, queued: true })
+}
+
+function resolveTaxSettings(): { taxPercent: number; taxType: 'Inclusive' | 'Exclusive' } {
+  const taxType = (cachedSettings?.taxType as 'Inclusive' | 'Exclusive') ?? 'Exclusive'
+  const slabs = (cachedTaxSlabs as Array<{ percent: number; isDefault: boolean }>) ?? []
+  const defaultSlab = slabs.find((s) => s.isDefault) ?? slabs[0]
+  const taxPercent = defaultSlab?.percent ?? 0
+  return { taxPercent, taxType }
+}
+
+function computeOrderTotals(subtotal: number): { taxTotal: number; discountTotal: number; grandTotal: number } {
+  const { taxPercent, taxType } = resolveTaxSettings()
+  const { taxTotal } = calculateTax(subtotal, taxPercent, taxType)
+  const discountTotal = 0
+  const { grandTotal } = calculateRounding(subtotal + taxTotal - discountTotal)
+  return { taxTotal, discountTotal, grandTotal }
 }
 
 app.post('/api/v1/tables', (req, res) => {
@@ -358,7 +404,15 @@ app.post('/api/v1/auth/upload-image', (req, res) => {
   syncQueueService.enqueue('admin-put', { path: '/auth/upload-image', body: req.body }).catch(() => {})
   adminQueued(res)
 })
-app.post('/api/v1/auth/check-phone', (_req, res) => res.json({ available: true }))
+app.post('/api/v1/auth/check-phone', async (req, res) => {
+  try {
+    const { phone } = req.body
+    const credential = await localPrisma.localCredential.findUnique({ where: { phone } })
+    res.json({ exists: !!credential })
+  } catch {
+    res.json({ exists: false })
+  }
+})
 app.post('/api/v1/auth/update-profile', (req, res) => {
   syncQueueService.enqueue('admin-put', { path: '/auth/update-profile', body: req.body }).catch(() => {})
   adminQueued(res)
@@ -687,7 +741,8 @@ app.post('/api/v1/cart/add-item', async (req, res) => {
     })
     if (order) {
       const subtotal = order.items.reduce((s, i) => s + i.lineTotal, 0)
-      await localPrisma.localOrder.update({ where: { id: orderId }, data: { subtotal, grandTotal: subtotal } })
+      const { taxTotal, discountTotal, grandTotal } = computeOrderTotals(subtotal)
+      await localPrisma.localOrder.update({ where: { id: orderId }, data: { subtotal, taxTotal, discountTotal, grandTotal } })
     }
 
     // Notify connected clients (POS) about the order change
@@ -727,10 +782,11 @@ app.post('/api/v1/cart/remove-item', async (req, res) => {
       if (order.items.length === 0) {
         await localPrisma.localOrder.update({
           where: { id: item.orderId },
-          data: { status: 'Cancelled', subtotal: 0, grandTotal: 0 },
+          data: { status: 'Cancelled', subtotal: 0, taxTotal: 0, discountTotal: 0, grandTotal: 0 },
         })
       } else {
-        await localPrisma.localOrder.update({ where: { id: item.orderId }, data: { subtotal, grandTotal: subtotal } })
+        const { taxTotal, discountTotal, grandTotal } = computeOrderTotals(subtotal)
+        await localPrisma.localOrder.update({ where: { id: item.orderId }, data: { subtotal, taxTotal, discountTotal, grandTotal } })
       }
     }
 
@@ -773,7 +829,8 @@ app.post('/api/v1/cart/increment', async (req, res) => {
     })
     if (order) {
       const subtotal = order.items.reduce((s, i) => s + i.lineTotal, 0)
-      await localPrisma.localOrder.update({ where: { id: item.orderId }, data: { subtotal, grandTotal: subtotal } })
+      const { taxTotal, discountTotal, grandTotal } = computeOrderTotals(subtotal)
+      await localPrisma.localOrder.update({ where: { id: item.orderId }, data: { subtotal, taxTotal, discountTotal, grandTotal } })
     }
 
     // Notify connected clients
@@ -813,7 +870,8 @@ app.put('/api/v1/cart/item-qty', async (req, res) => {
     })
     if (order) {
       const subtotal = order.items.reduce((s, i) => s + i.lineTotal, 0)
-      await localPrisma.localOrder.update({ where: { id: item.orderId }, data: { subtotal, grandTotal: subtotal } })
+      const { taxTotal, discountTotal, grandTotal } = computeOrderTotals(subtotal)
+      await localPrisma.localOrder.update({ where: { id: item.orderId }, data: { subtotal, taxTotal, discountTotal, grandTotal } })
     }
 
     // Notify connected clients
@@ -937,26 +995,27 @@ app.post('/api/v1/settlement', async (req, res) => {
     if (!order) { res.status(404).json({ error: { message: 'Order not found' } }); return }
 
     const subtotal = order.items.reduce((sum, i) => sum + i.lineTotal, 0)
+    const { taxTotal, discountTotal, grandTotal } = computeOrderTotals(subtotal)
     const totalPaid = (payments.cash ?? 0) + (payments.card ?? 0) + (payments.upi ?? 0)
 
-    if (totalPaid < order.grandTotal) {
+    if (totalPaid < grandTotal) {
       res.status(400).json({ error: { message: 'Insufficient payment' } }); return
     }
 
-    const changeAmt = totalPaid - order.grandTotal
+    const changeAmt = totalPaid - grandTotal
 
     await localPrisma.$transaction([
       localPrisma.localOrder.update({
         where: { id: orderId },
-        data: { status: 'Settled', subtotal, syncStatus: 'Pending' },
+        data: { status: 'Settled', subtotal, taxTotal, discountTotal, grandTotal, syncStatus: 'Pending' },
       }),
       localPrisma.localSettlement.create({
         data: {
           orderId,
           subtotal,
-          taxTotal: order.taxTotal,
-          discountTotal: order.discountTotal,
-          grandTotal: order.grandTotal,
+          taxTotal,
+          discountTotal,
+          grandTotal,
           cashPaid: payments.cash ?? 0,
           cardPaid: payments.card ?? 0,
           upiPaid: payments.upi ?? 0,
@@ -970,7 +1029,7 @@ app.post('/api/v1/settlement', async (req, res) => {
 
     syncQueueService.enqueue('settle', { orderId, discountType, discountValue, discountReason, payments }).catch(() => {})
 
-    res.json({ orderId, subtotal, grandTotal: order.grandTotal, totalPaid, change: changeAmt })
+    res.json({ orderId, subtotal, grandTotal, totalPaid, change: changeAmt })
   } catch (err) {
     console.error('Error settling order:', err)
     res.status(500).json({ error: 'Failed to settle order' })

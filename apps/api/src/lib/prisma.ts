@@ -1,9 +1,20 @@
 import { PrismaClient } from '../../dist/generated/prisma/index.js'
 import { PrismaPg } from '@prisma/adapter-pg'
 
-const connectionString = process.env.DATABASE_URL ?? 'postgresql://postgres:akrdev_rms_dev@localhost:5432/akrdev_rms'
+const connectionString = process.env.DATABASE_URL
 
-const adapter = new PrismaPg({ connectionString })
+if (!connectionString) {
+  console.error('FATAL: DATABASE_URL environment variable is not set')
+  process.exit(1)
+}
+
+let adapter: PrismaPg
+try {
+  adapter = new PrismaPg({ connectionString })
+} catch (err) {
+  console.error('FATAL: Failed to connect to database:', (err as Error).message)
+  process.exit(1)
+}
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined

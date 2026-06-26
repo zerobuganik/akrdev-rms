@@ -15,7 +15,7 @@ test('login page renders the app title', async ({ page }) => {
   await expect(page.locator('h1')).toContainText('AKRDev RMS')
 })
 
-test('404 redirects to tables', async ({ page }) => {
+test('404 redirects to login', async ({ page }) => {
   await page.goto('/non-existent')
   await expect(page).toHaveURL(/\/login/)
 })

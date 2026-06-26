@@ -11,3 +11,4 @@ allowBuilds:
   usb: true
   'node-hid': true
   '@luckykiet/node-printer': true
+  '@prisma/engines': true

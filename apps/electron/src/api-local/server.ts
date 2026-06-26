@@ -377,6 +377,7 @@ app.post('/api/v1/orders', async (req, res) => {
     const { tableId, tableName, guestCount, orderType } = req.body
     const existing = await localPrisma.localOrder.findFirst({
       where: { tableId: tableId ?? null, status: { not: 'Settled' } },
+      include: { items: true, kots: true, settlement: true },
     })
     if (existing && tableId) {
       res.json(existing)
@@ -384,6 +385,7 @@ app.post('/api/v1/orders', async (req, res) => {
     }
     const order = await localPrisma.localOrder.create({
       data: { tableId: tableId ?? null, tableName: tableName ?? `Table ${tableId ?? 'Takeaway'}`, guestCount: guestCount ?? 2, orderType: orderType ?? 'DineIn' },
+      include: { items: true, kots: true, settlement: true },
     })
     syncQueueService.enqueue('create-order', { tableId, tableName, guestCount, orderType: orderType ?? 'DineIn' }).catch(() => {})
     res.status(201).json(order)
@@ -397,6 +399,7 @@ app.post('/api/v1/orders/takeaway', async (req, res) => {
   try {
     const order = await localPrisma.localOrder.create({
       data: { tableId: null, tableName: 'Takeaway', guestCount: 1, orderType: 'Takeaway' },
+      include: { items: true, kots: true, settlement: true },
     })
     syncQueueService.enqueue('create-order', { tableId: null, tableName: 'Takeaway', guestCount: 1, orderType: 'Takeaway' }).catch(() => {})
     res.status(201).json(order)
@@ -439,6 +442,7 @@ app.put('/api/v1/orders/:id', async (req, res) => {
     const order = await localPrisma.localOrder.update({
       where: { id: req.params.id as string },
       data: req.body,
+      include: { items: true, kots: true, settlement: true },
     })
     res.json(order)
   } catch (err) {

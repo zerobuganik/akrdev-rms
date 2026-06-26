@@ -168,7 +168,7 @@ function verifyLocalToken(token: string): { userId: string; role: string } | nul
 async function authenticateCloud(phone: string, password: string): Promise<string | null> {
   try {
     const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 10_000)
+    const timeout = setTimeout(() => controller.abort(), 25_000)
     const res = await fetch(`${getCloudApiBase()}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -186,18 +186,20 @@ async function authenticateCloud(phone: string, password: string): Promise<strin
 }
 
 async function syncFromCloud(phone: string, password: string) {
+  console.log('[cloud-sync] Starting cloud sync...')
   try {
     const token = await authenticateCloud(phone, password)
     if (!token) {
       console.log('[cloud-sync] Cloud authentication failed — using local cache')
       return
     }
+    console.log('[cloud-sync] Cloud authenticated, fetching data...')
     cloudAccessToken = token
     setCloudAccessToken(token)
     syncWorkerService.setCloudToken(token)
 
     const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 15_000)
+    const timeout = setTimeout(() => controller.abort(), 30_000)
     const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
     const [tablesRes, areasRes, itemsRes, settingsRes, categoriesRes, taxSlabsRes, employeesRes, ordersRes] = await Promise.all([
       fetch(`${getCloudApiBase()}/tables`, { headers, signal: controller.signal }),
@@ -210,6 +212,7 @@ async function syncFromCloud(phone: string, password: string) {
       fetch(`${getCloudApiBase()}/orders`, { headers, signal: controller.signal }),
     ])
     clearTimeout(timeout)
+    console.log(`[cloud-sync] Responses: tables=${tablesRes.status} areas=${areasRes.status} items=${itemsRes.status} settings=${settingsRes.status} cats=${categoriesRes.status} tax=${taxSlabsRes.status} emp=${employeesRes.status} orders=${ordersRes.status}`)
 
     if (tablesRes.ok) {
       const raw = await tablesRes.json()
@@ -274,7 +277,7 @@ async function syncFromCloud(phone: string, password: string) {
     }
 
     lastSyncTime = Date.now()
-    console.log(`[cloud-sync] Synced: tables=${cachedCloudTables?.length ?? 0}, items=${cachedCloudItems?.length ?? 0}, settings=${!!cachedSettings}, categories=${(cachedCategories as unknown[])?.length ?? 0}, orders=${(cachedCloudEmployees as unknown[])?.length ?? 0}, employees=${(cachedCloudEmployees as unknown[])?.length ?? 0}`)
+    console.log(`[cloud-sync] Synced: tables=${cachedCloudTables?.length ?? 0}, items=${cachedCloudItems?.length ?? 0}, settings=${!!cachedSettings}, categories=${(cachedCategories as unknown[])?.length ?? 0}, employees=${(cachedCloudEmployees as unknown[])?.length ?? 0}, orders=${(cachedCloudEmployees as unknown[])?.length ?? 0}`)
   } catch (err) {
     console.warn('[cloud-sync] Sync failed:', (err as Error).message)
   }
@@ -443,14 +446,17 @@ app.post('/api/v1/auth/login', async (req, res) => {
       try {
         await Promise.race([
           syncFromCloud(phone, password),
-          new Promise((resolve) => setTimeout(resolve, 5_000)),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 25_000)),
         ])
       } catch (err) {
         console.warn('[login] Cloud sync error:', (err as Error).message)
       }
     }
 
-    res.json({ ...tokens, user })
+    // After sync attempt, include sync status in response
+    const hasCloudData = cachedCloudTables && cachedCloudTables.length > 0
+    console.log('[login] Login complete. Has cloud data:', hasCloudData, 'tables:', cachedCloudTables?.length)
+    res.json({ ...tokens, user, cloudSynced: hasCloudData })
   } catch (err) {
     console.error('[auth] Login error:', err)
     res.status(500).json({ error: { message: 'Internal server error', statusCode: 500 } })

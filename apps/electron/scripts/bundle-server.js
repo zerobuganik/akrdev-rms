@@ -7,13 +7,27 @@ const out = path.join(__dirname, '..', 'dist', 'api-local', 'server.js')
 
 fs.mkdirSync(path.dirname(out), { recursive: true })
 
-esbuild.buildSync({
+const inlineWorkspacePlugin = {
+  name: 'inline-workspace',
+  setup(build) {
+    const filter = /^@akrdev\/(shared|schemas|types)$/
+    build.onResolve({ filter }, (args) => {
+      const pkg = args.path.replace('@akrdev/', '')
+      const pkgDir = path.join(__dirname, '..', '..', '..', 'packages', pkg)
+      const srcIndex = path.join(pkgDir, 'src', 'index.ts')
+      return { path: srcIndex }
+    })
+  },
+}
+
+esbuild.build({
   entryPoints: [src],
   bundle: true,
   platform: 'node',
   target: 'node22',
   format: 'cjs',
   outfile: out,
+  plugins: [inlineWorkspacePlugin],
   external: [
     'electron',
     'argon2',
@@ -30,6 +44,9 @@ esbuild.buildSync({
   sourcemap: false,
   minify: false,
   logLevel: 'info',
+}).then(() => {
+  console.log(`[bundle-server] Bundled server.cjs to ${out}`)
+}).catch((err) => {
+  console.error('[bundle-server] Build failed:', err)
+  process.exit(1)
 })
-
-console.log(`[bundle-server] Bundled server.cjs to ${out}`)

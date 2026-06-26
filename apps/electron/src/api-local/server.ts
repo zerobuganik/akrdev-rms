@@ -79,6 +79,8 @@ let cachedCloudTables: unknown[] | null = null
 let cachedAreas: unknown[] | null = null
 let cachedCloudItems: unknown[] | null = null
 let cachedCategories: unknown[] | null = null
+let cachedSettings: Record<string, unknown> | null = null
+let cachedTaxSlabs: unknown[] | null = null
 
 async function tryFetchCloudTables() {
   try {
@@ -102,7 +104,7 @@ async function syncTablesFromCloud(accessToken: string) {
   try {
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), 5000)
-    const [tablesRes, areasRes, itemsRes, categoriesRes] = await Promise.all([
+    const [tablesRes, areasRes, itemsRes, categoriesRes, settingsRes, taxSlabsRes] = await Promise.all([
       fetch(`${CLOUD_API}/tables`, {
         headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
         signal: controller.signal,
@@ -116,6 +118,14 @@ async function syncTablesFromCloud(accessToken: string) {
         signal: controller.signal,
       }),
       fetch(`${CLOUD_API}/categories`, {
+        headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+        signal: controller.signal,
+      }),
+      fetch(`${CLOUD_API}/settings`, {
+        headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+        signal: controller.signal,
+      }),
+      fetch(`${CLOUD_API}/tax-slabs`, {
         headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
         signal: controller.signal,
       }),
@@ -150,7 +160,13 @@ async function syncTablesFromCloud(accessToken: string) {
     if (categoriesRes.ok) {
       cachedCategories = await categoriesRes.json()
     }
-    console.log(`[sync] Synced from cloud: ${cachedCloudTables?.length ?? 0} tables, ${cachedAreas?.length ?? 0} areas, ${cachedCloudItems?.length ?? 0} items, ${cachedCategories?.length ?? 0} categories`)
+    if (settingsRes.ok) {
+      cachedSettings = await settingsRes.json()
+    }
+    if (taxSlabsRes.ok) {
+      cachedTaxSlabs = await taxSlabsRes.json()
+    }
+    console.log(`[sync] Synced from cloud: ${cachedCloudTables?.length ?? 0} tables, ${cachedAreas?.length ?? 0} areas, ${cachedCloudItems?.length ?? 0} items, ${cachedCategories?.length ?? 0} categories, settings=${!!cachedSettings}, tax-slabs=${cachedTaxSlabs?.length ?? 0}`)
   } catch (err) {
     console.error('[sync] Failed:', err)
   }
@@ -275,6 +291,22 @@ app.get('/api/v1/items', (_req, res) => {
 app.get('/api/v1/categories', (_req, res) => {
   if (cachedCategories && cachedCategories.length > 0) {
     res.json(cachedCategories)
+    return
+  }
+  res.json([])
+})
+
+app.get('/api/v1/settings', (_req, res) => {
+  if (cachedSettings) {
+    res.json(cachedSettings)
+    return
+  }
+  res.json({ companyName: 'AKRDev Restaurant' })
+})
+
+app.get('/api/v1/tax-slabs', (_req, res) => {
+  if (cachedTaxSlabs && cachedTaxSlabs.length > 0) {
+    res.json(cachedTaxSlabs)
     return
   }
   res.json([])

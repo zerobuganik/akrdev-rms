@@ -7,8 +7,8 @@ interface RateLimitEntry {
 
 const store = new Map<string, RateLimitEntry>()
 
-const WINDOW_MS = 15 * 60 * 1000
-const MAX_REQUESTS = 100
+const WINDOW_MS = 60_000
+const MAX_REQUESTS = 500
 
 setInterval(() => {
   const now = Date.now()

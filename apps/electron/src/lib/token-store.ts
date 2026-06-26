@@ -50,6 +50,16 @@ export function getRefreshToken(): string | null {
   return readTokens().refreshToken ?? null
 }
 
+export function setCloudAccessToken(token: string): void {
+  const tokens = readTokens()
+  tokens.cloudAccessToken = token
+  writeTokens(tokens)
+}
+
+export function getCloudAccessToken(): string | null {
+  return readTokens().cloudAccessToken ?? null
+}
+
 export function clearTokens(): void {
   try {
     const tokenPath = getTokenPath()

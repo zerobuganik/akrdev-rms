@@ -222,7 +222,7 @@ app.whenReady().then(async () => {
   localApiServer = createLocalApiServer()
   startMDNS()
 
-  // Start sync worker — pushes local changes to cloud every 60 minutes
+  // Start sync worker — pushes local changes to cloud
   syncWorkerService.start()
 
   app.on('activate', () => {

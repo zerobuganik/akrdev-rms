@@ -1,5 +1,5 @@
 import { syncQueueService } from './sync-queue.service.js'
-import { getAccessToken } from '../lib/token-store.js'
+import { getCloudAccessToken } from '../lib/token-store.js'
 
 const CLOUD_API_URL = process.env.CLOUD_API_URL ?? 'http://localhost:3000/api/v1'
 const HEALTH_CHECK_INTERVAL = 60_000
@@ -17,6 +17,7 @@ export class SyncWorkerService {
   }
 
   async start() {
+    this.cloudToken = getCloudAccessToken()
     await this.checkHealth()
     this.healthTimer = setInterval(() => this.checkHealth(), HEALTH_CHECK_INTERVAL)
     this.syncTimer = setInterval(() => this.processQueue(), SYNC_INTERVAL)
@@ -73,7 +74,7 @@ export class SyncWorkerService {
   }
 
   private async executeSyncItem(action: string, payload: Record<string, unknown>) {
-    const token = this.cloudToken ?? getAccessToken()
+    const token = this.cloudToken ?? getCloudAccessToken()
     const headers: Record<string, string> = { 'Content-Type': 'application/json' }
     if (token) headers['Authorization'] = `Bearer ${token}`
 

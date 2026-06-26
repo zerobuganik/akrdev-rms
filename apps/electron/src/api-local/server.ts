@@ -9,6 +9,7 @@ import { printService } from '../printing/print.service.js'
 import { calculateTax, calculateRounding } from '@akrdev/shared'
 import { syncQueueService } from '../services/sync-queue.service.js'
 import { syncWorkerService } from '../services/sync-worker.service.js'
+import { getCloudAccessToken, setCloudAccessToken } from '../lib/token-store.js'
 
 
 let io: SocketIOServer | null = null
@@ -189,6 +190,7 @@ async function syncFromCloud(phone: string, password: string) {
       return
     }
     cloudAccessToken = token
+    setCloudAccessToken(token)
     syncWorkerService.setCloudToken(token)
 
     const controller = new AbortController()
@@ -256,13 +258,72 @@ async function syncFromCloud(phone: string, password: string) {
 
 async function startupCloudSync() {
   try {
-    const credential = await localPrisma.localCredential.findFirst()
-    if (credential) {
-      console.log('[startup] Attempting cloud sync with stored credentials...')
-      await syncFromCloud(credential.phone, 'admin123')
+    const cloudToken = getCloudAccessToken()
+    if (!cloudToken) {
+      console.log('[startup] No stored cloud token — data sync will happen on login')
+      return
     }
-  } catch {
-    // Non-fatal — login will retry
+    console.log('[startup] Attempting cloud sync with stored JWT...')
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 10_000)
+    const headers = { Authorization: `Bearer ${cloudToken}`, 'Content-Type': 'application/json' }
+    const [tablesRes, areasRes, itemsRes, settingsRes, categoriesRes, taxSlabsRes] = await Promise.all([
+      fetch(`${CLOUD_API}/tables`, { headers, signal: controller.signal }),
+      fetch(`${CLOUD_API}/areas`, { headers, signal: controller.signal }),
+      fetch(`${CLOUD_API}/items`, { headers, signal: controller.signal }),
+      fetch(`${CLOUD_API}/settings`, { headers, signal: controller.signal }),
+      fetch(`${CLOUD_API}/categories`, { headers, signal: controller.signal }),
+      fetch(`${CLOUD_API}/tax-slabs`, { headers, signal: controller.signal }),
+    ])
+    clearTimeout(timeout)
+
+    if (tablesRes.ok) {
+      const raw = await tablesRes.json()
+      cachedCloudTables = Array.isArray(raw) ? raw.map((t: Record<string, unknown>) => ({
+        id: t.id, name: t.name, capacity: t.capacity ?? 0, status: t.status ?? 'Available',
+        area: t.area ?? null,
+      })) : null
+      if (cachedCloudTables) {
+        for (const t of cachedCloudTables as Array<{ id: string; name: string; capacity: number; status: string; area: { id?: string; name?: string } | null }>) {
+          await localPrisma.cachedTable.upsert({
+            where: { id: t.id },
+            create: { id: t.id, name: t.name, capacity: t.capacity, status: t.status, areaId: t.area?.id ?? null, areaName: t.area?.name ?? null },
+            update: { name: t.name, capacity: t.capacity, status: t.status, areaId: t.area?.id ?? null, areaName: t.area?.name ?? null },
+          }).catch(() => {})
+        }
+      }
+    }
+    if (areasRes.ok) cachedAreas = await areasRes.json()
+    if (itemsRes.ok) {
+      const raw = await itemsRes.json()
+      cachedCloudItems = Array.isArray(raw) ? raw : null
+      if (cachedCloudItems) {
+        for (const i of cachedCloudItems as Array<{ id: string; name: string; basePrice: number; inStock: boolean; category: { id?: string; name?: string } | null; variations: unknown; imageUrl: string | null }>) {
+          await localPrisma.cachedItem.upsert({
+            where: { id: i.id },
+            create: { id: i.id, name: i.name, basePrice: i.basePrice, inStock: i.inStock ?? true, categoryId: i.category?.id ?? null, categoryName: i.category?.name ?? null, variations: JSON.stringify(i.variations ?? []), imageUrl: i.imageUrl ?? null },
+            update: { name: i.name, basePrice: i.basePrice, inStock: i.inStock ?? true, categoryId: i.category?.id ?? null, categoryName: i.category?.name ?? null, variations: JSON.stringify(i.variations ?? []), imageUrl: i.imageUrl ?? null },
+          }).catch(() => {})
+        }
+      }
+    }
+    if (settingsRes.ok) {
+      cachedSettings = await settingsRes.json()
+      await localPrisma.cachedSetting.upsert({
+        where: { id: 'default' },
+        create: { id: 'default', data: JSON.stringify(cachedSettings) },
+        update: { data: JSON.stringify(cachedSettings) },
+      }).catch(() => {})
+    }
+    if (categoriesRes.ok) cachedCategories = await categoriesRes.json()
+    if (taxSlabsRes.ok) cachedTaxSlabs = await taxSlabsRes.json()
+
+    cloudAccessToken = cloudToken
+    syncWorkerService.setCloudToken(cloudToken)
+    lastSyncTime = Date.now()
+    console.log(`[startup] Synced: tables=${cachedCloudTables?.length ?? 0}, items=${cachedCloudItems?.length ?? 0}, settings=${!!cachedSettings}, categories=${(cachedCategories as unknown[])?.length ?? 0}`)
+  } catch (err) {
+    console.warn('[startup] Cloud sync failed, will retry on login:', (err as Error).message)
   }
 }
 
@@ -609,20 +670,17 @@ app.get('/api/v1/settings', (_req, res) => {
   res.json({
     id: 'default',
     companyName: 'AKRDev Restaurant',
-    address: '',
-    phone: '',
-    taxType: 'Exclusive',
-    invoiceFooter: '',
+    address: 'Your Restaurant Address',
+    phone: '7001181474',
+    email: 'info@akrdev-rms.example.com',
+    website: null,
+    fssai: '',
+    gstin: '',
     logoUrl: null,
     printLogoUrl: null,
-    currency: '₹',
-    lowStockAlert: true,
-    allowNegativeInventory: false,
-    orderPrefix: 'ORD',
-    kotPrinterEnabled: false,
-    billPrinterEnabled: false,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
+    headerText: null,
+    footerText: null,
+    taxType: 'Exclusive',
   })
 })
 

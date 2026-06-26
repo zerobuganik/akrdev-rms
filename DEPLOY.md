@@ -87,7 +87,7 @@ git push -u origin main
 | **Name** | `akrdev-api` |
 | **Root Directory** | (leave empty — use repository root) |
 | **Build Command** | `pnpm install --frozen-lockfile --filter @akrdev/api... && pnpm --filter @akrdev/api build:full` |
-| **Start Command** | `pnpm --filter @akrdev/api deploy && pnpm --filter @akrdev/api start` |
+| **Start Command** | `pnpm --filter @akrdev/api start` |
 | **Plan** | Free |
 
 4. Click **Environment Variables** → **Add Environment Variable**. Add these 7:

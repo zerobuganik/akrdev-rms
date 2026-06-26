@@ -73,8 +73,10 @@ app.post('/api/v1/pair/verify', (req, res) => {
   res.json({ verified: true })
 })
 
-// CLOUD_API is used for background sync only — NOT for real-time auth/tables/items
-const CLOUD_API = process.env.CLOUD_API_URL || 'http://localhost:3000/api/v1'
+// CLOUD_API is used for cloud sync — resolved lazily so dotenv loads first
+function getCloudApiBase(): string {
+  return process.env.CLOUD_API_URL || 'http://localhost:3000/api/v1'
+}
 
 // In-memory table cache synced from cloud
 let cachedCloudTables: unknown[] | null = null
@@ -166,7 +168,7 @@ async function authenticateCloud(phone: string, password: string): Promise<strin
   try {
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), 10_000)
-    const res = await fetch(`${CLOUD_API}/auth/login`, {
+    const res = await fetch(`${getCloudApiBase()}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ phone, password }),
@@ -197,12 +199,12 @@ async function syncFromCloud(phone: string, password: string) {
     const timeout = setTimeout(() => controller.abort(), 15_000)
     const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
     const [tablesRes, areasRes, itemsRes, settingsRes, categoriesRes, taxSlabsRes] = await Promise.all([
-      fetch(`${CLOUD_API}/tables`, { headers, signal: controller.signal }),
-      fetch(`${CLOUD_API}/areas`, { headers, signal: controller.signal }),
-      fetch(`${CLOUD_API}/items`, { headers, signal: controller.signal }),
-      fetch(`${CLOUD_API}/settings`, { headers, signal: controller.signal }),
-      fetch(`${CLOUD_API}/categories`, { headers, signal: controller.signal }),
-      fetch(`${CLOUD_API}/tax-slabs`, { headers, signal: controller.signal }),
+      fetch(`${getCloudApiBase()}/tables`, { headers, signal: controller.signal }),
+      fetch(`${getCloudApiBase()}/areas`, { headers, signal: controller.signal }),
+      fetch(`${getCloudApiBase()}/items`, { headers, signal: controller.signal }),
+      fetch(`${getCloudApiBase()}/settings`, { headers, signal: controller.signal }),
+      fetch(`${getCloudApiBase()}/categories`, { headers, signal: controller.signal }),
+      fetch(`${getCloudApiBase()}/tax-slabs`, { headers, signal: controller.signal }),
     ])
     clearTimeout(timeout)
 
@@ -268,12 +270,12 @@ async function startupCloudSync() {
     const timeout = setTimeout(() => controller.abort(), 10_000)
     const headers = { Authorization: `Bearer ${cloudToken}`, 'Content-Type': 'application/json' }
     const [tablesRes, areasRes, itemsRes, settingsRes, categoriesRes, taxSlabsRes] = await Promise.all([
-      fetch(`${CLOUD_API}/tables`, { headers, signal: controller.signal }),
-      fetch(`${CLOUD_API}/areas`, { headers, signal: controller.signal }),
-      fetch(`${CLOUD_API}/items`, { headers, signal: controller.signal }),
-      fetch(`${CLOUD_API}/settings`, { headers, signal: controller.signal }),
-      fetch(`${CLOUD_API}/categories`, { headers, signal: controller.signal }),
-      fetch(`${CLOUD_API}/tax-slabs`, { headers, signal: controller.signal }),
+      fetch(`${getCloudApiBase()}/tables`, { headers, signal: controller.signal }),
+      fetch(`${getCloudApiBase()}/areas`, { headers, signal: controller.signal }),
+      fetch(`${getCloudApiBase()}/items`, { headers, signal: controller.signal }),
+      fetch(`${getCloudApiBase()}/settings`, { headers, signal: controller.signal }),
+      fetch(`${getCloudApiBase()}/categories`, { headers, signal: controller.signal }),
+      fetch(`${getCloudApiBase()}/tax-slabs`, { headers, signal: controller.signal }),
     ])
     clearTimeout(timeout)
 

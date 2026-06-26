@@ -1,7 +1,9 @@
 import { syncQueueService } from './sync-queue.service.js'
 import { getCloudAccessToken } from '../lib/token-store.js'
 
-const CLOUD_API_URL = process.env.CLOUD_API_URL ?? 'http://localhost:3000/api/v1'
+function getCloudApiBase(): string {
+  return process.env.CLOUD_API_URL ?? 'http://localhost:3000/api/v1'
+}
 const HEALTH_CHECK_INTERVAL = 60_000
 const SYNC_INTERVAL = 5_000
 const MAX_RETRIES = 5
@@ -33,7 +35,7 @@ export class SyncWorkerService {
 
   private async checkHealth() {
     try {
-      const response = await fetch(`${CLOUD_API_URL}/health`, {
+      const response = await fetch(`${getCloudApiBase()}/health`, {
         method: 'GET',
         signal: AbortSignal.timeout(5000),
       })
@@ -80,52 +82,52 @@ export class SyncWorkerService {
 
     switch (action) {
       case 'create-order': {
-        await this.fetchWithRetry(`${CLOUD_API_URL}/orders`, {
+        await this.fetchWithRetry(`${getCloudApiBase()}/orders`, {
           method: 'POST', headers, body: JSON.stringify(payload),
         })
         break
       }
       case 'add-item': {
-        await this.fetchWithRetry(`${CLOUD_API_URL}/cart/add-item`, {
+        await this.fetchWithRetry(`${getCloudApiBase()}/cart/add-item`, {
           method: 'POST', headers, body: JSON.stringify(payload),
         })
         break
       }
       case 'remove-item': {
-        await this.fetchWithRetry(`${CLOUD_API_URL}/cart/remove-item`, {
+        await this.fetchWithRetry(`${getCloudApiBase()}/cart/remove-item`, {
           method: 'POST', headers, body: JSON.stringify(payload),
         })
         break
       }
       case 'send-kot': {
-        await this.fetchWithRetry(`${CLOUD_API_URL}/kot/send`, {
+        await this.fetchWithRetry(`${getCloudApiBase()}/kot/send`, {
           method: 'POST', headers, body: JSON.stringify(payload),
         })
         break
       }
       case 'settle': {
-        await this.fetchWithRetry(`${CLOUD_API_URL}/settlement`, {
+        await this.fetchWithRetry(`${getCloudApiBase()}/settlement`, {
           method: 'POST', headers, body: JSON.stringify(payload),
         })
         break
       }
       case 'admin-create': {
         const pathCreate = payload.path as string
-        await this.fetchWithRetry(`${CLOUD_API_URL}${pathCreate}`, {
+        await this.fetchWithRetry(`${getCloudApiBase()}${pathCreate}`, {
           method: 'POST', headers, body: JSON.stringify(payload.body ?? {}),
         })
         break
       }
       case 'admin-put': {
         const pathPut = payload.path as string
-        await this.fetchWithRetry(`${CLOUD_API_URL}${pathPut}`, {
+        await this.fetchWithRetry(`${getCloudApiBase()}${pathPut}`, {
           method: 'PUT', headers, body: JSON.stringify(payload.body ?? {}),
         })
         break
       }
       case 'admin-delete': {
         const pathDelete = payload.path as string
-        await this.fetchWithRetry(`${CLOUD_API_URL}${pathDelete}`, {
+        await this.fetchWithRetry(`${getCloudApiBase()}${pathDelete}`, {
           method: 'DELETE', headers,
         })
         break

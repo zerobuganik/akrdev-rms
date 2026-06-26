@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest'
-import { generateDisplayId } from './display-id'
-import { calculateTax, calculateRounding } from './tax'
-import { computeCartTotals } from './cart-totals'
-import { safeParseJSON, debounce, truncate } from './helpers'
+import { generateDisplayId } from './display-id.js'
+import { calculateTax, calculateRounding } from './tax.js'
+import { computeCartTotals } from './cart-totals.js'
+import { safeParseJSON, debounce, truncate } from './helpers.js'
 
 describe('generateDisplayId', () => {
   it('generates dine-in IDs', () => {

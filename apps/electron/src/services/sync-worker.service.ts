@@ -10,6 +10,11 @@ export class SyncWorkerService {
   private healthTimer: NodeJS.Timeout | null = null
   private syncTimer: NodeJS.Timeout | null = null
   private cloudAvailable = false
+  private cloudToken: string | null = null
+
+  setCloudToken(token: string | null) {
+    this.cloudToken = token
+  }
 
   async start() {
     await this.checkHealth()
@@ -68,7 +73,7 @@ export class SyncWorkerService {
   }
 
   private async executeSyncItem(action: string, payload: Record<string, unknown>) {
-    const token = getAccessToken()
+    const token = this.cloudToken ?? getAccessToken()
     const headers: Record<string, string> = { 'Content-Type': 'application/json' }
     if (token) headers['Authorization'] = `Bearer ${token}`
 

@@ -8,6 +8,7 @@ import { localPrisma } from '../lib/local-prisma.js'
 import { printService } from '../printing/print.service.js'
 import { calculateTax, calculateRounding } from '@akrdev/shared'
 import { syncQueueService } from '../services/sync-queue.service.js'
+import { syncWorkerService } from '../services/sync-worker.service.js'
 
 
 let io: SocketIOServer | null = null
@@ -160,12 +161,39 @@ function verifyLocalToken(token: string): { userId: string; role: string } | nul
   }
 }
 
-// Background: fetch data from cloud (non-blocking, non-essential)
-async function backgroundCloudSync(accessToken: string) {
+async function authenticateCloud(phone: string, password: string): Promise<string | null> {
   try {
     const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 8000)
-    const headers = { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' }
+    const timeout = setTimeout(() => controller.abort(), 10_000)
+    const res = await fetch(`${CLOUD_API}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone, password }),
+      signal: controller.signal,
+    })
+    clearTimeout(timeout)
+    if (!res.ok) return null
+    const data = await res.json() as { accessToken?: string }
+    return data.accessToken ?? null
+  } catch (err) {
+    console.warn('[cloud-auth] Could not authenticate with cloud:', (err as Error).message)
+    return null
+  }
+}
+
+async function syncFromCloud(phone: string, password: string) {
+  try {
+    const token = await authenticateCloud(phone, password)
+    if (!token) {
+      console.log('[cloud-sync] Cloud authentication failed — using local cache')
+      return
+    }
+    cloudAccessToken = token
+    syncWorkerService.setCloudToken(token)
+
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 15_000)
+    const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
     const [tablesRes, areasRes, itemsRes, settingsRes, categoriesRes, taxSlabsRes] = await Promise.all([
       fetch(`${CLOUD_API}/tables`, { headers, signal: controller.signal }),
       fetch(`${CLOUD_API}/areas`, { headers, signal: controller.signal }),
@@ -175,26 +203,54 @@ async function backgroundCloudSync(accessToken: string) {
       fetch(`${CLOUD_API}/tax-slabs`, { headers, signal: controller.signal }),
     ])
     clearTimeout(timeout)
+
     if (tablesRes.ok) {
       const raw = await tablesRes.json()
       cachedCloudTables = Array.isArray(raw) ? raw.map((t: Record<string, unknown>) => ({
         id: t.id, name: t.name, capacity: t.capacity ?? 0, status: t.status ?? 'Available',
         area: t.area ?? null,
       })) : null
+      if (cachedCloudTables) {
+        for (const t of cachedCloudTables as Array<{ id: string; name: string; capacity: number; status: string; area: { id?: string; name?: string } | null }>) {
+          const areaObj = t.area
+          await localPrisma.cachedTable.upsert({
+            where: { id: t.id },
+            create: { id: t.id, name: t.name, capacity: t.capacity, status: t.status, areaId: areaObj?.id ?? null, areaName: areaObj?.name ?? null },
+            update: { name: t.name, capacity: t.capacity, status: t.status, areaId: areaObj?.id ?? null, areaName: areaObj?.name ?? null },
+          }).catch(() => {})
+        }
+      }
     }
-    if (areasRes.ok) {
-      cachedAreas = await areasRes.json()
-    }
+    if (areasRes.ok) cachedAreas = await areasRes.json()
     if (itemsRes.ok) {
       const raw = await itemsRes.json()
       cachedCloudItems = Array.isArray(raw) ? raw : null
+      if (cachedCloudItems) {
+        for (const i of cachedCloudItems as Array<{ id: string; name: string; basePrice: number; inStock: boolean; category: { id?: string; name?: string } | null; variations: unknown; imageUrl: string | null }>) {
+          const cat = i.category
+          await localPrisma.cachedItem.upsert({
+            where: { id: i.id },
+            create: { id: i.id, name: i.name, basePrice: i.basePrice, inStock: i.inStock ?? true, categoryId: cat?.id ?? null, categoryName: cat?.name ?? null, variations: JSON.stringify(i.variations ?? []), imageUrl: i.imageUrl ?? null },
+            update: { name: i.name, basePrice: i.basePrice, inStock: i.inStock ?? true, categoryId: cat?.id ?? null, categoryName: cat?.name ?? null, variations: JSON.stringify(i.variations ?? []), imageUrl: i.imageUrl ?? null },
+          }).catch(() => {})
+        }
+      }
     }
-    if (settingsRes.ok) cachedSettings = await settingsRes.json()
+    if (settingsRes.ok) {
+      cachedSettings = await settingsRes.json()
+      await localPrisma.cachedSetting.upsert({
+        where: { id: 'default' },
+        create: { id: 'default', data: JSON.stringify(cachedSettings) },
+        update: { data: JSON.stringify(cachedSettings) },
+      }).catch(() => {})
+    }
     if (categoriesRes.ok) cachedCategories = await categoriesRes.json()
     if (taxSlabsRes.ok) cachedTaxSlabs = await taxSlabsRes.json()
-    console.log(`[bg-sync] Fetched: tables=${cachedCloudTables?.length ?? 0}, items=${cachedCloudItems?.length ?? 0}, settings=${!!cachedSettings}, categories=${(cachedCategories as unknown[])?.length ?? 0}, taxSlabs=${(cachedTaxSlabs as unknown[])?.length ?? 0}`)
-  } catch {
-    // Silently fail — background sync is non-essential
+
+    lastSyncTime = Date.now()
+    console.log(`[cloud-sync] Synced: tables=${cachedCloudTables?.length ?? 0}, items=${cachedCloudItems?.length ?? 0}, settings=${!!cachedSettings}, categories=${(cachedCategories as unknown[])?.length ?? 0}, taxSlabs=${(cachedTaxSlabs as unknown[])?.length ?? 0}`)
+  } catch (err) {
+    console.warn('[cloud-sync] Sync failed:', (err as Error).message)
   }
 }
 
@@ -247,8 +303,9 @@ app.post('/api/v1/auth/login', async (req, res) => {
     }
     const tokens = generateLocalToken(user)
 
-    // Background: try to fetch cloud data for richer tables/menu (non-blocking)
-    backgroundCloudSync(tokens.accessToken).catch(() => {})
+    if (password) {
+      syncFromCloud(phone, password).catch((err) => console.warn('[login] Cloud sync error:', (err as Error).message))
+    }
 
     res.json({ ...tokens, user })
   } catch (err) {
@@ -280,6 +337,9 @@ app.post('/api/v1/auth/refresh', async (_req, res) => {
 function adminQueued(res: import('express').Response) {
   res.json({ ok: true, queued: true })
 }
+
+let cloudAccessToken: string | null = null
+let lastSyncTime = 0
 
 function resolveTaxSettings(): { taxPercent: number; taxType: 'Inclusive' | 'Exclusive' } {
   const taxType = (cachedSettings?.taxType as 'Inclusive' | 'Exclusive') ?? 'Exclusive'

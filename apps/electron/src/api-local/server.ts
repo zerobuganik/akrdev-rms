@@ -457,7 +457,15 @@ app.post('/api/v1/cart/remove-item', async (req, res) => {
     })
     if (order) {
       const subtotal = order.items.reduce((s, i) => s + i.lineTotal, 0)
-      await localPrisma.localOrder.update({ where: { id: item.orderId }, data: { subtotal, grandTotal: subtotal } })
+      // If no items remain, mark order as Cancelled and free the table
+      if (order.items.length === 0) {
+        await localPrisma.localOrder.update({
+          where: { id: item.orderId },
+          data: { status: 'Cancelled', subtotal: 0, grandTotal: 0 },
+        })
+      } else {
+        await localPrisma.localOrder.update({ where: { id: item.orderId }, data: { subtotal, grandTotal: subtotal } })
+      }
     }
 
     // Notify connected clients

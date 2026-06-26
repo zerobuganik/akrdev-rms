@@ -71,6 +71,23 @@ export const cartService = {
       data: { status: 'Cancelled', lineTotal: 0, cancelledAt: new Date(), cancelledBy: cancelledBy ?? null },
     })
     await recalculateTotals(orderItem.orderId)
+
+    // If all items are now cancelled, mark the order as Cancelled and free the table
+    const remaining = await prisma.orderItem.findFirst({
+      where: { orderId: orderItem.orderId, status: { not: 'Cancelled' } },
+    })
+    if (!remaining) {
+      await prisma.order.update({
+        where: { id: orderItem.orderId },
+        data: { status: 'Cancelled' },
+      })
+      if (orderItem.order.tableId) {
+        await prisma.table.update({
+          where: { id: orderItem.order.tableId },
+          data: { status: 'Available' },
+        })
+      }
+    }
   },
 
   async updateItemQty(orderItemId: string, quantity: number) {

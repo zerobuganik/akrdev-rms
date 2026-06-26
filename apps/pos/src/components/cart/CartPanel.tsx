@@ -89,6 +89,8 @@ export function CartPanel({ tableId }: CartPanelProps) {
     },
     enabled: !!tableId,
     retry: 1,
+    staleTime: 0,
+    refetchOnMount: true,
   })
 
   const { data: settings } = useQuery<{ taxType?: string }>({
@@ -458,7 +460,7 @@ export function CartPanel({ tableId }: CartPanelProps) {
     }
   }
   const canPrintBill = order.status !== 'Bill_Printed' && order.status !== 'Settled'
-  const canSettle = order.status === 'Bill_Printed'
+  const canSettle = order.status === 'Bill_Printed' || order.status === 'KOT_Sent' || order.status === 'Draft'
   const isSettled = order.status === 'Settled'
   const isLocked = order.status === 'Settled'
 

@@ -52,17 +52,12 @@ export default function OrdersPage() {
       const cancelledOrder = orders.find((o) => o.id === id)
       const tableId = cancelledOrder?.table?.id ?? null
 
-      // Remove the specific cached active order so table click shows empty cart instantly
+      // Set cached order to null so CartPanel shows "No active order" instantly (no loading state)
       if (tableId) {
         queryClient.setQueryData(['order', tableId], null)
-        queryClient.removeQueries({ queryKey: ['order', tableId] })
-      } else {
-        // For takeaway orders without a table, use order ID as the key
-        queryClient.setQueryData(['order', id], null)
-        queryClient.removeQueries({ queryKey: ['order', id] })
       }
-      // Also clear any order queries that may have been cached under just the order ID
-      queryClient.removeQueries({ queryKey: ['order', id] })
+      // For takeaway orders without a table, use order ID as the key
+      queryClient.setQueryData(['order', id], null)
 
       queryClient.invalidateQueries({ queryKey: ['orders', tab] })
       queryClient.invalidateQueries({ queryKey: ['tables'] })

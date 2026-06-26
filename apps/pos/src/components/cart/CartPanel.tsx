@@ -278,8 +278,8 @@ export function CartPanel({ tableId }: CartPanelProps) {
 
       if (!order) return
       apiClient.get('/settings').then(({ data: settings }) => {
-        const sentItems = order.items.filter((i) => i.status === 'Sent' || i.status === 'Ready')
-        const mergedSent = mergedItems(sentItems)
+        const billItems = order.items.filter((i) => i.status !== 'Cancelled')
+        const mergedBill = mergedItems(billItems)
         printerApi.printBill({
           printType: 'bill',
           orderId: order.id,
@@ -296,7 +296,7 @@ export function CartPanel({ tableId }: CartPanelProps) {
           orderNumber: order.id.slice(0, 8).toUpperCase(),
           guestCount: guestCount,
           serverName: user?.name,
-          items: mergedSent.map((m) => ({
+        items: mergedBill.map((m) => ({
             name: m.name,
             quantity: m.quantity,
             unitPrice: m.unitPrice,
@@ -340,8 +340,8 @@ export function CartPanel({ tableId }: CartPanelProps) {
     mutationFn: async () => {
       const { data } = await apiClient.get(`/settings`)
       const orderData = order!
-      const sentItems = orderData.items.filter((i) => i.status === 'Sent' || i.status === 'Ready')
-      const mergedSent = mergedItems(sentItems)
+      const billItems = orderData.items.filter((i) => i.status !== 'Cancelled')
+      const mergedBill = mergedItems(billItems)
       await printerApi.reprintBill({
         printType: 'reprint-bill',
         orderId: orderData.id,
@@ -358,7 +358,7 @@ export function CartPanel({ tableId }: CartPanelProps) {
         orderNumber: orderData.id.slice(0, 8).toUpperCase(),
         guestCount: guestCount,
         serverName: user?.name,
-        items: mergedSent.map((m) => ({
+        items: mergedBill.map((m) => ({
           name: m.name,
           quantity: m.quantity,
           unitPrice: m.unitPrice,

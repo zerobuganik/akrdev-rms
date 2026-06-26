@@ -48,7 +48,7 @@ export default function CartPage() {
         const createRes = await apiClient.post('/orders', { tableId: targetTableId })
         orderId = createRes.data?.id
       }
-      if (!orderId) return
+      if (!orderId) throw new Error('Could not create order')
       const { data } = await apiClient.post('/cart/add-item', {
         orderId,
         itemId: payload.itemId,
@@ -56,13 +56,60 @@ export default function CartPage() {
       })
       return data
     },
-    onSuccess: () => {
+    onMutate: async (payload) => {
+      // Cancel outgoing refetches so they don't overwrite optimistic update
+      await queryClient.cancelQueries({ queryKey: ['order', tableId] })
+      const previous = queryClient.getQueryData(['order', tableId])
+      // Optimistically add a placeholder item to the order cache
+      queryClient.setQueryData(['order', tableId], (old: any) => {
+        const base = old || {
+          id: tableId,
+          tableId,
+          table: null,
+          guestCount: 2,
+          subtotal: 0,
+          taxTotal: 0,
+          discountTotal: 0,
+          grandTotal: 0,
+          status: 'Draft',
+          orderType: 'DineIn',
+          items: [],
+          kots: [],
+          discounts: [],
+        }
+        const newItem = {
+          id: `optimistic-${Date.now()}`,
+          itemId: payload.itemId,
+          item: { name: 'Adding...', id: payload.itemId },
+          variationId: payload.variationId || null,
+          variation: null,
+          quantity: 1,
+          unitPrice: 0,
+          lineTotal: 0,
+          status: 'New',
+          note: null,
+          kotId: null,
+          cancelledAt: null,
+          cancelledBy: null,
+          cancelledByUser: null,
+        }
+        return { ...base, items: [...base.items, newItem] }
+      })
+      return { previous }
+    },
+    onError: (err, _payload, context) => {
+      // Roll back optimistic update on error
+      if (context?.previous !== undefined) {
+        queryClient.setQueryData(['order', tableId], context.previous)
+      }
+      const msg = (err as AxiosError<{ error?: { message?: string } }>)?.response?.data?.error?.message
+        ?? (err as Error)?.message
+      toast(`Failed to add item${msg ? `: ${msg}` : ''}`, 'error')
+    },
+    onSettled: () => {
+      // Always refetch to get real data from server
       queryClient.invalidateQueries({ queryKey: ['order', tableId] })
       queryClient.invalidateQueries({ queryKey: ['tables'] })
-    },
-    onError: (err: AxiosError<{ error?: { message?: string } }>) => {
-      const msg = err.response?.data?.error?.message ?? err.message
-      toast(`Failed to add item${msg ? `: ${msg}` : ''}`, 'error')
     },
   })
 

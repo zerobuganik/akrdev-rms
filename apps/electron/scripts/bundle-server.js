@@ -15,7 +15,12 @@ const inlineWorkspacePlugin = {
       const pkg = args.path.replace('@akrdev/', '')
       const pkgDir = path.join(__dirname, '..', '..', '..', 'packages', pkg)
       const srcIndex = path.join(pkgDir, 'src', 'index.ts')
-      return { path: srcIndex }
+      return { path: srcIndex, namespace: 'workspace-inline' }
+    })
+    build.onLoad({ filter: /.*/, namespace: 'workspace-inline' }, async (args) => {
+      const contents = fs.readFileSync(args.path, 'utf-8')
+      const resolveDir = path.dirname(args.path)
+      return { contents, loader: 'ts', resolveDir }
     })
   },
 }

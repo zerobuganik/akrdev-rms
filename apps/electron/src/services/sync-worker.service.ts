@@ -2,8 +2,8 @@ import { syncQueueService } from './sync-queue.service.js'
 import { getAccessToken } from '../lib/token-store.js'
 
 const CLOUD_API_URL = process.env.CLOUD_API_URL ?? 'http://localhost:3000/api/v1'
-const HEALTH_CHECK_INTERVAL = 10_000
-const SYNC_INTERVAL = 5_000
+const HEALTH_CHECK_INTERVAL = 60_000
+const SYNC_INTERVAL = 3_600_000
 const MAX_RETRIES = 5
 
 export class SyncWorkerService {
@@ -41,7 +41,7 @@ export class SyncWorkerService {
     }
   }
 
-  private async processQueue() {
+  async processQueue() {
     if (!this.cloudAvailable) return
 
     if (await syncQueueService.isSyncInProgress()) return

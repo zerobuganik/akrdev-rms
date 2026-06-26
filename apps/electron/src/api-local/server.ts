@@ -5,6 +5,7 @@ import { tableLockService, setSocketIO } from '../services/table-lock.service.js
 import { localPrisma } from '../lib/local-prisma.js'
 import { printService } from '../printing/print.service.js'
 import { calculateTax, calculateRounding } from '@akrdev/shared'
+import { syncQueueService } from '../services/sync-queue.service.js'
 
 
 let io: SocketIOServer | null = null
@@ -317,6 +318,7 @@ app.post('/api/v1/orders', async (req, res) => {
     const order = await localPrisma.localOrder.create({
       data: { tableId: tableId ?? null, tableName: tableName ?? `Table ${tableId ?? 'Takeaway'}`, guestCount: guestCount ?? 2, orderType: orderType ?? 'DineIn' },
     })
+    syncQueueService.enqueue('create-order', { tableId, tableName, guestCount, orderType: orderType ?? 'DineIn' }).catch(() => {})
     res.status(201).json(order)
   } catch (err) {
     console.error('Error creating order:', err)
@@ -329,6 +331,7 @@ app.post('/api/v1/orders/takeaway', async (req, res) => {
     const order = await localPrisma.localOrder.create({
       data: { tableId: null, tableName: 'Takeaway', guestCount: 1, orderType: 'Takeaway' },
     })
+    syncQueueService.enqueue('create-order', { tableId: null, tableName: 'Takeaway', guestCount: 1, orderType: 'Takeaway' }).catch(() => {})
     res.status(201).json(order)
   } catch (err) {
     console.error('Error creating takeaway order:', err)
@@ -436,6 +439,8 @@ app.post('/api/v1/cart/add-item', async (req, res) => {
       })
     }
 
+    syncQueueService.enqueue('add-item', { orderId, itemId, variationId, quantity: qty, unitPrice, lineTotal, itemName: itemDisplayName }).catch(() => {})
+
     res.status(201).json(item)
   } catch (err) {
     console.error('Error adding item:', err)
@@ -477,6 +482,8 @@ app.post('/api/v1/cart/remove-item', async (req, res) => {
         action: 'remove-item',
       })
     }
+
+    syncQueueService.enqueue('remove-item', { orderItemId }).catch(() => {})
 
     res.json({ removed: true })
   } catch (err) {
@@ -622,6 +629,8 @@ app.post('/api/v1/kot/send', async (req, res) => {
       })
     }
 
+    syncQueueService.enqueue('send-kot', { orderId }).catch(() => {})
+
     res.json({ kotId: kot.id, kotNumber: nextKotNumber })
   } catch (err) {
     console.error('Error sending KOT:', err)
@@ -698,6 +707,8 @@ app.post('/api/v1/settlement', async (req, res) => {
         },
       }),
     ])
+
+    syncQueueService.enqueue('settle', { orderId, discountType, discountValue, discountReason, payments }).catch(() => {})
 
     res.json({ orderId, subtotal, grandTotal: order.grandTotal, totalPaid, change: changeAmt })
   } catch (err) {

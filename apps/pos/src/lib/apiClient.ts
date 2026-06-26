@@ -39,7 +39,10 @@ apiClient.interceptors.response.use(
       if (!refreshToken) {
         localStorage.removeItem('accessToken')
         localStorage.removeItem('user')
-        window.location.href = '/login'
+        // Only redirect if not running inside Electron (offline-first)
+        if (!(window as unknown as { electron?: unknown }).electron) {
+          window.location.href = '/login'
+        }
         return Promise.reject(error)
       }
 
@@ -63,10 +66,13 @@ apiClient.interceptors.response.use(
         originalRequest.headers.Authorization = `Bearer ${data.accessToken}`
         return apiClient(originalRequest)
       } catch {
-        localStorage.removeItem('accessToken')
-        localStorage.removeItem('refreshToken')
-        localStorage.removeItem('user')
-        window.location.href = '/login'
+        // On refresh failure, keep existing token (may still be valid when cloud returns)
+        if (!(window as unknown as { electron?: unknown }).electron) {
+          localStorage.removeItem('accessToken')
+          localStorage.removeItem('refreshToken')
+          localStorage.removeItem('user')
+          window.location.href = '/login'
+        }
         return Promise.reject(error)
       } finally {
         isRefreshing = false

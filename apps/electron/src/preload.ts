@@ -5,6 +5,8 @@ const ALLOWED_INVOKE_CHANNELS = [
   'get-sync-status',
   'force-sync',
   'queue-sync-action',
+  'set-access-token',
+  'set-refresh-token',
   // Print
   'print:kot',
   'print:bill',

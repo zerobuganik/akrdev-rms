@@ -2,6 +2,14 @@ import { create } from 'zustand'
 import { apiClient } from '@/lib/apiClient'
 import type { User } from '@akrdev/types'
 
+function syncTokensToElectron(accessToken: string, refreshToken: string) {
+  const win = window as unknown as { electron?: { ipcRenderer?: { invoke: (ch: string, ...args: unknown[]) => void } } }
+  if (win.electron?.ipcRenderer) {
+    win.electron.ipcRenderer.invoke('set-access-token', accessToken)
+    win.electron.ipcRenderer.invoke('set-refresh-token', refreshToken)
+  }
+}
+
 interface AuthState {
   token: string | null
   user: User | null
@@ -43,6 +51,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       localStorage.setItem('refreshToken', data.refreshToken)
       localStorage.setItem('user', JSON.stringify(data.user))
       localStorage.setItem('lastPhone', phone)
+      syncTokensToElectron(data.accessToken, data.refreshToken)
       set({
         token: data.accessToken,
         user: data.user,
@@ -67,6 +76,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       localStorage.setItem('refreshToken', data.refreshToken)
       localStorage.setItem('user', JSON.stringify(data.user))
       localStorage.setItem('lastPhone', phone)
+      syncTokensToElectron(data.accessToken, data.refreshToken)
       set({
         token: data.accessToken,
         user: data.user,

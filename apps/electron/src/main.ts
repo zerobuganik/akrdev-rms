@@ -3,6 +3,9 @@ import path from 'path'
 import { createLocalApiServer, setSystemPrinterResolver } from './api-local/server.js'
 import { startMDNS, stopMDNS } from './services/mdns.service.js'
 import { printService, type PrintData } from './printing/print.service.js'
+import { syncWorkerService } from './services/sync-worker.service.js'
+import { setAccessToken, setRefreshToken } from './lib/token-store.js'
+import { syncQueueService } from './services/sync-queue.service.js'
 
 import type { Server } from 'http'
 
@@ -148,6 +151,36 @@ function registerIpcHandlers() {
       return []
     }
   })
+
+  // ── Token sync (POS → Electron main process) ──
+  ipcMain.handle('set-access-token', (_event, token: string) => {
+    setAccessToken(token)
+  })
+
+  ipcMain.handle('set-refresh-token', (_event, token: string) => {
+    setRefreshToken(token)
+  })
+
+  // ── Sync status ──
+  ipcMain.handle('get-sync-status', async () => {
+    const state = await syncQueueService.getState()
+    const pending = await syncQueueService.getPending()
+    return {
+      lastSyncAt: state?.lastSyncAt ?? null,
+      cloudAvailable: state?.cloudAvailable ?? false,
+      pendingCount: pending.length,
+    }
+  })
+
+  ipcMain.handle('force-sync', async () => {
+    await syncWorkerService.processQueue()
+    return { ok: true }
+  })
+
+  ipcMain.handle('queue-sync-action', async (_event, action: string, payload: unknown) => {
+    await syncQueueService.enqueue(action as never, payload as Record<string, unknown>)
+    return { ok: true }
+  })
 }
 
 async function discoverSystemPrinters() {
@@ -177,11 +210,12 @@ app.whenReady().then(async () => {
   // Set system printer resolver for local API HTTP endpoint
   setSystemPrinterResolver(discoverSystemPrinters)
 
-  // Start local API + mDNS for Captain pairing and offline mode
-  if (process.env.CLOUD_API_URL) {
-    localApiServer = createLocalApiServer()
-    startMDNS()
-  }
+  // Start local API + mDNS for offline-first POS and Captain pairing
+  localApiServer = createLocalApiServer()
+  startMDNS()
+
+  // Start sync worker — pushes local changes to cloud every 60 minutes
+  syncWorkerService.start()
 
   app.on('activate', () => {
     if (BW.getAllWindows().length === 0) {
@@ -197,6 +231,7 @@ app.on('window-all-closed', () => {
 })
 
 app.on('before-quit', () => {
+  syncWorkerService.stop()
   stopMDNS()
   if (retryInterval) clearInterval(retryInterval)
   try { printService.shutdown() } catch { /* ignore */ }

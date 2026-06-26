@@ -232,6 +232,7 @@ exports.Prisma.LocalCredentialScalarFieldEnum = {
   id: 'id',
   phone: 'phone',
   passwordHash: 'passwordHash',
+  pinHash: 'pinHash',
   name: 'name',
   role: 'role',
   imageUrl: 'imageUrl',

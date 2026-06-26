@@ -154,6 +154,7 @@ model LocalCredential {
   id           String   @id @default(uuid())
   phone        String   @unique
   passwordHash String
+  pinHash      String?
   name         String   @default("Admin")
   role         String   @default("Admin")
   imageUrl     String?

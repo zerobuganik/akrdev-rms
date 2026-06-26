@@ -11427,6 +11427,7 @@ export namespace Prisma {
     id: string | null
     phone: string | null
     passwordHash: string | null
+    pinHash: string | null
     name: string | null
     role: string | null
     imageUrl: string | null
@@ -11438,6 +11439,7 @@ export namespace Prisma {
     id: string | null
     phone: string | null
     passwordHash: string | null
+    pinHash: string | null
     name: string | null
     role: string | null
     imageUrl: string | null
@@ -11449,6 +11451,7 @@ export namespace Prisma {
     id: number
     phone: number
     passwordHash: number
+    pinHash: number
     name: number
     role: number
     imageUrl: number
@@ -11462,6 +11465,7 @@ export namespace Prisma {
     id?: true
     phone?: true
     passwordHash?: true
+    pinHash?: true
     name?: true
     role?: true
     imageUrl?: true
@@ -11473,6 +11477,7 @@ export namespace Prisma {
     id?: true
     phone?: true
     passwordHash?: true
+    pinHash?: true
     name?: true
     role?: true
     imageUrl?: true
@@ -11484,6 +11489,7 @@ export namespace Prisma {
     id?: true
     phone?: true
     passwordHash?: true
+    pinHash?: true
     name?: true
     role?: true
     imageUrl?: true
@@ -11568,6 +11574,7 @@ export namespace Prisma {
     id: string
     phone: string
     passwordHash: string
+    pinHash: string | null
     name: string
     role: string
     imageUrl: string | null
@@ -11596,6 +11603,7 @@ export namespace Prisma {
     id?: boolean
     phone?: boolean
     passwordHash?: boolean
+    pinHash?: boolean
     name?: boolean
     role?: boolean
     imageUrl?: boolean
@@ -11607,6 +11615,7 @@ export namespace Prisma {
     id?: boolean
     phone?: boolean
     passwordHash?: boolean
+    pinHash?: boolean
     name?: boolean
     role?: boolean
     imageUrl?: boolean
@@ -11618,6 +11627,7 @@ export namespace Prisma {
     id?: boolean
     phone?: boolean
     passwordHash?: boolean
+    pinHash?: boolean
     name?: boolean
     role?: boolean
     imageUrl?: boolean
@@ -11629,6 +11639,7 @@ export namespace Prisma {
     id?: boolean
     phone?: boolean
     passwordHash?: boolean
+    pinHash?: boolean
     name?: boolean
     role?: boolean
     imageUrl?: boolean
@@ -11636,7 +11647,7 @@ export namespace Prisma {
     updatedAt?: boolean
   }
 
-  export type LocalCredentialOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "phone" | "passwordHash" | "name" | "role" | "imageUrl" | "createdAt" | "updatedAt", ExtArgs["result"]["localCredential"]>
+  export type LocalCredentialOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "phone" | "passwordHash" | "pinHash" | "name" | "role" | "imageUrl" | "createdAt" | "updatedAt", ExtArgs["result"]["localCredential"]>
 
   export type $LocalCredentialPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     name: "LocalCredential"
@@ -11645,6 +11656,7 @@ export namespace Prisma {
       id: string
       phone: string
       passwordHash: string
+      pinHash: string | null
       name: string
       role: string
       imageUrl: string | null
@@ -12076,6 +12088,7 @@ export namespace Prisma {
     readonly id: FieldRef<"LocalCredential", 'String'>
     readonly phone: FieldRef<"LocalCredential", 'String'>
     readonly passwordHash: FieldRef<"LocalCredential", 'String'>
+    readonly pinHash: FieldRef<"LocalCredential", 'String'>
     readonly name: FieldRef<"LocalCredential", 'String'>
     readonly role: FieldRef<"LocalCredential", 'String'>
     readonly imageUrl: FieldRef<"LocalCredential", 'String'>
@@ -15675,6 +15688,7 @@ export namespace Prisma {
     id: 'id',
     phone: 'phone',
     passwordHash: 'passwordHash',
+    pinHash: 'pinHash',
     name: 'name',
     role: 'role',
     imageUrl: 'imageUrl',
@@ -16482,6 +16496,7 @@ export namespace Prisma {
     id?: StringFilter<"LocalCredential"> | string
     phone?: StringFilter<"LocalCredential"> | string
     passwordHash?: StringFilter<"LocalCredential"> | string
+    pinHash?: StringNullableFilter<"LocalCredential"> | string | null
     name?: StringFilter<"LocalCredential"> | string
     role?: StringFilter<"LocalCredential"> | string
     imageUrl?: StringNullableFilter<"LocalCredential"> | string | null
@@ -16493,6 +16508,7 @@ export namespace Prisma {
     id?: SortOrder
     phone?: SortOrder
     passwordHash?: SortOrder
+    pinHash?: SortOrderInput | SortOrder
     name?: SortOrder
     role?: SortOrder
     imageUrl?: SortOrderInput | SortOrder
@@ -16507,6 +16523,7 @@ export namespace Prisma {
     OR?: LocalCredentialWhereInput[]
     NOT?: LocalCredentialWhereInput | LocalCredentialWhereInput[]
     passwordHash?: StringFilter<"LocalCredential"> | string
+    pinHash?: StringNullableFilter<"LocalCredential"> | string | null
     name?: StringFilter<"LocalCredential"> | string
     role?: StringFilter<"LocalCredential"> | string
     imageUrl?: StringNullableFilter<"LocalCredential"> | string | null
@@ -16518,6 +16535,7 @@ export namespace Prisma {
     id?: SortOrder
     phone?: SortOrder
     passwordHash?: SortOrder
+    pinHash?: SortOrderInput | SortOrder
     name?: SortOrder
     role?: SortOrder
     imageUrl?: SortOrderInput | SortOrder
@@ -16535,6 +16553,7 @@ export namespace Prisma {
     id?: StringWithAggregatesFilter<"LocalCredential"> | string
     phone?: StringWithAggregatesFilter<"LocalCredential"> | string
     passwordHash?: StringWithAggregatesFilter<"LocalCredential"> | string
+    pinHash?: StringNullableWithAggregatesFilter<"LocalCredential"> | string | null
     name?: StringWithAggregatesFilter<"LocalCredential"> | string
     role?: StringWithAggregatesFilter<"LocalCredential"> | string
     imageUrl?: StringNullableWithAggregatesFilter<"LocalCredential"> | string | null
@@ -17503,6 +17522,7 @@ export namespace Prisma {
     id?: string
     phone: string
     passwordHash: string
+    pinHash?: string | null
     name?: string
     role?: string
     imageUrl?: string | null
@@ -17514,6 +17534,7 @@ export namespace Prisma {
     id?: string
     phone: string
     passwordHash: string
+    pinHash?: string | null
     name?: string
     role?: string
     imageUrl?: string | null
@@ -17525,6 +17546,7 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     phone?: StringFieldUpdateOperationsInput | string
     passwordHash?: StringFieldUpdateOperationsInput | string
+    pinHash?: NullableStringFieldUpdateOperationsInput | string | null
     name?: StringFieldUpdateOperationsInput | string
     role?: StringFieldUpdateOperationsInput | string
     imageUrl?: NullableStringFieldUpdateOperationsInput | string | null
@@ -17536,6 +17558,7 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     phone?: StringFieldUpdateOperationsInput | string
     passwordHash?: StringFieldUpdateOperationsInput | string
+    pinHash?: NullableStringFieldUpdateOperationsInput | string | null
     name?: StringFieldUpdateOperationsInput | string
     role?: StringFieldUpdateOperationsInput | string
     imageUrl?: NullableStringFieldUpdateOperationsInput | string | null
@@ -17547,6 +17570,7 @@ export namespace Prisma {
     id?: string
     phone: string
     passwordHash: string
+    pinHash?: string | null
     name?: string
     role?: string
     imageUrl?: string | null
@@ -17558,6 +17582,7 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     phone?: StringFieldUpdateOperationsInput | string
     passwordHash?: StringFieldUpdateOperationsInput | string
+    pinHash?: NullableStringFieldUpdateOperationsInput | string | null
     name?: StringFieldUpdateOperationsInput | string
     role?: StringFieldUpdateOperationsInput | string
     imageUrl?: NullableStringFieldUpdateOperationsInput | string | null
@@ -17569,6 +17594,7 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     phone?: StringFieldUpdateOperationsInput | string
     passwordHash?: StringFieldUpdateOperationsInput | string
+    pinHash?: NullableStringFieldUpdateOperationsInput | string | null
     name?: StringFieldUpdateOperationsInput | string
     role?: StringFieldUpdateOperationsInput | string
     imageUrl?: NullableStringFieldUpdateOperationsInput | string | null
@@ -18474,6 +18500,7 @@ export namespace Prisma {
     id?: SortOrder
     phone?: SortOrder
     passwordHash?: SortOrder
+    pinHash?: SortOrder
     name?: SortOrder
     role?: SortOrder
     imageUrl?: SortOrder
@@ -18485,6 +18512,7 @@ export namespace Prisma {
     id?: SortOrder
     phone?: SortOrder
     passwordHash?: SortOrder
+    pinHash?: SortOrder
     name?: SortOrder
     role?: SortOrder
     imageUrl?: SortOrder
@@ -18496,6 +18524,7 @@ export namespace Prisma {
     id?: SortOrder
     phone?: SortOrder
     passwordHash?: SortOrder
+    pinHash?: SortOrder
     name?: SortOrder
     role?: SortOrder
     imageUrl?: SortOrder

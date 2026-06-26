@@ -82,10 +82,15 @@ export function CartPanel({ tableId }: CartPanelProps) {
     queryFn: async () => {
       // Try active-by-table first (for dine-in tables)
       const { data: active } = await apiClient.get(`/orders/${tableId}/active`).catch(() => ({ data: null }))
-      if (active) return active
+      if (active) {
+        // Filter out cancelled items so cancelled orders show empty
+        return { ...active, items: (active.items ?? []).filter((i: { status: string }) => i.status !== 'Cancelled') }
+      }
       // Fallback: direct order lookup (for takeaway orders where tableId is null)
       const { data } = await apiClient.get(`/orders/${tableId}`)
-      return data
+      if (!data || data.status === 'Cancelled') return null
+      // Filter out cancelled items
+      return { ...data, items: (data.items ?? []).filter((i: { status: string }) => i.status !== 'Cancelled') }
     },
     enabled: !!tableId,
     retry: 1,
@@ -158,8 +163,9 @@ export function CartPanel({ tableId }: CartPanelProps) {
         const subtotal = newItems.reduce((sum, i) => sum + i.lineTotal, 0)
         return { ...old, items: newItems, subtotal, grandTotal: subtotal }
       })
-      // If no items remain, purge the order cache so table click shows fresh empty cart
+      // If no items remain, wipe the order cache completely so table click shows fresh data
       if (!hasItemsLeft) {
+        queryClient.setQueryData(['order', tableId], null)
         queryClient.removeQueries({ queryKey: ['order', tableId] })
       }
       queryClient.invalidateQueries({ queryKey: ['tables'] })
@@ -460,7 +466,7 @@ export function CartPanel({ tableId }: CartPanelProps) {
     }
   }
   const canPrintBill = order.status !== 'Bill_Printed' && order.status !== 'Settled'
-  const canSettle = order.status === 'Bill_Printed' || order.status === 'KOT_Sent' || order.status === 'Draft'
+  const canSettle = order.status === 'Bill_Printed'
   const isSettled = order.status === 'Settled'
   const isLocked = order.status === 'Settled'
 

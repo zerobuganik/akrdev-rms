@@ -1,5 +1,6 @@
 import { app, BrowserWindow as BW, ipcMain, type BrowserWindow } from 'electron'
 import path from 'path'
+import { config } from 'dotenv'
 import { createLocalApiServer, setSystemPrinterResolver } from './api-local/server.js'
 import { startMDNS, stopMDNS } from './services/mdns.service.js'
 import { printService, type PrintData } from './printing/print.service.js'
@@ -8,6 +9,8 @@ import { setAccessToken, setRefreshToken } from './lib/token-store.js'
 import { syncQueueService } from './services/sync-queue.service.js'
 
 import type { Server } from 'http'
+
+config()
 
 const isDev = !app.isPackaged && process.env.NODE_ENV !== 'production'
 const POS_DEV_URL = 'http://localhost:5173'

@@ -8,7 +8,7 @@
     "dev": "electron .",
     "start": "set NODE_ENV=production && ..\\..\\node_modules\\.pnpm\\electron@33.4.11\\node_modules\\electron\\dist\\electron.exe .",
     "build": "prisma db push && node scripts/bundle-server.js && tsc && node scripts/copy-prisma.js",
-    "dist": "electron-builder --config electron-builder.yml",
+    "dist": "prisma db push && node scripts/bundle-server.js && tsc && node scripts/copy-prisma.js && electron-builder --config electron-builder.yml",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src/",
     "test": "vitest run",
@@ -16,9 +16,6 @@
     "postinstall": "node scripts/patch-electron.js && electron-rebuild -f -w @akrdev/electron"
   },
   "dependencies": {
-    "@akrdev/schemas": "workspace:*",
-    "@akrdev/shared": "workspace:*",
-    "@akrdev/types": "workspace:*",
     "@node-escpos/network-adapter": "^0.0.1",
     "@node-escpos/usb-adapter": "^0.0.1",
     "@prisma/adapter-libsql": "^7.8.0",
@@ -37,6 +34,9 @@
     "zod": "^4.0.0"
   },
   "devDependencies": {
+    "@akrdev/schemas": "workspace:*",
+    "@akrdev/shared": "workspace:*",
+    "@akrdev/types": "workspace:*",
     "@akrdev/tsconfig": "workspace:*",
     "@electron/rebuild": "^4.0.4",
     "@types/cors": "^2.8.19",

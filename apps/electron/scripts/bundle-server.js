@@ -3,7 +3,7 @@ const path = require('path')
 const fs = require('fs')
 
 const src = path.join(__dirname, '..', 'src', 'api-local', 'server.ts')
-const out = path.join(__dirname, '..', 'dist', 'api-local', 'server.js')
+const out = path.join(__dirname, '..', 'dist', 'api-local.bundle.js')
 
 const outDir = path.dirname(out)
 if (fs.existsSync(outDir)) {
@@ -28,6 +28,21 @@ const workspaceResolvePlugin = {
   },
 }
 
+const EXTERNAL = [
+  'electron',
+  'argon2',
+  'usb',
+  '@luckykiet/node-printer',
+  '@prisma/client',
+  '@prisma/client-runtime-utils',
+  '@prisma/adapter-libsql',
+  '@libsql',
+  'libsql',
+  '*.node',
+  'pngjs',
+  'socket.io',
+]
+
 esbuild.build({
   entryPoints: [src],
   bundle: true,
@@ -36,25 +51,20 @@ esbuild.build({
   format: 'cjs',
   outfile: out,
   plugins: [workspaceResolvePlugin],
-  external: [
-    'electron',
-    'argon2',
-    'usb',
-    '@luckykiet/node-printer',
-    '@prisma/client',
-    '@prisma/client-runtime-utils',
-    '@prisma/adapter-libsql',
-    '@libsql',
-    'libsql',
-    '*.node',
-    'pngjs',
-    'socket.io',
-  ],
+  external: EXTERNAL,
   sourcemap: false,
   minify: false,
   logLevel: 'info',
 }).then(() => {
-  console.log(`[bundle-server] Bundled to ${out}`)
+  const contents = fs.readFileSync(out, 'utf-8')
+  const forbidden = ['@akrdev/shared', '@akrdev/schemas', '@akrdev/types']
+  for (const pkg of forbidden) {
+    if (contents.includes(`require("${pkg}")`) || contents.includes(`require('${pkg}')`)) {
+      console.error(`[bundle-server] FATAL: Workspace package ${pkg} was NOT inlined — found require() call in output`)
+      process.exit(1)
+    }
+  }
+  console.log(`[bundle-server] Bundled to ${out} (${(contents.length / 1024).toFixed(0)} KB, workspace deps inlined)`)
 }).catch((err) => {
   console.error('[bundle-server] Build failed:', err)
   process.exit(1)

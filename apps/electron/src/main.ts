@@ -1,7 +1,7 @@
 import { app, BrowserWindow as BW, ipcMain, type BrowserWindow } from 'electron'
 import path from 'path'
 import { config } from 'dotenv'
-import { createLocalApiServer, setSystemPrinterResolver } from './api-local/server.js'
+import { createLocalApiServer, setSystemPrinterResolver } from './api-local.bundle.js'
 import { startMDNS, stopMDNS } from './services/mdns.service.js'
 import { printService, type PrintData } from './printing/print.service.js'
 import { syncWorkerService } from './services/sync-worker.service.js'

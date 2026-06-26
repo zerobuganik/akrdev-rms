@@ -29,3 +29,20 @@ if (fs.existsSync(srcEnv)) {
   fs.copyFileSync(srcEnv, destEnv)
   console.log('[copy-prisma] Copied .env to dist/')
 }
+
+const INLINED_PACKAGES = ['shared', 'schemas', 'types']
+const akrdevDir = path.join(__dirname, '..', 'node_modules', '@akrdev')
+for (const pkg of INLINED_PACKAGES) {
+  const pkgPath = path.join(akrdevDir, pkg)
+  if (fs.existsSync(pkgPath)) {
+    try {
+      const stat = fs.lstatSync(pkgPath)
+      if (stat.isSymbolicLink() || stat.isDirectory()) {
+        fs.rmSync(pkgPath, { recursive: true, force: true })
+        console.log(`[copy-prisma] Removed inlined package: node_modules/@akrdev/${pkg}`)
+      }
+    } catch (err) {
+      console.warn(`[copy-prisma] Could not remove ${pkg}:`, err.message)
+    }
+  }
+}

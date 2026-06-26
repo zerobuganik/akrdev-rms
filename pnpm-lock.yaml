@@ -422,15 +422,6 @@ importers:
 
   apps/electron:
     dependencies:
-      '@akrdev/schemas':
-        specifier: workspace:*
-        version: link:../../packages/schemas
-      '@akrdev/shared':
-        specifier: workspace:*
-        version: link:../../packages/shared
-      '@akrdev/types':
-        specifier: workspace:*
-        version: link:../../packages/types
       '@luckykiet/node-printer':
         specifier: ^1.0.2
         version: 1.0.3
@@ -480,9 +471,18 @@ importers:
         specifier: ^4.0.0
         version: 4.4.3
     devDependencies:
+      '@akrdev/schemas':
+        specifier: workspace:*
+        version: link:../../packages/schemas
+      '@akrdev/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
       '@akrdev/tsconfig':
         specifier: workspace:*
         version: link:../../packages/tsconfig
+      '@akrdev/types':
+        specifier: workspace:*
+        version: link:../../packages/types
       '@electron/rebuild':
         specifier: ^4.0.4
         version: 4.0.4

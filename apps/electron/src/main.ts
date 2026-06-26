@@ -10,7 +10,12 @@ import { syncQueueService } from './services/sync-queue.service.js'
 
 import type { Server } from 'http'
 
-config({ path: path.join(__dirname, '.env') })
+const envPath = path.join(__dirname, '.env')
+const result = config({ path: envPath })
+console.log(`[Main] Loading .env from: ${envPath}`)
+console.log(`[Main] dotenv result: parsed=${!!result.parsed}, error=${result.error ?? 'none'}`)
+console.log(`[Main] CLOUD_API_URL = ${process.env.CLOUD_API_URL ?? 'NOT SET'}`)
+console.log(`[Main] LOCAL_API_PORT = ${process.env.LOCAL_API_PORT ?? 'NOT SET'}`)
 
 const isDev = !app.isPackaged && process.env.NODE_ENV !== 'production'
 const POS_DEV_URL = 'http://localhost:5173'

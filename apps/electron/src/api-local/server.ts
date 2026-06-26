@@ -44,7 +44,7 @@ app.use((_req, res, next) => {
 })
 
 app.get('/api/v1/health', (_req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString(), type: 'local-pos' })
+  res.json({ status: 'ok', timestamp: new Date().toISOString(), type: 'local-pos', cloudApi: CLOUD_API })
 })
 
 app.get('/api/v1/pair/generate', (_req, res) => {
@@ -210,18 +210,22 @@ app.post('/api/v1/tables/sync', (req, res) => {
 
 app.post('/api/v1/auth/login', async (req, res) => {
   try {
+    console.log(`[auth] Login attempt, proxying to: ${CLOUD_API}/auth/login`)
     const response = await fetch(`${CLOUD_API}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(req.body),
     })
     const data = await response.json()
+    console.log(`[auth] Cloud response: ${response.status}`)
     // After successful login, sync tables from cloud using the fresh token
     if (response.ok && data.accessToken) {
       syncTablesFromCloud(data.accessToken)
     }
     res.status(response.status).json(data)
   } catch (cloudErr) {
+    console.error(`[auth] Cloud unreachable: ${(cloudErr as Error).message}`)
+    console.error(`[auth] CLOUD_API value: ${CLOUD_API}`)
     // Cloud unavailable — try offline login fallback
     const { phone, pin } = req.body
     if (phone && pin) {

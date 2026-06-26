@@ -40,7 +40,7 @@ const globalForPrisma = globalThis as unknown as {
 
 export const localPrisma = globalForPrisma.localPrisma ?? new PrismaClient({ adapter })
 
-async function ensureTables() {
+export async function ensureTables() {
   const tables = [
     `CREATE TABLE IF NOT EXISTS "local_credentials" (
       "id" TEXT NOT NULL PRIMARY KEY, "phone" TEXT NOT NULL UNIQUE,

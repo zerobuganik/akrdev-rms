@@ -4,7 +4,7 @@ import crypto from 'crypto'
 import * as argon2 from 'argon2'
 import { Server as SocketIOServer } from 'socket.io'
 import { tableLockService, setSocketIO } from '../services/table-lock.service.js'
-import { localPrisma } from '../lib/local-prisma.js'
+import { localPrisma, ensureTables } from '../lib/local-prisma.js'
 import { printService } from '../printing/print.service.js'
 import { calculateTax, calculateRounding } from '@akrdev/shared'
 import { syncQueueService } from '../services/sync-queue.service.js'
@@ -389,24 +389,31 @@ async function ensureLocalAdmin() {
     // Non-fatal — the user may need to create credentials manually or the DB may be fresh
   }
 }
-ensureLocalAdmin().catch(() => {})
+async function initLocalDb() {
+  await ensureTables()
+  await ensureLocalAdmin()
+}
+initLocalDb().catch((err) => console.error('[server] DB init failed:', err))
 
 // ==================== AUTH ====================
 
 app.post('/api/v1/auth/login', async (req, res) => {
   try {
     const { phone, password, pin } = req.body
+    console.log('[login] Attempt:', { phone, hasPassword: !!password, hasPin: !!pin })
 
     // Query local SQLite credential store ONLY — no cloud dependency
     const credential = await localPrisma.localCredential.findUnique({ where: { phone } })
 
     if (!credential) {
+      console.log('[login] No credential found for phone:', phone)
       res.status(401).json({ error: { message: 'Invalid credentials', statusCode: 401 } })
       return
     }
 
     // Verify PIN or password against local hash
     let valid = false
+    console.log('[login] hasPinHash:', !!credential.pinHash)
     if (pin) {
       if (!credential.pinHash) {
         res.status(401).json({ error: { message: 'PIN not set — use password login', statusCode: 401 } })
@@ -417,6 +424,7 @@ app.post('/api/v1/auth/login', async (req, res) => {
       const input = password ?? ''
       valid = await argon2.verify(credential.passwordHash, input)
     }
+    console.log('[login] Argon2 verification result:', valid)
     if (!valid) {
       res.status(401).json({ error: { message: 'Invalid credentials', statusCode: 401 } })
       return

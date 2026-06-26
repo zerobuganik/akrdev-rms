@@ -8,7 +8,7 @@ import { PaymentChangeModal } from '@/components/settlement/PaymentChangeModal'
 interface Order {
   id: string
   displayId: string | null
-  table?: { name: string; area: { name: string } } | null
+  table?: { id: string; name: string; area: { name: string } } | null
   status: string
   syncStatus: string
   orderType: string
@@ -48,10 +48,25 @@ export default function OrdersPage() {
       await apiClient.post(`/orders/${id}/void`)
     },
     onSuccess: (_, id) => {
+      // Find the cancelled order in our list to get its tableId
+      const cancelledOrder = orders.find((o) => o.id === id)
+      const tableId = cancelledOrder?.table?.id ?? null
+
+      // Remove the specific cached active order so table click shows empty cart instantly
+      if (tableId) {
+        queryClient.setQueryData(['order', tableId], null)
+        queryClient.removeQueries({ queryKey: ['order', tableId] })
+      } else {
+        // For takeaway orders without a table, use order ID as the key
+        queryClient.setQueryData(['order', id], null)
+        queryClient.removeQueries({ queryKey: ['order', id] })
+      }
+      // Also clear any order queries that may have been cached under just the order ID
+      queryClient.removeQueries({ queryKey: ['order', id] })
+
       queryClient.invalidateQueries({ queryKey: ['orders', tab] })
       queryClient.invalidateQueries({ queryKey: ['tables'] })
-      // Also clear any cached active order for this table
-      queryClient.invalidateQueries({ queryKey: ['order'] })
+      queryClient.invalidateQueries({ queryKey: ['takeaway-orders'] })
       setSelectedOrder(null)
       toast('Order cancelled', 'success')
     },

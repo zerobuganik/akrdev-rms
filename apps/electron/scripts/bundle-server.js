@@ -5,22 +5,25 @@ const fs = require('fs')
 const src = path.join(__dirname, '..', 'src', 'api-local', 'server.ts')
 const out = path.join(__dirname, '..', 'dist', 'api-local', 'server.js')
 
-fs.mkdirSync(path.dirname(out), { recursive: true })
+const outDir = path.dirname(out)
+if (fs.existsSync(outDir)) {
+  fs.rmSync(outDir, { recursive: true, force: true })
+}
+fs.mkdirSync(outDir, { recursive: true })
 
-const inlineWorkspacePlugin = {
-  name: 'inline-workspace',
+const packagesDir = path.join(__dirname, '..', '..', '..', 'packages')
+
+const workspaceResolvePlugin = {
+  name: 'workspace-ts-resolve',
   setup(build) {
+    const workspaceMap = {
+      '@akrdev/shared': path.join(packagesDir, 'shared', 'src', 'index.ts'),
+      '@akrdev/schemas': path.join(packagesDir, 'schemas', 'src', 'index.ts'),
+      '@akrdev/types': path.join(packagesDir, 'types', 'src', 'index.ts'),
+    }
     const filter = /^@akrdev\/(shared|schemas|types)$/
     build.onResolve({ filter }, (args) => {
-      const pkg = args.path.replace('@akrdev/', '')
-      const pkgDir = path.join(__dirname, '..', '..', '..', 'packages', pkg)
-      const srcIndex = path.join(pkgDir, 'src', 'index.ts')
-      return { path: srcIndex, namespace: 'workspace-inline' }
-    })
-    build.onLoad({ filter: /.*/, namespace: 'workspace-inline' }, async (args) => {
-      const contents = fs.readFileSync(args.path, 'utf-8')
-      const resolveDir = path.dirname(args.path)
-      return { contents, loader: 'ts', resolveDir }
+      return { path: workspaceMap[args.path], sideEffects: false }
     })
   },
 }
@@ -32,16 +35,17 @@ esbuild.build({
   target: 'node22',
   format: 'cjs',
   outfile: out,
-  plugins: [inlineWorkspacePlugin],
+  plugins: [workspaceResolvePlugin],
   external: [
     'electron',
     'argon2',
     'usb',
     '@luckykiet/node-printer',
-    '@prisma/client*',
-    '@prisma/adapter-libsql*',
-    '@libsql/*',
-    'libsql*',
+    '@prisma/client',
+    '@prisma/client-runtime-utils',
+    '@prisma/adapter-libsql',
+    '@libsql',
+    'libsql',
     '*.node',
     'pngjs',
     'socket.io',
@@ -50,7 +54,7 @@ esbuild.build({
   minify: false,
   logLevel: 'info',
 }).then(() => {
-  console.log(`[bundle-server] Bundled server.cjs to ${out}`)
+  console.log(`[bundle-server] Bundled to ${out}`)
 }).catch((err) => {
   console.error('[bundle-server] Build failed:', err)
   process.exit(1)

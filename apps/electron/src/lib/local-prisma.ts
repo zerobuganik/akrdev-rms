@@ -44,7 +44,8 @@ async function ensureTables() {
   const tables = [
     `CREATE TABLE IF NOT EXISTS "local_credentials" (
       "id" TEXT NOT NULL PRIMARY KEY, "phone" TEXT NOT NULL UNIQUE,
-      "passwordHash" TEXT NOT NULL, "name" TEXT NOT NULL DEFAULT 'Admin',
+      "passwordHash" TEXT NOT NULL, "pinHash" TEXT,
+      "name" TEXT NOT NULL DEFAULT 'Admin',
       "role" TEXT NOT NULL DEFAULT 'Admin', "imageUrl" TEXT,
       "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
       "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP

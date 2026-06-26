@@ -85,6 +85,7 @@ let cachedCloudItems: unknown[] | null = null
 let cachedCategories: unknown[] | null = null
 let cachedSettings: Record<string, unknown> | null = null
 let cachedTaxSlabs: unknown[] | null = null
+let cachedCloudEmployees: unknown[] | null = null
 
 // Local seed data for offline-first operation
 const LOCAL_SEED_TABLES = [
@@ -198,13 +199,15 @@ async function syncFromCloud(phone: string, password: string) {
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), 15_000)
     const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
-    const [tablesRes, areasRes, itemsRes, settingsRes, categoriesRes, taxSlabsRes] = await Promise.all([
+    const [tablesRes, areasRes, itemsRes, settingsRes, categoriesRes, taxSlabsRes, employeesRes, ordersRes] = await Promise.all([
       fetch(`${getCloudApiBase()}/tables`, { headers, signal: controller.signal }),
       fetch(`${getCloudApiBase()}/areas`, { headers, signal: controller.signal }),
       fetch(`${getCloudApiBase()}/items`, { headers, signal: controller.signal }),
       fetch(`${getCloudApiBase()}/settings`, { headers, signal: controller.signal }),
       fetch(`${getCloudApiBase()}/categories`, { headers, signal: controller.signal }),
       fetch(`${getCloudApiBase()}/tax-slabs`, { headers, signal: controller.signal }),
+      fetch(`${getCloudApiBase()}/employees`, { headers, signal: controller.signal }),
+      fetch(`${getCloudApiBase()}/orders`, { headers, signal: controller.signal }),
     ])
     clearTimeout(timeout)
 
@@ -250,9 +253,28 @@ async function syncFromCloud(phone: string, password: string) {
     }
     if (categoriesRes.ok) cachedCategories = await categoriesRes.json()
     if (taxSlabsRes.ok) cachedTaxSlabs = await taxSlabsRes.json()
+    if (employeesRes.ok) cachedCloudEmployees = await employeesRes.json()
+    if (ordersRes.ok) {
+      const raw = await ordersRes.json()
+      if (Array.isArray(raw)) {
+        for (const o of raw as Array<Record<string, unknown>>) {
+          await localPrisma.localOrder.upsert({
+            where: { id: o.id as string },
+            create: {
+              id: o.id as string, tableId: o.tableId as string ?? null, tableName: o.tableName as string ?? null,
+              guestCount: o.guestCount as number ?? 2, status: o.status as string ?? 'Draft',
+              subtotal: o.subtotal as number ?? 0, taxTotal: o.taxTotal as number ?? 0,
+              discountTotal: o.discountTotal as number ?? 0, grandTotal: o.grandTotal as number ?? 0,
+              orderType: o.orderType as string ?? 'DineIn', syncStatus: 'Synced',
+            },
+            update: { status: o.status as string, subtotal: o.subtotal as number, taxTotal: o.taxTotal as number, discountTotal: o.discountTotal as number, grandTotal: o.grandTotal as number },
+          }).catch(() => {})
+        }
+      }
+    }
 
     lastSyncTime = Date.now()
-    console.log(`[cloud-sync] Synced: tables=${cachedCloudTables?.length ?? 0}, items=${cachedCloudItems?.length ?? 0}, settings=${!!cachedSettings}, categories=${(cachedCategories as unknown[])?.length ?? 0}, taxSlabs=${(cachedTaxSlabs as unknown[])?.length ?? 0}`)
+    console.log(`[cloud-sync] Synced: tables=${cachedCloudTables?.length ?? 0}, items=${cachedCloudItems?.length ?? 0}, settings=${!!cachedSettings}, categories=${(cachedCategories as unknown[])?.length ?? 0}, orders=${(cachedCloudEmployees as unknown[])?.length ?? 0}, employees=${(cachedCloudEmployees as unknown[])?.length ?? 0}`)
   } catch (err) {
     console.warn('[cloud-sync] Sync failed:', (err as Error).message)
   }
@@ -269,13 +291,15 @@ async function startupCloudSync() {
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), 10_000)
     const headers = { Authorization: `Bearer ${cloudToken}`, 'Content-Type': 'application/json' }
-    const [tablesRes, areasRes, itemsRes, settingsRes, categoriesRes, taxSlabsRes] = await Promise.all([
+    const [tablesRes, areasRes, itemsRes, settingsRes, categoriesRes, taxSlabsRes, employeesRes, ordersRes] = await Promise.all([
       fetch(`${getCloudApiBase()}/tables`, { headers, signal: controller.signal }),
       fetch(`${getCloudApiBase()}/areas`, { headers, signal: controller.signal }),
       fetch(`${getCloudApiBase()}/items`, { headers, signal: controller.signal }),
       fetch(`${getCloudApiBase()}/settings`, { headers, signal: controller.signal }),
       fetch(`${getCloudApiBase()}/categories`, { headers, signal: controller.signal }),
       fetch(`${getCloudApiBase()}/tax-slabs`, { headers, signal: controller.signal }),
+      fetch(`${getCloudApiBase()}/employees`, { headers, signal: controller.signal }),
+      fetch(`${getCloudApiBase()}/orders`, { headers, signal: controller.signal }),
     ])
     clearTimeout(timeout)
 
@@ -319,11 +343,30 @@ async function startupCloudSync() {
     }
     if (categoriesRes.ok) cachedCategories = await categoriesRes.json()
     if (taxSlabsRes.ok) cachedTaxSlabs = await taxSlabsRes.json()
+    if (employeesRes.ok) cachedCloudEmployees = await employeesRes.json()
+    if (ordersRes.ok) {
+      const raw = await ordersRes.json()
+      if (Array.isArray(raw)) {
+        for (const o of raw as Array<Record<string, unknown>>) {
+          await localPrisma.localOrder.upsert({
+            where: { id: o.id as string },
+            create: {
+              id: o.id as string, tableId: o.tableId as string ?? null, tableName: o.tableName as string ?? null,
+              guestCount: o.guestCount as number ?? 2, status: o.status as string ?? 'Draft',
+              subtotal: o.subtotal as number ?? 0, taxTotal: o.taxTotal as number ?? 0,
+              discountTotal: o.discountTotal as number ?? 0, grandTotal: o.grandTotal as number ?? 0,
+              orderType: o.orderType as string ?? 'DineIn', syncStatus: 'Synced',
+            },
+            update: { status: o.status as string, subtotal: o.subtotal as number, taxTotal: o.taxTotal as number, discountTotal: o.discountTotal as number, grandTotal: o.grandTotal as number },
+          }).catch(() => {})
+        }
+      }
+    }
 
     cloudAccessToken = cloudToken
     syncWorkerService.setCloudToken(cloudToken)
     lastSyncTime = Date.now()
-    console.log(`[startup] Synced: tables=${cachedCloudTables?.length ?? 0}, items=${cachedCloudItems?.length ?? 0}, settings=${!!cachedSettings}, categories=${(cachedCategories as unknown[])?.length ?? 0}`)
+    console.log(`[startup] Synced: tables=${cachedCloudTables?.length ?? 0}, items=${cachedCloudItems?.length ?? 0}, settings=${!!cachedSettings}, categories=${(cachedCategories as unknown[])?.length ?? 0}, employees=${(cachedCloudEmployees as unknown[])?.length ?? 0}`)
   } catch (err) {
     console.warn('[startup] Cloud sync failed, will retry on login:', (err as Error).message)
   }
@@ -335,8 +378,9 @@ async function ensureLocalAdmin() {
     const existing = await localPrisma.localCredential.findFirst()
     if (!existing) {
       const hash = await argon2.hash('admin123')
+      const pinHash = await argon2.hash('1234')
       await localPrisma.localCredential.create({
-        data: { phone: '7001181474', passwordHash: hash, name: 'Admin', role: 'Admin' },
+        data: { phone: '7001181474', passwordHash: hash, pinHash, name: 'Admin', role: 'Admin' },
       })
       console.log('[auth] Created default local admin user')
     }
@@ -361,9 +405,18 @@ app.post('/api/v1/auth/login', async (req, res) => {
       return
     }
 
-    // Verify password or PIN against local hash
-    const input = password ?? pin ?? ''
-    const valid = await argon2.verify(credential.passwordHash, input)
+    // Verify PIN or password against local hash
+    let valid = false
+    if (pin) {
+      if (!credential.pinHash) {
+        res.status(401).json({ error: { message: 'PIN not set — use password login', statusCode: 401 } })
+        return
+      }
+      valid = await argon2.verify(credential.pinHash, pin)
+    } else {
+      const input = password ?? ''
+      valid = await argon2.verify(credential.passwordHash, input)
+    }
     if (!valid) {
       res.status(401).json({ error: { message: 'Invalid credentials', statusCode: 401 } })
       return
@@ -535,12 +588,39 @@ app.post('/api/v1/orders/:id/refund', (req, res) => {
   adminQueued(res)
 })
 
-app.get('/api/v1/activity-log', (_req, res) => {
-  res.json([])
+app.get('/api/v1/activity-log', async (req, res) => {
+  try {
+    const cloudToken = getCloudAccessToken()
+    if (!cloudToken) { res.json([]); return }
+    const queryParams = new URLSearchParams(req.query as Record<string, string>).toString()
+    const cloudRes = await fetch(`${getCloudApiBase()}/activity-log?${queryParams}`, {
+      headers: { Authorization: `Bearer ${cloudToken}` },
+      signal: AbortSignal.timeout(10_000),
+    })
+    if (!cloudRes.ok) { res.json([]); return }
+    const data = await cloudRes.json()
+    res.json(data)
+  } catch {
+    res.json([])
+  }
 })
 
 // Auth sub-routes that don't need cloud
-app.post('/api/v1/auth/set-pin', (_req, res) => res.json({ ok: true }))
+app.post('/api/v1/auth/set-pin', async (req, res) => {
+  try {
+    const { pin, phone } = req.body
+    if (!pin || !phone) {
+      res.status(400).json({ error: { message: 'PIN and phone are required' } })
+      return
+    }
+    const hash = await argon2.hash(pin)
+    await localPrisma.localCredential.update({ where: { phone }, data: { pinHash: hash } })
+    res.json({ ok: true })
+  } catch (err) {
+    console.error('[auth] set-pin error:', err)
+    res.status(500).json({ error: { message: 'Failed to set PIN' } })
+  }
+})
 app.post('/api/v1/auth/logout', (_req, res) => res.json({ ok: true }))
 app.post('/api/v1/auth/upload-image', (req, res) => {
   syncQueueService.enqueue('admin-put', { path: '/auth/upload-image', body: req.body }).catch(() => {})
@@ -666,7 +746,15 @@ app.get('/api/v1/categories', (_req, res) => {
 
 app.get('/api/v1/settings', (_req, res) => {
   if (cachedSettings) {
-    res.json(cachedSettings)
+    const s = { ...cachedSettings }
+    const cloudBase = getCloudApiBase().replace(/\/api\/v\d\/?$/, '')
+    if (typeof s.logoUrl === 'string' && s.logoUrl.startsWith('/')) {
+      s.logoUrl = `${cloudBase}${s.logoUrl}`
+    }
+    if (typeof s.printLogoUrl === 'string' && s.printLogoUrl.startsWith('/')) {
+      s.printLogoUrl = `${cloudBase}${s.printLogoUrl}`
+    }
+    res.json(s)
     return
   }
   res.json({
@@ -724,8 +812,12 @@ app.get('/api/v1/orders', async (_req, res) => {
   }
 })
 
-// Employees — serve from cloud cache or empty (admins managed via cloud)
+// Employees — serve from cloud cache or empty
 app.get('/api/v1/employees', (_req, res) => {
+  if (cachedCloudEmployees && cachedCloudEmployees.length > 0) {
+    res.json(cachedCloudEmployees)
+    return
+  }
   res.json([])
 })
 

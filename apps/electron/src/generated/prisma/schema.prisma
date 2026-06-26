@@ -149,3 +149,16 @@ model PrintHistory {
 
   @@map("print_history")
 }
+
+model LocalCredential {
+  id           String   @id @default(uuid())
+  phone        String   @unique
+  passwordHash String
+  name         String   @default("Admin")
+  role         String   @default("Admin")
+  imageUrl     String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("local_credentials")
+}

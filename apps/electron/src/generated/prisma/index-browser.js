@@ -228,6 +228,17 @@ exports.Prisma.PrintHistoryScalarFieldEnum = {
   createdAt: 'createdAt'
 };
 
+exports.Prisma.LocalCredentialScalarFieldEnum = {
+  id: 'id',
+  phone: 'phone',
+  passwordHash: 'passwordHash',
+  name: 'name',
+  role: 'role',
+  imageUrl: 'imageUrl',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
 exports.Prisma.SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -247,7 +258,8 @@ exports.Prisma.ModelName = {
   SyncQueue: 'SyncQueue',
   SyncState: 'SyncState',
   PrinterConfig: 'PrinterConfig',
-  PrintHistory: 'PrintHistory'
+  PrintHistory: 'PrintHistory',
+  LocalCredential: 'LocalCredential'
 };
 
 /**

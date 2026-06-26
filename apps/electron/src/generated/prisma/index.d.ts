@@ -53,6 +53,11 @@ export type PrinterConfig = $Result.DefaultSelection<Prisma.$PrinterConfigPayloa
  * 
  */
 export type PrintHistory = $Result.DefaultSelection<Prisma.$PrintHistoryPayload>
+/**
+ * Model LocalCredential
+ * 
+ */
+export type LocalCredential = $Result.DefaultSelection<Prisma.$LocalCredentialPayload>
 
 /**
  * ##  Prisma Client ʲˢ
@@ -254,6 +259,16 @@ export class PrismaClient<
     * ```
     */
   get printHistory(): Prisma.PrintHistoryDelegate<ExtArgs, ClientOptions>;
+
+  /**
+   * `prisma.localCredential`: Exposes CRUD operations for the **LocalCredential** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more LocalCredentials
+    * const localCredentials = await prisma.localCredential.findMany()
+    * ```
+    */
+  get localCredential(): Prisma.LocalCredentialDelegate<ExtArgs, ClientOptions>;
 }
 
 export namespace Prisma {
@@ -695,7 +710,8 @@ export namespace Prisma {
     SyncQueue: 'SyncQueue',
     SyncState: 'SyncState',
     PrinterConfig: 'PrinterConfig',
-    PrintHistory: 'PrintHistory'
+    PrintHistory: 'PrintHistory',
+    LocalCredential: 'LocalCredential'
   };
 
   export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -711,7 +727,7 @@ export namespace Prisma {
       omit: GlobalOmitOptions
     }
     meta: {
-      modelProps: "localOrder" | "localOrderItem" | "localKOT" | "localSettlement" | "syncQueue" | "syncState" | "printerConfig" | "printHistory"
+      modelProps: "localOrder" | "localOrderItem" | "localKOT" | "localSettlement" | "syncQueue" | "syncState" | "printerConfig" | "printHistory" | "localCredential"
       txIsolationLevel: Prisma.TransactionIsolationLevel
     }
     model: {
@@ -1307,6 +1323,80 @@ export namespace Prisma {
           }
         }
       }
+      LocalCredential: {
+        payload: Prisma.$LocalCredentialPayload<ExtArgs>
+        fields: Prisma.LocalCredentialFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.LocalCredentialFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LocalCredentialPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.LocalCredentialFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LocalCredentialPayload>
+          }
+          findFirst: {
+            args: Prisma.LocalCredentialFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LocalCredentialPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.LocalCredentialFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LocalCredentialPayload>
+          }
+          findMany: {
+            args: Prisma.LocalCredentialFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LocalCredentialPayload>[]
+          }
+          create: {
+            args: Prisma.LocalCredentialCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LocalCredentialPayload>
+          }
+          createMany: {
+            args: Prisma.LocalCredentialCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.LocalCredentialCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LocalCredentialPayload>[]
+          }
+          delete: {
+            args: Prisma.LocalCredentialDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LocalCredentialPayload>
+          }
+          update: {
+            args: Prisma.LocalCredentialUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LocalCredentialPayload>
+          }
+          deleteMany: {
+            args: Prisma.LocalCredentialDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.LocalCredentialUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateManyAndReturn: {
+            args: Prisma.LocalCredentialUpdateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LocalCredentialPayload>[]
+          }
+          upsert: {
+            args: Prisma.LocalCredentialUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LocalCredentialPayload>
+          }
+          aggregate: {
+            args: Prisma.LocalCredentialAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateLocalCredential>
+          }
+          groupBy: {
+            args: Prisma.LocalCredentialGroupByArgs<ExtArgs>
+            result: $Utils.Optional<LocalCredentialGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.LocalCredentialCountArgs<ExtArgs>
+            result: $Utils.Optional<LocalCredentialCountAggregateOutputType> | number
+          }
+        }
+      }
     }
   } & {
     other: {
@@ -1423,6 +1513,7 @@ export namespace Prisma {
     syncState?: SyncStateOmit
     printerConfig?: PrinterConfigOmit
     printHistory?: PrintHistoryOmit
+    localCredential?: LocalCredentialOmit
   }
 
   /* Types for Logging */
@@ -11050,6 +11141,1043 @@ export namespace Prisma {
 
 
   /**
+   * Model LocalCredential
+   */
+
+  export type AggregateLocalCredential = {
+    _count: LocalCredentialCountAggregateOutputType | null
+    _min: LocalCredentialMinAggregateOutputType | null
+    _max: LocalCredentialMaxAggregateOutputType | null
+  }
+
+  export type LocalCredentialMinAggregateOutputType = {
+    id: string | null
+    phone: string | null
+    passwordHash: string | null
+    name: string | null
+    role: string | null
+    imageUrl: string | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type LocalCredentialMaxAggregateOutputType = {
+    id: string | null
+    phone: string | null
+    passwordHash: string | null
+    name: string | null
+    role: string | null
+    imageUrl: string | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type LocalCredentialCountAggregateOutputType = {
+    id: number
+    phone: number
+    passwordHash: number
+    name: number
+    role: number
+    imageUrl: number
+    createdAt: number
+    updatedAt: number
+    _all: number
+  }
+
+
+  export type LocalCredentialMinAggregateInputType = {
+    id?: true
+    phone?: true
+    passwordHash?: true
+    name?: true
+    role?: true
+    imageUrl?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type LocalCredentialMaxAggregateInputType = {
+    id?: true
+    phone?: true
+    passwordHash?: true
+    name?: true
+    role?: true
+    imageUrl?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type LocalCredentialCountAggregateInputType = {
+    id?: true
+    phone?: true
+    passwordHash?: true
+    name?: true
+    role?: true
+    imageUrl?: true
+    createdAt?: true
+    updatedAt?: true
+    _all?: true
+  }
+
+  export type LocalCredentialAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which LocalCredential to aggregate.
+     */
+    where?: LocalCredentialWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of LocalCredentials to fetch.
+     */
+    orderBy?: LocalCredentialOrderByWithRelationInput | LocalCredentialOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: LocalCredentialWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` LocalCredentials from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` LocalCredentials.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned LocalCredentials
+    **/
+    _count?: true | LocalCredentialCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: LocalCredentialMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: LocalCredentialMaxAggregateInputType
+  }
+
+  export type GetLocalCredentialAggregateType<T extends LocalCredentialAggregateArgs> = {
+        [P in keyof T & keyof AggregateLocalCredential]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateLocalCredential[P]>
+      : GetScalarType<T[P], AggregateLocalCredential[P]>
+  }
+
+
+
+
+  export type LocalCredentialGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: LocalCredentialWhereInput
+    orderBy?: LocalCredentialOrderByWithAggregationInput | LocalCredentialOrderByWithAggregationInput[]
+    by: LocalCredentialScalarFieldEnum[] | LocalCredentialScalarFieldEnum
+    having?: LocalCredentialScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: LocalCredentialCountAggregateInputType | true
+    _min?: LocalCredentialMinAggregateInputType
+    _max?: LocalCredentialMaxAggregateInputType
+  }
+
+  export type LocalCredentialGroupByOutputType = {
+    id: string
+    phone: string
+    passwordHash: string
+    name: string
+    role: string
+    imageUrl: string | null
+    createdAt: Date
+    updatedAt: Date
+    _count: LocalCredentialCountAggregateOutputType | null
+    _min: LocalCredentialMinAggregateOutputType | null
+    _max: LocalCredentialMaxAggregateOutputType | null
+  }
+
+  type GetLocalCredentialGroupByPayload<T extends LocalCredentialGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<LocalCredentialGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof LocalCredentialGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], LocalCredentialGroupByOutputType[P]>
+            : GetScalarType<T[P], LocalCredentialGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type LocalCredentialSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    phone?: boolean
+    passwordHash?: boolean
+    name?: boolean
+    role?: boolean
+    imageUrl?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }, ExtArgs["result"]["localCredential"]>
+
+  export type LocalCredentialSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    phone?: boolean
+    passwordHash?: boolean
+    name?: boolean
+    role?: boolean
+    imageUrl?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }, ExtArgs["result"]["localCredential"]>
+
+  export type LocalCredentialSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    phone?: boolean
+    passwordHash?: boolean
+    name?: boolean
+    role?: boolean
+    imageUrl?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }, ExtArgs["result"]["localCredential"]>
+
+  export type LocalCredentialSelectScalar = {
+    id?: boolean
+    phone?: boolean
+    passwordHash?: boolean
+    name?: boolean
+    role?: boolean
+    imageUrl?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }
+
+  export type LocalCredentialOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "phone" | "passwordHash" | "name" | "role" | "imageUrl" | "createdAt" | "updatedAt", ExtArgs["result"]["localCredential"]>
+
+  export type $LocalCredentialPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "LocalCredential"
+    objects: {}
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      phone: string
+      passwordHash: string
+      name: string
+      role: string
+      imageUrl: string | null
+      createdAt: Date
+      updatedAt: Date
+    }, ExtArgs["result"]["localCredential"]>
+    composites: {}
+  }
+
+  type LocalCredentialGetPayload<S extends boolean | null | undefined | LocalCredentialDefaultArgs> = $Result.GetResult<Prisma.$LocalCredentialPayload, S>
+
+  type LocalCredentialCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
+    Omit<LocalCredentialFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+      select?: LocalCredentialCountAggregateInputType | true
+    }
+
+  export interface LocalCredentialDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['LocalCredential'], meta: { name: 'LocalCredential' } }
+    /**
+     * Find zero or one LocalCredential that matches the filter.
+     * @param {LocalCredentialFindUniqueArgs} args - Arguments to find a LocalCredential
+     * @example
+     * // Get one LocalCredential
+     * const localCredential = await prisma.localCredential.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends LocalCredentialFindUniqueArgs>(args: SelectSubset<T, LocalCredentialFindUniqueArgs<ExtArgs>>): Prisma__LocalCredentialClient<$Result.GetResult<Prisma.$LocalCredentialPayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find one LocalCredential that matches the filter or throw an error with `error.code='P2025'`
+     * if no matches were found.
+     * @param {LocalCredentialFindUniqueOrThrowArgs} args - Arguments to find a LocalCredential
+     * @example
+     * // Get one LocalCredential
+     * const localCredential = await prisma.localCredential.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends LocalCredentialFindUniqueOrThrowArgs>(args: SelectSubset<T, LocalCredentialFindUniqueOrThrowArgs<ExtArgs>>): Prisma__LocalCredentialClient<$Result.GetResult<Prisma.$LocalCredentialPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first LocalCredential that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {LocalCredentialFindFirstArgs} args - Arguments to find a LocalCredential
+     * @example
+     * // Get one LocalCredential
+     * const localCredential = await prisma.localCredential.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends LocalCredentialFindFirstArgs>(args?: SelectSubset<T, LocalCredentialFindFirstArgs<ExtArgs>>): Prisma__LocalCredentialClient<$Result.GetResult<Prisma.$LocalCredentialPayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first LocalCredential that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {LocalCredentialFindFirstOrThrowArgs} args - Arguments to find a LocalCredential
+     * @example
+     * // Get one LocalCredential
+     * const localCredential = await prisma.localCredential.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends LocalCredentialFindFirstOrThrowArgs>(args?: SelectSubset<T, LocalCredentialFindFirstOrThrowArgs<ExtArgs>>): Prisma__LocalCredentialClient<$Result.GetResult<Prisma.$LocalCredentialPayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find zero or more LocalCredentials that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {LocalCredentialFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all LocalCredentials
+     * const localCredentials = await prisma.localCredential.findMany()
+     * 
+     * // Get first 10 LocalCredentials
+     * const localCredentials = await prisma.localCredential.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const localCredentialWithIdOnly = await prisma.localCredential.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends LocalCredentialFindManyArgs>(args?: SelectSubset<T, LocalCredentialFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$LocalCredentialPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+
+    /**
+     * Create a LocalCredential.
+     * @param {LocalCredentialCreateArgs} args - Arguments to create a LocalCredential.
+     * @example
+     * // Create one LocalCredential
+     * const LocalCredential = await prisma.localCredential.create({
+     *   data: {
+     *     // ... data to create a LocalCredential
+     *   }
+     * })
+     * 
+     */
+    create<T extends LocalCredentialCreateArgs>(args: SelectSubset<T, LocalCredentialCreateArgs<ExtArgs>>): Prisma__LocalCredentialClient<$Result.GetResult<Prisma.$LocalCredentialPayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Create many LocalCredentials.
+     * @param {LocalCredentialCreateManyArgs} args - Arguments to create many LocalCredentials.
+     * @example
+     * // Create many LocalCredentials
+     * const localCredential = await prisma.localCredential.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends LocalCredentialCreateManyArgs>(args?: SelectSubset<T, LocalCredentialCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many LocalCredentials and returns the data saved in the database.
+     * @param {LocalCredentialCreateManyAndReturnArgs} args - Arguments to create many LocalCredentials.
+     * @example
+     * // Create many LocalCredentials
+     * const localCredential = await prisma.localCredential.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many LocalCredentials and only return the `id`
+     * const localCredentialWithIdOnly = await prisma.localCredential.createManyAndReturn({
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends LocalCredentialCreateManyAndReturnArgs>(args?: SelectSubset<T, LocalCredentialCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$LocalCredentialPayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Delete a LocalCredential.
+     * @param {LocalCredentialDeleteArgs} args - Arguments to delete one LocalCredential.
+     * @example
+     * // Delete one LocalCredential
+     * const LocalCredential = await prisma.localCredential.delete({
+     *   where: {
+     *     // ... filter to delete one LocalCredential
+     *   }
+     * })
+     * 
+     */
+    delete<T extends LocalCredentialDeleteArgs>(args: SelectSubset<T, LocalCredentialDeleteArgs<ExtArgs>>): Prisma__LocalCredentialClient<$Result.GetResult<Prisma.$LocalCredentialPayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Update one LocalCredential.
+     * @param {LocalCredentialUpdateArgs} args - Arguments to update one LocalCredential.
+     * @example
+     * // Update one LocalCredential
+     * const localCredential = await prisma.localCredential.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends LocalCredentialUpdateArgs>(args: SelectSubset<T, LocalCredentialUpdateArgs<ExtArgs>>): Prisma__LocalCredentialClient<$Result.GetResult<Prisma.$LocalCredentialPayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Delete zero or more LocalCredentials.
+     * @param {LocalCredentialDeleteManyArgs} args - Arguments to filter LocalCredentials to delete.
+     * @example
+     * // Delete a few LocalCredentials
+     * const { count } = await prisma.localCredential.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends LocalCredentialDeleteManyArgs>(args?: SelectSubset<T, LocalCredentialDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more LocalCredentials.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {LocalCredentialUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many LocalCredentials
+     * const localCredential = await prisma.localCredential.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends LocalCredentialUpdateManyArgs>(args: SelectSubset<T, LocalCredentialUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more LocalCredentials and returns the data updated in the database.
+     * @param {LocalCredentialUpdateManyAndReturnArgs} args - Arguments to update many LocalCredentials.
+     * @example
+     * // Update many LocalCredentials
+     * const localCredential = await prisma.localCredential.updateManyAndReturn({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Update zero or more LocalCredentials and only return the `id`
+     * const localCredentialWithIdOnly = await prisma.localCredential.updateManyAndReturn({
+     *   select: { id: true },
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    updateManyAndReturn<T extends LocalCredentialUpdateManyAndReturnArgs>(args: SelectSubset<T, LocalCredentialUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$LocalCredentialPayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Create or update one LocalCredential.
+     * @param {LocalCredentialUpsertArgs} args - Arguments to update or create a LocalCredential.
+     * @example
+     * // Update or create a LocalCredential
+     * const localCredential = await prisma.localCredential.upsert({
+     *   create: {
+     *     // ... data to create a LocalCredential
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the LocalCredential we want to update
+     *   }
+     * })
+     */
+    upsert<T extends LocalCredentialUpsertArgs>(args: SelectSubset<T, LocalCredentialUpsertArgs<ExtArgs>>): Prisma__LocalCredentialClient<$Result.GetResult<Prisma.$LocalCredentialPayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+
+    /**
+     * Count the number of LocalCredentials.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {LocalCredentialCountArgs} args - Arguments to filter LocalCredentials to count.
+     * @example
+     * // Count the number of LocalCredentials
+     * const count = await prisma.localCredential.count({
+     *   where: {
+     *     // ... the filter for the LocalCredentials we want to count
+     *   }
+     * })
+    **/
+    count<T extends LocalCredentialCountArgs>(
+      args?: Subset<T, LocalCredentialCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], LocalCredentialCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a LocalCredential.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {LocalCredentialAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends LocalCredentialAggregateArgs>(args: Subset<T, LocalCredentialAggregateArgs>): Prisma.PrismaPromise<GetLocalCredentialAggregateType<T>>
+
+    /**
+     * Group by LocalCredential.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {LocalCredentialGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends LocalCredentialGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: LocalCredentialGroupByArgs['orderBy'] }
+        : { orderBy?: LocalCredentialGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, LocalCredentialGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetLocalCredentialGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the LocalCredential model
+   */
+  readonly fields: LocalCredentialFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for LocalCredential.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__LocalCredentialClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the LocalCredential model
+   */
+  interface LocalCredentialFieldRefs {
+    readonly id: FieldRef<"LocalCredential", 'String'>
+    readonly phone: FieldRef<"LocalCredential", 'String'>
+    readonly passwordHash: FieldRef<"LocalCredential", 'String'>
+    readonly name: FieldRef<"LocalCredential", 'String'>
+    readonly role: FieldRef<"LocalCredential", 'String'>
+    readonly imageUrl: FieldRef<"LocalCredential", 'String'>
+    readonly createdAt: FieldRef<"LocalCredential", 'DateTime'>
+    readonly updatedAt: FieldRef<"LocalCredential", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * LocalCredential findUnique
+   */
+  export type LocalCredentialFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LocalCredential
+     */
+    select?: LocalCredentialSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the LocalCredential
+     */
+    omit?: LocalCredentialOmit<ExtArgs> | null
+    /**
+     * Filter, which LocalCredential to fetch.
+     */
+    where: LocalCredentialWhereUniqueInput
+  }
+
+  /**
+   * LocalCredential findUniqueOrThrow
+   */
+  export type LocalCredentialFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LocalCredential
+     */
+    select?: LocalCredentialSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the LocalCredential
+     */
+    omit?: LocalCredentialOmit<ExtArgs> | null
+    /**
+     * Filter, which LocalCredential to fetch.
+     */
+    where: LocalCredentialWhereUniqueInput
+  }
+
+  /**
+   * LocalCredential findFirst
+   */
+  export type LocalCredentialFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LocalCredential
+     */
+    select?: LocalCredentialSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the LocalCredential
+     */
+    omit?: LocalCredentialOmit<ExtArgs> | null
+    /**
+     * Filter, which LocalCredential to fetch.
+     */
+    where?: LocalCredentialWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of LocalCredentials to fetch.
+     */
+    orderBy?: LocalCredentialOrderByWithRelationInput | LocalCredentialOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for LocalCredentials.
+     */
+    cursor?: LocalCredentialWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` LocalCredentials from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` LocalCredentials.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of LocalCredentials.
+     */
+    distinct?: LocalCredentialScalarFieldEnum | LocalCredentialScalarFieldEnum[]
+  }
+
+  /**
+   * LocalCredential findFirstOrThrow
+   */
+  export type LocalCredentialFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LocalCredential
+     */
+    select?: LocalCredentialSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the LocalCredential
+     */
+    omit?: LocalCredentialOmit<ExtArgs> | null
+    /**
+     * Filter, which LocalCredential to fetch.
+     */
+    where?: LocalCredentialWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of LocalCredentials to fetch.
+     */
+    orderBy?: LocalCredentialOrderByWithRelationInput | LocalCredentialOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for LocalCredentials.
+     */
+    cursor?: LocalCredentialWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` LocalCredentials from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` LocalCredentials.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of LocalCredentials.
+     */
+    distinct?: LocalCredentialScalarFieldEnum | LocalCredentialScalarFieldEnum[]
+  }
+
+  /**
+   * LocalCredential findMany
+   */
+  export type LocalCredentialFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LocalCredential
+     */
+    select?: LocalCredentialSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the LocalCredential
+     */
+    omit?: LocalCredentialOmit<ExtArgs> | null
+    /**
+     * Filter, which LocalCredentials to fetch.
+     */
+    where?: LocalCredentialWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of LocalCredentials to fetch.
+     */
+    orderBy?: LocalCredentialOrderByWithRelationInput | LocalCredentialOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing LocalCredentials.
+     */
+    cursor?: LocalCredentialWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` LocalCredentials from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` LocalCredentials.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of LocalCredentials.
+     */
+    distinct?: LocalCredentialScalarFieldEnum | LocalCredentialScalarFieldEnum[]
+  }
+
+  /**
+   * LocalCredential create
+   */
+  export type LocalCredentialCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LocalCredential
+     */
+    select?: LocalCredentialSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the LocalCredential
+     */
+    omit?: LocalCredentialOmit<ExtArgs> | null
+    /**
+     * The data needed to create a LocalCredential.
+     */
+    data: XOR<LocalCredentialCreateInput, LocalCredentialUncheckedCreateInput>
+  }
+
+  /**
+   * LocalCredential createMany
+   */
+  export type LocalCredentialCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many LocalCredentials.
+     */
+    data: LocalCredentialCreateManyInput | LocalCredentialCreateManyInput[]
+  }
+
+  /**
+   * LocalCredential createManyAndReturn
+   */
+  export type LocalCredentialCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LocalCredential
+     */
+    select?: LocalCredentialSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the LocalCredential
+     */
+    omit?: LocalCredentialOmit<ExtArgs> | null
+    /**
+     * The data used to create many LocalCredentials.
+     */
+    data: LocalCredentialCreateManyInput | LocalCredentialCreateManyInput[]
+  }
+
+  /**
+   * LocalCredential update
+   */
+  export type LocalCredentialUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LocalCredential
+     */
+    select?: LocalCredentialSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the LocalCredential
+     */
+    omit?: LocalCredentialOmit<ExtArgs> | null
+    /**
+     * The data needed to update a LocalCredential.
+     */
+    data: XOR<LocalCredentialUpdateInput, LocalCredentialUncheckedUpdateInput>
+    /**
+     * Choose, which LocalCredential to update.
+     */
+    where: LocalCredentialWhereUniqueInput
+  }
+
+  /**
+   * LocalCredential updateMany
+   */
+  export type LocalCredentialUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update LocalCredentials.
+     */
+    data: XOR<LocalCredentialUpdateManyMutationInput, LocalCredentialUncheckedUpdateManyInput>
+    /**
+     * Filter which LocalCredentials to update
+     */
+    where?: LocalCredentialWhereInput
+    /**
+     * Limit how many LocalCredentials to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * LocalCredential updateManyAndReturn
+   */
+  export type LocalCredentialUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LocalCredential
+     */
+    select?: LocalCredentialSelectUpdateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the LocalCredential
+     */
+    omit?: LocalCredentialOmit<ExtArgs> | null
+    /**
+     * The data used to update LocalCredentials.
+     */
+    data: XOR<LocalCredentialUpdateManyMutationInput, LocalCredentialUncheckedUpdateManyInput>
+    /**
+     * Filter which LocalCredentials to update
+     */
+    where?: LocalCredentialWhereInput
+    /**
+     * Limit how many LocalCredentials to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * LocalCredential upsert
+   */
+  export type LocalCredentialUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LocalCredential
+     */
+    select?: LocalCredentialSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the LocalCredential
+     */
+    omit?: LocalCredentialOmit<ExtArgs> | null
+    /**
+     * The filter to search for the LocalCredential to update in case it exists.
+     */
+    where: LocalCredentialWhereUniqueInput
+    /**
+     * In case the LocalCredential found by the `where` argument doesn't exist, create a new LocalCredential with this data.
+     */
+    create: XOR<LocalCredentialCreateInput, LocalCredentialUncheckedCreateInput>
+    /**
+     * In case the LocalCredential was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<LocalCredentialUpdateInput, LocalCredentialUncheckedUpdateInput>
+  }
+
+  /**
+   * LocalCredential delete
+   */
+  export type LocalCredentialDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LocalCredential
+     */
+    select?: LocalCredentialSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the LocalCredential
+     */
+    omit?: LocalCredentialOmit<ExtArgs> | null
+    /**
+     * Filter which LocalCredential to delete.
+     */
+    where: LocalCredentialWhereUniqueInput
+  }
+
+  /**
+   * LocalCredential deleteMany
+   */
+  export type LocalCredentialDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which LocalCredentials to delete
+     */
+    where?: LocalCredentialWhereInput
+    /**
+     * Limit how many LocalCredentials to delete.
+     */
+    limit?: number
+  }
+
+  /**
+   * LocalCredential without action
+   */
+  export type LocalCredentialDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LocalCredential
+     */
+    select?: LocalCredentialSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the LocalCredential
+     */
+    omit?: LocalCredentialOmit<ExtArgs> | null
+  }
+
+
+  /**
    * Enums
    */
 
@@ -11193,6 +12321,20 @@ export namespace Prisma {
   };
 
   export type PrintHistoryScalarFieldEnum = (typeof PrintHistoryScalarFieldEnum)[keyof typeof PrintHistoryScalarFieldEnum]
+
+
+  export const LocalCredentialScalarFieldEnum: {
+    id: 'id',
+    phone: 'phone',
+    passwordHash: 'passwordHash',
+    name: 'name',
+    role: 'role',
+    imageUrl: 'imageUrl',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt'
+  };
+
+  export type LocalCredentialScalarFieldEnum = (typeof LocalCredentialScalarFieldEnum)[keyof typeof LocalCredentialScalarFieldEnum]
 
 
   export const SortOrder: {
@@ -11949,6 +13091,73 @@ export namespace Prisma {
     retryCount?: IntWithAggregatesFilter<"PrintHistory"> | number
     error?: StringNullableWithAggregatesFilter<"PrintHistory"> | string | null
     createdAt?: DateTimeWithAggregatesFilter<"PrintHistory"> | Date | string
+  }
+
+  export type LocalCredentialWhereInput = {
+    AND?: LocalCredentialWhereInput | LocalCredentialWhereInput[]
+    OR?: LocalCredentialWhereInput[]
+    NOT?: LocalCredentialWhereInput | LocalCredentialWhereInput[]
+    id?: StringFilter<"LocalCredential"> | string
+    phone?: StringFilter<"LocalCredential"> | string
+    passwordHash?: StringFilter<"LocalCredential"> | string
+    name?: StringFilter<"LocalCredential"> | string
+    role?: StringFilter<"LocalCredential"> | string
+    imageUrl?: StringNullableFilter<"LocalCredential"> | string | null
+    createdAt?: DateTimeFilter<"LocalCredential"> | Date | string
+    updatedAt?: DateTimeFilter<"LocalCredential"> | Date | string
+  }
+
+  export type LocalCredentialOrderByWithRelationInput = {
+    id?: SortOrder
+    phone?: SortOrder
+    passwordHash?: SortOrder
+    name?: SortOrder
+    role?: SortOrder
+    imageUrl?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type LocalCredentialWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    phone?: string
+    AND?: LocalCredentialWhereInput | LocalCredentialWhereInput[]
+    OR?: LocalCredentialWhereInput[]
+    NOT?: LocalCredentialWhereInput | LocalCredentialWhereInput[]
+    passwordHash?: StringFilter<"LocalCredential"> | string
+    name?: StringFilter<"LocalCredential"> | string
+    role?: StringFilter<"LocalCredential"> | string
+    imageUrl?: StringNullableFilter<"LocalCredential"> | string | null
+    createdAt?: DateTimeFilter<"LocalCredential"> | Date | string
+    updatedAt?: DateTimeFilter<"LocalCredential"> | Date | string
+  }, "id" | "phone">
+
+  export type LocalCredentialOrderByWithAggregationInput = {
+    id?: SortOrder
+    phone?: SortOrder
+    passwordHash?: SortOrder
+    name?: SortOrder
+    role?: SortOrder
+    imageUrl?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    _count?: LocalCredentialCountOrderByAggregateInput
+    _max?: LocalCredentialMaxOrderByAggregateInput
+    _min?: LocalCredentialMinOrderByAggregateInput
+  }
+
+  export type LocalCredentialScalarWhereWithAggregatesInput = {
+    AND?: LocalCredentialScalarWhereWithAggregatesInput | LocalCredentialScalarWhereWithAggregatesInput[]
+    OR?: LocalCredentialScalarWhereWithAggregatesInput[]
+    NOT?: LocalCredentialScalarWhereWithAggregatesInput | LocalCredentialScalarWhereWithAggregatesInput[]
+    id?: StringWithAggregatesFilter<"LocalCredential"> | string
+    phone?: StringWithAggregatesFilter<"LocalCredential"> | string
+    passwordHash?: StringWithAggregatesFilter<"LocalCredential"> | string
+    name?: StringWithAggregatesFilter<"LocalCredential"> | string
+    role?: StringWithAggregatesFilter<"LocalCredential"> | string
+    imageUrl?: StringNullableWithAggregatesFilter<"LocalCredential"> | string | null
+    createdAt?: DateTimeWithAggregatesFilter<"LocalCredential"> | Date | string
+    updatedAt?: DateTimeWithAggregatesFilter<"LocalCredential"> | Date | string
   }
 
   export type LocalOrderCreateInput = {
@@ -12743,6 +13952,83 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
+  export type LocalCredentialCreateInput = {
+    id?: string
+    phone: string
+    passwordHash: string
+    name?: string
+    role?: string
+    imageUrl?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type LocalCredentialUncheckedCreateInput = {
+    id?: string
+    phone: string
+    passwordHash: string
+    name?: string
+    role?: string
+    imageUrl?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type LocalCredentialUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    phone?: StringFieldUpdateOperationsInput | string
+    passwordHash?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    role?: StringFieldUpdateOperationsInput | string
+    imageUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type LocalCredentialUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    phone?: StringFieldUpdateOperationsInput | string
+    passwordHash?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    role?: StringFieldUpdateOperationsInput | string
+    imageUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type LocalCredentialCreateManyInput = {
+    id?: string
+    phone: string
+    passwordHash: string
+    name?: string
+    role?: string
+    imageUrl?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type LocalCredentialUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    phone?: StringFieldUpdateOperationsInput | string
+    passwordHash?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    role?: StringFieldUpdateOperationsInput | string
+    imageUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type LocalCredentialUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    phone?: StringFieldUpdateOperationsInput | string
+    passwordHash?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    role?: StringFieldUpdateOperationsInput | string
+    imageUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
   export type StringFilter<$PrismaModel = never> = {
     equals?: string | StringFieldRefInput<$PrismaModel>
     in?: string[]
@@ -13460,6 +14746,39 @@ export namespace Prisma {
 
   export type PrintHistorySumOrderByAggregateInput = {
     retryCount?: SortOrder
+  }
+
+  export type LocalCredentialCountOrderByAggregateInput = {
+    id?: SortOrder
+    phone?: SortOrder
+    passwordHash?: SortOrder
+    name?: SortOrder
+    role?: SortOrder
+    imageUrl?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type LocalCredentialMaxOrderByAggregateInput = {
+    id?: SortOrder
+    phone?: SortOrder
+    passwordHash?: SortOrder
+    name?: SortOrder
+    role?: SortOrder
+    imageUrl?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type LocalCredentialMinOrderByAggregateInput = {
+    id?: SortOrder
+    phone?: SortOrder
+    passwordHash?: SortOrder
+    name?: SortOrder
+    role?: SortOrder
+    imageUrl?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
   }
 
   export type LocalOrderItemCreateNestedManyWithoutOrderInput = {

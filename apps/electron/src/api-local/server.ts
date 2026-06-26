@@ -1,5 +1,6 @@
 import express from 'express'
 import http from 'http'
+import * as argon2 from 'argon2'
 import { Server as SocketIOServer } from 'socket.io'
 import { tableLockService, setSocketIO } from '../services/table-lock.service.js'
 import { localPrisma } from '../lib/local-prisma.js'
@@ -71,7 +72,7 @@ app.post('/api/v1/pair/verify', (req, res) => {
   res.json({ verified: true })
 })
 
-// Auth proxy — forward login/refresh to cloud API so Captain can authenticate
+// CLOUD_API is used for background sync only — NOT for real-time auth/tables/items
 const CLOUD_API = process.env.CLOUD_API_URL || 'http://localhost:3000/api/v1'
 
 // In-memory table cache synced from cloud
@@ -101,165 +102,111 @@ const LOCAL_SEED_ITEMS = [
   { id: 'local-i7', name: 'Cold Drink', basePrice: 40, inStock: true, variations: [], categoryId: 'local-c5', category: { id: 'local-c5', name: 'Beverages' } },
 ]
 
-async function tryFetchCloudTables() {
-  try {
-    const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 3000)
-    const cloudRes = await fetch(`${CLOUD_API}/tables`, {
-      headers: { 'Content-Type': 'application/json' },
-      signal: controller.signal,
-    })
-    clearTimeout(timeout)
-    if (cloudRes.ok) {
-      return await cloudRes.json()
-    }
-    return null
-  } catch {
-    return null
-  }
+// Generate a simple local JWT token
+function generateLocalToken(user: { id: string; name: string; phone: string; role: string }): { accessToken: string; refreshToken: string } {
+  const payload = JSON.stringify({ userId: user.id, role: user.role, local: true })
+  const token = Buffer.from(payload).toString('base64')
+  return { accessToken: token, refreshToken: token }
 }
 
-async function syncTablesFromCloud(accessToken: string) {
+// Background: fetch data from cloud (non-blocking, non-essential)
+async function backgroundCloudSync(accessToken: string) {
   try {
     const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 5000)
-    const [tablesRes, areasRes, itemsRes, categoriesRes, settingsRes, taxSlabsRes] = await Promise.all([
-      fetch(`${CLOUD_API}/tables`, {
-        headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
-        signal: controller.signal,
-      }),
-      fetch(`${CLOUD_API}/areas`, {
-        headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
-        signal: controller.signal,
-      }),
-      fetch(`${CLOUD_API}/items`, {
-        headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
-        signal: controller.signal,
-      }),
-      fetch(`${CLOUD_API}/categories`, {
-        headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
-        signal: controller.signal,
-      }),
-      fetch(`${CLOUD_API}/settings`, {
-        headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
-        signal: controller.signal,
-      }),
-      fetch(`${CLOUD_API}/tax-slabs`, {
-        headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
-        signal: controller.signal,
-      }),
+    const timeout = setTimeout(() => controller.abort(), 8000)
+    const headers = { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' }
+    const [tablesRes, itemsRes, settingsRes] = await Promise.all([
+      fetch(`${CLOUD_API}/tables`, { headers, signal: controller.signal }),
+      fetch(`${CLOUD_API}/items`, { headers, signal: controller.signal }),
+      fetch(`${CLOUD_API}/settings`, { headers, signal: controller.signal }),
     ])
     clearTimeout(timeout)
-
     if (tablesRes.ok) {
-      const rawTables = await tablesRes.json()
-      cachedCloudTables = (rawTables as { id: string; name: string; capacity?: number; status?: string; area?: { id: string; name: string } }[]).map((t) => ({
-        id: t.id,
-        name: t.name,
-        capacity: t.capacity ?? 0,
-        status: t.status ?? 'Available',
+      const raw = await tablesRes.json()
+      cachedCloudTables = Array.isArray(raw) ? raw.map((t: Record<string, unknown>) => ({
+        id: t.id, name: t.name, capacity: t.capacity ?? 0, status: t.status ?? 'Available',
         area: t.area ?? null,
-      }))
-    }
-    if (areasRes.ok) {
-      cachedAreas = await areasRes.json()
+      })) : null
     }
     if (itemsRes.ok) {
-      const rawItems = await itemsRes.json()
-      cachedCloudItems = (rawItems as { id: string; name: string; basePrice: number; inStock: boolean; variations: Array<{ id: string; name: string; priceAdjustment: number }>; categoryId?: string; category?: { id: string; name: string } }[]).map((i) => ({
-        id: i.id,
-        name: i.name,
-        basePrice: i.basePrice,
-        inStock: i.inStock ?? true,
-        variations: i.variations ?? [],
-        categoryId: i.categoryId ?? null,
-        category: i.category ?? null,
-      }))
+      const raw = await itemsRes.json()
+      cachedCloudItems = Array.isArray(raw) ? raw : null
     }
-    if (categoriesRes.ok) {
-      cachedCategories = await categoriesRes.json()
-    }
-    if (settingsRes.ok) {
-      cachedSettings = await settingsRes.json()
-    }
-    if (taxSlabsRes.ok) {
-      cachedTaxSlabs = await taxSlabsRes.json()
-    }
-    console.log(`[sync] Synced from cloud: ${cachedCloudTables?.length ?? 0} tables, ${cachedAreas?.length ?? 0} areas, ${cachedCloudItems?.length ?? 0} items, ${cachedCategories?.length ?? 0} categories, settings=${!!cachedSettings}, tax-slabs=${cachedTaxSlabs?.length ?? 0}`)
-  } catch (err) {
-    console.error('[sync] Failed:', err)
+    if (settingsRes.ok) cachedSettings = await settingsRes.json()
+    console.log(`[bg-sync] Fetched: tables=${cachedCloudTables?.length ?? 0}, items=${cachedCloudItems?.length ?? 0}, settings=${!!cachedSettings}`)
+  } catch {
+    // Silently fail — background sync is non-essential
   }
 }
 
-app.post('/api/v1/tables/sync', (req, res) => {
-  const { tables, areas, items, categories } = req.body
-  if (tables && Array.isArray(tables)) {
-    cachedCloudTables = tables
+// Seed default admin credentials if no local user exists
+async function ensureLocalAdmin() {
+  const existing = await localPrisma.localCredential.findFirst()
+  if (!existing) {
+    const hash = await argon2.hash('admin123')
+    await localPrisma.localCredential.create({
+      data: { phone: '7001181474', passwordHash: hash, name: 'Admin', role: 'Admin' },
+    })
+    console.log('[auth] Created default local admin: 7001181474 / admin123')
   }
-  if (areas && Array.isArray(areas)) {
-    cachedAreas = areas
-  }
-  if (items && Array.isArray(items)) {
-    cachedCloudItems = items
-  }
-  if (categories && Array.isArray(categories)) {
-    cachedCategories = categories
-  }
-  res.json({ synced: true, tableCount: cachedCloudTables?.length ?? 0, areaCount: cachedAreas?.length ?? 0, itemCount: cachedCloudItems?.length ?? 0, categoryCount: cachedCategories?.length ?? 0 })
-})
+}
+ensureLocalAdmin().catch(() => {})
+
+// ==================== AUTH ====================
 
 app.post('/api/v1/auth/login', async (req, res) => {
   try {
-    console.log(`[auth] Login attempt, proxying to: ${CLOUD_API}/auth/login`)
-    const response = await fetch(`${CLOUD_API}/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(req.body),
-    })
-    const data = await response.json()
-    console.log(`[auth] Cloud response: ${response.status}`)
-    // After successful login, sync tables from cloud using the fresh token
-    if (response.ok && data.accessToken) {
-      syncTablesFromCloud(data.accessToken)
-    }
-    res.status(response.status).json(data)
-  } catch (cloudErr) {
-    console.error(`[auth] Cloud unreachable: ${(cloudErr as Error).message}`)
-    console.error(`[auth] CLOUD_API value: ${CLOUD_API}`)
-    // Cloud unavailable — try offline login fallback
-    const { phone, pin } = req.body
-    if (phone && pin) {
-      // PIN-based offline login: generate a local JWT-like token
-      const offlineToken = Buffer.from(JSON.stringify({ phone, role: 'Admin', local: true })).toString('base64')
-      const offlineUser = {
-        id: 'local-admin',
-        name: 'Admin',
-        phone: phone,
-        role: 'Admin',
-        imageUrl: null,
-      }
-      res.json({
-        accessToken: offlineToken,
-        refreshToken: offlineToken,
-        user: offlineUser,
-      })
+    const { phone, password, pin } = req.body
+
+    // Query local SQLite credential store ONLY — no cloud dependency
+    const credential = await localPrisma.localCredential.findUnique({ where: { phone } })
+
+    if (!credential) {
+      res.status(401).json({ error: { message: 'Invalid credentials', statusCode: 401 } })
       return
     }
-    res.status(502).json({ error: 'Cloud API unreachable' })
+
+    // Verify password or PIN against local hash
+    const input = password ?? pin ?? ''
+    const valid = await argon2.verify(credential.passwordHash, input)
+    if (!valid) {
+      res.status(401).json({ error: { message: 'Invalid credentials', statusCode: 401 } })
+      return
+    }
+
+    const user = {
+      id: credential.id,
+      name: credential.name,
+      phone: credential.phone,
+      role: credential.role,
+      imageUrl: credential.imageUrl,
+    }
+    const tokens = generateLocalToken(user)
+
+    // Background: try to fetch cloud data for richer tables/menu (non-blocking)
+    backgroundCloudSync(tokens.accessToken).catch(() => {})
+
+    res.json({ ...tokens, user })
+  } catch (err) {
+    console.error('[auth] Login error:', err)
+    res.status(500).json({ error: { message: 'Internal server error', statusCode: 500 } })
   }
 })
 
-app.post('/api/v1/auth/refresh', async (req, res) => {
+app.post('/api/v1/auth/refresh', async (_req, res) => {
+  // Token refresh is local — just re-issue
   try {
-    const response = await fetch(`${CLOUD_API}/auth/refresh`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(req.body),
-    })
-    const data = await response.json()
-    res.status(response.status).json(data)
+    const { phone } = _req.body
+    const credential = phone ? await localPrisma.localCredential.findUnique({ where: { phone } }) : null
+    if (!credential) {
+      res.status(401).json({ error: { message: 'Invalid refresh token', statusCode: 401 } })
+      return
+    }
+    const user = { id: credential.id, name: credential.name, phone: credential.phone, role: credential.role, imageUrl: credential.imageUrl }
+    const tokens = generateLocalToken(user)
+    res.json(tokens)
   } catch {
-    res.status(502).json({ error: 'Cloud API unreachable' })
+    res.status(500).json({ error: { message: 'Internal server error', statusCode: 500 } })
   }
 })
 
@@ -333,7 +280,7 @@ app.get('/api/v1/items', (_req, res) => {
 })
 
 app.get('/api/v1/categories', (_req, res) => {
-  if (cachedCategories && cachedCategories.length > 0) {
+  if (cachedCategories && (cachedCategories as unknown[]).length > 0) {
     res.json(cachedCategories)
     return
   }
@@ -359,7 +306,7 @@ app.get('/api/v1/settings', (_req, res) => {
 })
 
 app.get('/api/v1/tax-slabs', (_req, res) => {
-  if (cachedTaxSlabs && cachedTaxSlabs.length > 0) {
+  if (cachedTaxSlabs && (cachedTaxSlabs as unknown[]).length > 0) {
     res.json(cachedTaxSlabs)
     return
   }

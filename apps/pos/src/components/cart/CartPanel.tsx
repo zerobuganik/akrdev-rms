@@ -145,8 +145,21 @@ export function CartPanel({ tableId }: CartPanelProps) {
     mutationFn: async (orderItemId: string) => {
       await apiClient.post('/cart/remove-item', { orderItemId })
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['order', tableId] })
+    onSuccess: (_data, orderItemId) => {
+      // Optimistically remove item from cached order so UI updates instantly
+      let hasItemsLeft = true
+      queryClient.setQueryData<Order>(['order', tableId], (old) => {
+        if (!old) return old
+        const newItems = old.items.filter((i) => i.id !== orderItemId)
+        hasItemsLeft = newItems.some((i) => i.status !== 'Cancelled')
+        // Recalculate subtotal optimistically
+        const subtotal = newItems.reduce((sum, i) => sum + i.lineTotal, 0)
+        return { ...old, items: newItems, subtotal, grandTotal: subtotal }
+      })
+      // If no items remain, purge the order cache so table click shows fresh empty cart
+      if (!hasItemsLeft) {
+        queryClient.removeQueries({ queryKey: ['order', tableId] })
+      }
       queryClient.invalidateQueries({ queryKey: ['tables'] })
       toast('Item cancelled from order', 'success')
     },

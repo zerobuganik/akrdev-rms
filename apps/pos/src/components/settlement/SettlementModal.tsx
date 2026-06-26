@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { apiClient } from '@/lib/apiClient'
 import { X } from 'lucide-react'
@@ -22,9 +22,15 @@ export function SettlementModal({ order, tableName, taxType, onClose, onSettled 
   const [discountType, setDiscountType] = useState<'Percentage' | 'Flat' | null>(null)
   const [discountValue, setDiscountValue] = useState(0)
   const [discountReason, setDiscountReason] = useState('')
-  const [cash, setCash] = useState(0)
-  const [card, setCard] = useState(0)
-  const [upi, setUpi] = useState(0)
+  // Use refs + local state for payment inputs to avoid controlled-input cursor jumps
+  const [cash, setCash] = useState('')
+  const [card, setCard] = useState('')
+  const [upi, setUpi] = useState('')
+  const cashRef = useRef<HTMLInputElement>(null)
+
+  const cashNum = Number(cash) || 0
+  const cardNum = Number(card) || 0
+  const upiNum = Number(upi) || 0
 
   const discountAmount = discountType === 'Percentage'
     ? (order.subtotal * discountValue) / 100
@@ -35,7 +41,7 @@ export function SettlementModal({ order, tableName, taxType, onClose, onSettled 
       ? order.subtotal - discountAmount
       : order.subtotal + order.taxTotal - discountAmount
   )
-  const totalPaid = cash + card + upi
+  const totalPaid = cashNum + cardNum + upiNum
   const change = totalPaid - grandTotal
 
   const settleMut = useMutation({
@@ -45,7 +51,7 @@ export function SettlementModal({ order, tableName, taxType, onClose, onSettled 
         discountType: discountType || undefined,
         discountValue: discountValue || undefined,
         discountReason: discountReason || undefined,
-        payments: { cash, card, upi },
+        payments: { cash: cashNum, card: cardNum, upi: upiNum },
       })
       return data
     },
@@ -129,9 +135,13 @@ export function SettlementModal({ order, tableName, taxType, onClose, onSettled 
               <div className="flex items-center gap-2">
               <span className="w-12 text-sm text-muted-foreground">Cash</span>
               <input
+                ref={cashRef}
                 type="number"
+                inputMode="decimal"
                 value={cash}
-                onChange={(e) => setCash(Number(e.target.value))}
+                onChange={(e) => setCash(e.target.value)}
+                placeholder="0"
+                autoFocus
                 className="flex-1 rounded-lg border px-3 py-2 text-sm"
               />
             </div>
@@ -139,8 +149,10 @@ export function SettlementModal({ order, tableName, taxType, onClose, onSettled 
               <span className="w-12 text-sm text-muted-foreground">Card</span>
               <input
                 type="number"
+                inputMode="decimal"
                 value={card}
-                onChange={(e) => setCard(Number(e.target.value))}
+                onChange={(e) => setCard(e.target.value)}
+                placeholder="0"
                 className="flex-1 rounded-lg border px-3 py-2 text-sm"
               />
             </div>
@@ -148,8 +160,10 @@ export function SettlementModal({ order, tableName, taxType, onClose, onSettled 
               <span className="w-12 text-sm text-muted-foreground">UPI</span>
               <input
                 type="number"
+                inputMode="decimal"
                 value={upi}
-                onChange={(e) => setUpi(Number(e.target.value))}
+                onChange={(e) => setUpi(e.target.value)}
+                placeholder="0"
                 className="flex-1 rounded-lg border px-3 py-2 text-sm"
               />
             </div>

@@ -10,7 +10,7 @@ import { syncQueueService } from './services/sync-queue.service.js'
 
 import type { Server } from 'http'
 
-config()
+config({ path: path.join(__dirname, '.env') })
 
 const isDev = !app.isPackaged && process.env.NODE_ENV !== 'production'
 const POS_DEV_URL = 'http://localhost:5173'

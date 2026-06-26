@@ -44,27 +44,37 @@ const globalForPrisma = globalThis as unknown as {
 
 export const localPrisma = globalForPrisma.localPrisma ?? new PrismaClient({ adapter })
 
-// Auto-create local_credentials table on startup (for offline auth in fresh DBs)
-async function ensureLocalCredentialTable() {
-  try {
-    await localPrisma.$executeRawUnsafe(
-      `CREATE TABLE IF NOT EXISTS "local_credentials" (
-        "id" TEXT NOT NULL PRIMARY KEY,
-        "phone" TEXT NOT NULL UNIQUE,
-        "passwordHash" TEXT NOT NULL,
-        "name" TEXT NOT NULL DEFAULT 'Admin',
-        "role" TEXT NOT NULL DEFAULT 'Admin',
-        "imageUrl" TEXT,
-        "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-      )`
-    )
-    console.log('[local-prisma] Ensured local_credentials table exists')
-  } catch (err) {
-    console.warn('[local-prisma] local_credentials table check:', (err as Error).message)
+// Auto-create tables on startup (for fresh DBs that don't have them yet)
+async function ensureTables() {
+  const tables = [
+    `CREATE TABLE IF NOT EXISTS "local_credentials" (
+      "id" TEXT NOT NULL PRIMARY KEY, "phone" TEXT NOT NULL UNIQUE,
+      "passwordHash" TEXT NOT NULL, "name" TEXT NOT NULL DEFAULT 'Admin',
+      "role" TEXT NOT NULL DEFAULT 'Admin', "imageUrl" TEXT,
+      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )`,
+    `CREATE TABLE IF NOT EXISTS "cached_tables" (
+      "id" TEXT NOT NULL PRIMARY KEY, "name" TEXT NOT NULL,
+      "areaId" TEXT, "areaName" TEXT, "capacity" INTEGER DEFAULT 4,
+      "status" TEXT DEFAULT 'Available'
+    )`,
+    `CREATE TABLE IF NOT EXISTS "cached_items" (
+      "id" TEXT NOT NULL PRIMARY KEY, "name" TEXT NOT NULL,
+      "basePrice" REAL, "inStock" INTEGER DEFAULT 1,
+      "categoryId" TEXT, "categoryName" TEXT,
+      "variations" TEXT DEFAULT '[]', "imageUrl" TEXT
+    )`,
+    `CREATE TABLE IF NOT EXISTS "cached_settings" (
+      "id" TEXT NOT NULL PRIMARY KEY DEFAULT 'default', "data" TEXT
+    )`,
+  ]
+  for (const sql of tables) {
+    try { await localPrisma.$executeRawUnsafe(sql) } catch { /* ignore */ }
   }
+  console.log('[local-prisma] Ensured local tables exist')
 }
-ensureLocalCredentialTable().catch(() => {})
+ensureTables().catch(() => {})
 
 if (process.env.NODE_ENV !== 'production') {
   globalForPrisma.localPrisma = localPrisma

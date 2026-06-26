@@ -162,3 +162,34 @@ model LocalCredential {
 
   @@map("local_credentials")
 }
+
+model CachedTable {
+  id       String  @id
+  name     String
+  areaId   String?
+  areaName String?
+  capacity Int     @default(4)
+  status   String  @default("Available")
+
+  @@map("cached_tables")
+}
+
+model CachedItem {
+  id           String  @id
+  name         String
+  basePrice    Float
+  inStock      Boolean @default(true)
+  categoryId   String?
+  categoryName String?
+  variations   String  @default("[]")
+  imageUrl     String?
+
+  @@map("cached_items")
+}
+
+model CachedSetting {
+  id   String @id @default("default")
+  data String
+
+  @@map("cached_settings")
+}

@@ -102,6 +102,35 @@ const LOCAL_SEED_ITEMS = [
   { id: 'local-i7', name: 'Cold Drink', basePrice: 40, inStock: true, variations: [], categoryId: 'local-c5', category: { id: 'local-c5', name: 'Beverages' } },
 ]
 
+// Restore in-memory cache from local SQLite on startup (survives app restarts)
+async function restoreLocalCache() {
+  try {
+    const localTables = await localPrisma.cachedTable.findMany()
+    if (localTables.length > 0) {
+      cachedCloudTables = localTables.map(t => ({
+        id: t.id, name: t.name, capacity: t.capacity, status: t.status,
+        area: t.areaId ? { id: t.areaId, name: t.areaName ?? '' } : null,
+      })) as unknown[]
+    }
+    const localItems = await localPrisma.cachedItem.findMany()
+    if (localItems.length > 0) {
+      cachedCloudItems = localItems.map(i => ({
+        id: i.id, name: i.name, basePrice: i.basePrice, inStock: i.inStock,
+        categoryId: i.categoryId, category: i.categoryId ? { id: i.categoryId, name: i.categoryName ?? '' } : null,
+        variations: JSON.parse(i.variations), imageUrl: i.imageUrl,
+      })) as unknown[]
+    }
+    const localSettings = await localPrisma.cachedSetting.findUnique({ where: { id: 'default' } })
+    if (localSettings) {
+      try { cachedSettings = JSON.parse(localSettings.data) } catch { /* corrupt */ }
+    }
+    console.log(`[cache] Restored from local DB: tables=${cachedCloudTables?.length ?? 0}, items=${cachedCloudItems?.length ?? 0}, settings=${!!cachedSettings}`)
+  } catch (err) {
+    console.warn('[cache] Could not restore from local DB:', (err as Error).message)
+  }
+}
+restoreLocalCache().catch(() => {})
+
 // Generate a simple local JWT token
 function generateLocalToken(user: { id: string; name: string; phone: string; role: string }): { accessToken: string; refreshToken: string } {
   const payload = JSON.stringify({ userId: user.id, role: user.role, local: true })

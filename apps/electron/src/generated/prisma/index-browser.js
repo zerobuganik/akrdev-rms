@@ -239,6 +239,31 @@ exports.Prisma.LocalCredentialScalarFieldEnum = {
   updatedAt: 'updatedAt'
 };
 
+exports.Prisma.CachedTableScalarFieldEnum = {
+  id: 'id',
+  name: 'name',
+  areaId: 'areaId',
+  areaName: 'areaName',
+  capacity: 'capacity',
+  status: 'status'
+};
+
+exports.Prisma.CachedItemScalarFieldEnum = {
+  id: 'id',
+  name: 'name',
+  basePrice: 'basePrice',
+  inStock: 'inStock',
+  categoryId: 'categoryId',
+  categoryName: 'categoryName',
+  variations: 'variations',
+  imageUrl: 'imageUrl'
+};
+
+exports.Prisma.CachedSettingScalarFieldEnum = {
+  id: 'id',
+  data: 'data'
+};
+
 exports.Prisma.SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -259,7 +284,10 @@ exports.Prisma.ModelName = {
   SyncState: 'SyncState',
   PrinterConfig: 'PrinterConfig',
   PrintHistory: 'PrintHistory',
-  LocalCredential: 'LocalCredential'
+  LocalCredential: 'LocalCredential',
+  CachedTable: 'CachedTable',
+  CachedItem: 'CachedItem',
+  CachedSetting: 'CachedSetting'
 };
 
 /**

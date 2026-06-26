@@ -59,7 +59,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         isLoading: false,
         needsPinSetup: data.needsPinSetup ?? false,
       })
-      syncTablesToLocalAPI(data.accessToken)
     } catch (err: unknown) {
       const apiMsg = (err as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error?.message
       const message = apiMsg ?? (err instanceof Error ? err.message : 'Login failed')
@@ -83,7 +82,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         isAuthenticated: true,
         isLoading: false,
       })
-      syncTablesToLocalAPI(data.accessToken)
     } catch (err: unknown) {
       const apiMsg = (err as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error?.message
       const message = apiMsg ?? (err instanceof Error ? err.message : 'Login failed')
@@ -116,60 +114,4 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   clearError: () => set({ error: null }),
 }))
 
-async function syncTablesToLocalAPI(token: string) {
-  const localApiUrl = import.meta.env.VITE_LOCAL_API_URL
-  if (!localApiUrl) return
-  try {
-    const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3000/api/v1'
-    const [tablesRes, areasRes, itemsRes, categoriesRes] = await Promise.all([
-      fetch(`${base}/tables`, { headers: { Authorization: `Bearer ${token}` } }),
-      fetch(`${base}/areas`, { headers: { Authorization: `Bearer ${token}` } }),
-      fetch(`${base}/items`, { headers: { Authorization: `Bearer ${token}` } }),
-      fetch(`${base}/categories`, { headers: { Authorization: `Bearer ${token}` } }),
-    ])
-    const rawTables = tablesRes.ok ? await tablesRes.json() : null
-    const rawAreas = areasRes.ok ? await areasRes.json() : null
-    const rawItems = itemsRes.ok ? await itemsRes.json() : null
-    const rawCategories = categoriesRes.ok ? await categoriesRes.json() : null
 
-    if (!rawTables && !rawAreas && !rawItems && !rawCategories) return
-
-    const tables = rawTables?.map((t: { id: string; name: string; capacity?: number; status?: string; area?: { id: string; name: string } }) => ({
-      id: t.id,
-      name: t.name,
-      capacity: t.capacity ?? 0,
-      status: t.status ?? 'Available',
-      area: t.area ? { id: t.area.id, name: t.area.name } : null,
-    })) ?? null
-
-    const areas = rawAreas?.map((a: { id: string; name: string }) => ({
-      id: a.id,
-      name: a.name,
-    })) ?? null
-
-    const items = rawItems?.map((i: { id: string; name: string; basePrice: number; inStock: boolean; variations: Array<{ id: string; name: string; priceAdjustment: number }>; categoryId?: string; category?: { id: string; name: string } }) => ({
-      id: i.id,
-      name: i.name,
-      basePrice: i.basePrice,
-      inStock: i.inStock ?? true,
-      variations: i.variations ?? [],
-      categoryId: i.categoryId ?? null,
-      category: i.category ?? null,
-    })) ?? null
-
-    const categories = rawCategories?.map((c: { id: string; name: string }) => ({
-      id: c.id,
-      name: c.name,
-    })) ?? null
-
-    if (tables || areas || items || categories) {
-      await fetch(`${localApiUrl}/tables/sync`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tables, areas, items, categories }),
-      }).catch(() => {})
-    }
-  } catch {
-    // Non-critical — fallback to local-only
-  }
-}

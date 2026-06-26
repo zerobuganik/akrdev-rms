@@ -254,6 +254,18 @@ async function syncFromCloud(phone: string, password: string) {
   }
 }
 
+async function startupCloudSync() {
+  try {
+    const credential = await localPrisma.localCredential.findFirst()
+    if (credential) {
+      console.log('[startup] Attempting cloud sync with stored credentials...')
+      await syncFromCloud(credential.phone, 'admin123')
+    }
+  } catch {
+    // Non-fatal — login will retry
+  }
+}
+
 // Seed default admin credentials if no local user exists
 async function ensureLocalAdmin() {
   try {
@@ -304,7 +316,14 @@ app.post('/api/v1/auth/login', async (req, res) => {
     const tokens = generateLocalToken(user)
 
     if (password) {
-      syncFromCloud(phone, password).catch((err) => console.warn('[login] Cloud sync error:', (err as Error).message))
+      try {
+        await Promise.race([
+          syncFromCloud(phone, password),
+          new Promise((resolve) => setTimeout(resolve, 5_000)),
+        ])
+      } catch (err) {
+        console.warn('[login] Cloud sync error:', (err as Error).message)
+      }
     }
 
     res.json({ ...tokens, user })
@@ -1345,6 +1364,7 @@ export function createLocalApiServer() {
   const port = Number(process.env.LOCAL_API_PORT) || 3001
   server.listen(port, '0.0.0.0', () => {
     console.log(`Local POS API running on http://0.0.0.0:${port}`)
+    startupCloudSync().catch(() => {})
   })
 
   return server

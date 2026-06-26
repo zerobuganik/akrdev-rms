@@ -455,10 +455,11 @@ app.get('/api/v1/categories', (_req, res) => {
     return
   }
   if (LOCAL_SEED_ITEMS.length > 0) {
-    const cats = new Map<string, { id: string; name: string }>()
+    const cats = new Map<string, { id: string; name: string; _count: { items: number } }>()
     for (const item of LOCAL_SEED_ITEMS) {
       if (item.category && !cats.has(item.category.id)) {
-        cats.set(item.category.id, item.category)
+        const count = LOCAL_SEED_ITEMS.filter((i) => i.categoryId === item.categoryId).length
+        cats.set(item.category.id, { ...item.category, _count: { items: count } })
       }
     }
     res.json(Array.from(cats.values()))
@@ -472,7 +473,24 @@ app.get('/api/v1/settings', (_req, res) => {
     res.json(cachedSettings)
     return
   }
-  res.json({ companyName: 'AKRDev Restaurant' })
+  res.json({
+    id: 'default',
+    companyName: 'AKRDev Restaurant',
+    address: '',
+    phone: '',
+    taxType: 'Exclusive',
+    invoiceFooter: '',
+    logoUrl: null,
+    printLogoUrl: null,
+    currency: '₹',
+    lowStockAlert: true,
+    allowNegativeInventory: false,
+    orderPrefix: 'ORD',
+    kotPrinterEnabled: false,
+    billPrinterEnabled: false,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  })
 })
 
 app.get('/api/v1/tax-slabs', (_req, res) => {
@@ -483,13 +501,19 @@ app.get('/api/v1/tax-slabs', (_req, res) => {
   res.json([])
 })
 
-// Areas — serve from cloud cache or empty
+// Areas — serve from cloud cache, seed data, or empty
 app.get('/api/v1/areas', (_req, res) => {
   if (cachedAreas && cachedAreas.length > 0) {
     res.json(cachedAreas)
     return
   }
-  res.json([])
+  const areaMap = new Map<string, { id: string; name: string }>()
+  for (const t of LOCAL_SEED_TABLES) {
+    if (t.area && !areaMap.has(t.area.id)) {
+      areaMap.set(t.area.id, t.area)
+    }
+  }
+  res.json(Array.from(areaMap.values()))
 })
 
 // Orders list — serve from local DB

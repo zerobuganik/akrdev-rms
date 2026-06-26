@@ -2,20 +2,17 @@ import { PrismaClient } from '../generated/prisma/index.js'
 import { PrismaLibSql } from '@prisma/adapter-libsql'
 import path from 'path'
 import fs from 'fs'
-import { createRequire } from 'module'
 
 function resolveDbPath(): string {
   if (process.env.SQLITE_DB_PATH) return process.env.SQLITE_DB_PATH
 
   try {
-    const req = createRequire(import.meta.url)
-    const { app } = req('electron') as { app: { isPackaged: boolean; getPath: (name: string) => string } }
+    const { app } = require('electron')
     if (app?.isPackaged) {
       const userData = app.getPath('userData')
       const dbPath = path.join(userData, 'local.db')
       const seedPath = path.join(process.resourcesPath!, 'app.asar.unpacked', 'data', 'local.db')
 
-      // Copy seed DB on first run
       if (!fs.existsSync(dbPath) && fs.existsSync(seedPath)) {
         fs.mkdirSync(path.dirname(dbPath), { recursive: true })
         fs.copyFileSync(seedPath, dbPath)
@@ -30,7 +27,6 @@ function resolveDbPath(): string {
 
 const dbPath = resolveDbPath()
 
-// Ensure the parent directory exists
 const dbDir = path.dirname(dbPath)
 if (!fs.existsSync(dbDir)) {
   fs.mkdirSync(dbDir, { recursive: true })
@@ -44,7 +40,6 @@ const globalForPrisma = globalThis as unknown as {
 
 export const localPrisma = globalForPrisma.localPrisma ?? new PrismaClient({ adapter })
 
-// Auto-create tables on startup (for fresh DBs that don't have them yet)
 async function ensureTables() {
   const tables = [
     `CREATE TABLE IF NOT EXISTS "local_credentials" (

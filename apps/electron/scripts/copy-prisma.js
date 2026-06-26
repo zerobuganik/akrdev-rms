@@ -23,7 +23,6 @@ if (fs.existsSync(srcGenerated)) {
   console.warn('[copy-prisma] No generated prisma found in src/')
 }
 
-// Copy .env to dist/ so Electron main process can load CLOUD_API_URL
 const srcEnv = path.join(__dirname, '..', '.env')
 const destEnv = path.join(__dirname, '..', 'dist', '.env')
 if (fs.existsSync(srcEnv)) {

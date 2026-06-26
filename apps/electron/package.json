@@ -4,10 +4,10 @@
   "private": true,
   "main": "./dist/main.js",
   "scripts": {
-    "predev": "prisma db push && tsc && node scripts/copy-prisma.js",
+    "predev": "prisma db push && node scripts/bundle-server.js && tsc && node scripts/copy-prisma.js",
     "dev": "electron .",
     "start": "set NODE_ENV=production && ..\\..\\node_modules\\.pnpm\\electron@33.4.11\\node_modules\\electron\\dist\\electron.exe .",
-    "build": "prisma db push && tsc && node scripts/copy-prisma.js",
+    "build": "prisma db push && node scripts/bundle-server.js && tsc && node scripts/copy-prisma.js",
     "dist": "electron-builder --config electron-builder.yml",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src/",
@@ -45,6 +45,7 @@
     "@types/node": "^22.0.0",
     "electron": "^33.4.11",
     "electron-builder": "^26.8.1",
+    "esbuild": "^0.25.0",
     "tsx": "^4.22.3",
     "typescript": "^6.0.0"
   }

@@ -745,9 +745,9 @@ export function CartPanel({ tableId }: CartPanelProps) {
           onClose={() => setShowSettlement(false)}
           onSettled={() => {
             setShowSettlement(false)
-            // Remove stale order data from cache so it doesn't flash on next table click
+            // Set order to null so cart shows empty, no loading state
             if (tableId) {
-              queryClient.removeQueries({ queryKey: ['order', tableId] })
+              queryClient.setQueryData(['order', tableId], null)
             }
             queryClient.invalidateQueries({ queryKey: ['tables'] })
             queryClient.invalidateQueries({ queryKey: ['takeaway-orders'] })

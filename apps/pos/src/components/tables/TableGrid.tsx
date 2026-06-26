@@ -634,7 +634,7 @@ export function TableGrid() {
               : null
             setSettleOrder(null)
             if (settledTableId) {
-              queryClient.removeQueries({ queryKey: ['order', settledTableId] })
+              queryClient.setQueryData(['order', settledTableId], null)
             }
             queryClient.invalidateQueries({ queryKey: ['tables', selectedAreas] })
             queryClient.invalidateQueries({ queryKey: ['takeaway-orders'] })

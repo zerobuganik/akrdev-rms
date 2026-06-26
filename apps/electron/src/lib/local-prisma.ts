@@ -44,6 +44,28 @@ const globalForPrisma = globalThis as unknown as {
 
 export const localPrisma = globalForPrisma.localPrisma ?? new PrismaClient({ adapter })
 
+// Auto-create local_credentials table on startup (for offline auth in fresh DBs)
+async function ensureLocalCredentialTable() {
+  try {
+    await localPrisma.$executeRawUnsafe(
+      `CREATE TABLE IF NOT EXISTS "local_credentials" (
+        "id" TEXT NOT NULL PRIMARY KEY,
+        "phone" TEXT NOT NULL UNIQUE,
+        "passwordHash" TEXT NOT NULL,
+        "name" TEXT NOT NULL DEFAULT 'Admin',
+        "role" TEXT NOT NULL DEFAULT 'Admin',
+        "imageUrl" TEXT,
+        "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )`
+    )
+    console.log('[local-prisma] Ensured local_credentials table exists')
+  } catch (err) {
+    console.warn('[local-prisma] local_credentials table check:', (err as Error).message)
+  }
+}
+ensureLocalCredentialTable().catch(() => {})
+
 if (process.env.NODE_ENV !== 'production') {
   globalForPrisma.localPrisma = localPrisma
 }

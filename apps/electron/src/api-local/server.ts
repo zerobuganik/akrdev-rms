@@ -141,13 +141,18 @@ async function backgroundCloudSync(accessToken: string) {
 
 // Seed default admin credentials if no local user exists
 async function ensureLocalAdmin() {
-  const existing = await localPrisma.localCredential.findFirst()
-  if (!existing) {
-    const hash = await argon2.hash('admin123')
-    await localPrisma.localCredential.create({
-      data: { phone: '7001181474', passwordHash: hash, name: 'Admin', role: 'Admin' },
-    })
-    console.log('[auth] Created default local admin: 7001181474 / admin123')
+  try {
+    const existing = await localPrisma.localCredential.findFirst()
+    if (!existing) {
+      const hash = await argon2.hash('admin123')
+      await localPrisma.localCredential.create({
+        data: { phone: '7001181474', passwordHash: hash, name: 'Admin', role: 'Admin' },
+      })
+      console.log('[auth] Created default local admin: 7001181474 / admin123')
+    }
+  } catch (err) {
+    console.error('[auth] Failed to seed local admin:', (err as Error).message)
+    // Non-fatal — the user may need to create credentials manually or the DB may be fresh
   }
 }
 ensureLocalAdmin().catch(() => {})

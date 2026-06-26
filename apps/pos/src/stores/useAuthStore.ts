@@ -163,7 +163,7 @@ async function syncTablesToLocalAPI(token: string) {
     })) ?? null
 
     if (tables || areas || items || categories) {
-      await fetch(`${localApiUrl}/api/v1/tables/sync`, {
+      await fetch(`${localApiUrl}/tables/sync`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tables, areas, items, categories }),

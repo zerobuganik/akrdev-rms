@@ -144,8 +144,9 @@ async function backgroundCloudSync(accessToken: string) {
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), 8000)
     const headers = { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' }
-    const [tablesRes, itemsRes, settingsRes] = await Promise.all([
+    const [tablesRes, areasRes, itemsRes, settingsRes] = await Promise.all([
       fetch(`${CLOUD_API}/tables`, { headers, signal: controller.signal }),
+      fetch(`${CLOUD_API}/areas`, { headers, signal: controller.signal }),
       fetch(`${CLOUD_API}/items`, { headers, signal: controller.signal }),
       fetch(`${CLOUD_API}/settings`, { headers, signal: controller.signal }),
     ])
@@ -156,6 +157,9 @@ async function backgroundCloudSync(accessToken: string) {
         id: t.id, name: t.name, capacity: t.capacity ?? 0, status: t.status ?? 'Available',
         area: t.area ?? null,
       })) : null
+    }
+    if (areasRes.ok) {
+      cachedAreas = await areasRes.json()
     }
     if (itemsRes.ok) {
       const raw = await itemsRes.json()
@@ -344,6 +348,35 @@ app.get('/api/v1/tax-slabs', (_req, res) => {
     res.json(cachedTaxSlabs)
     return
   }
+  res.json([])
+})
+
+// Areas — serve from cloud cache or empty
+app.get('/api/v1/areas', (_req, res) => {
+  if (cachedAreas && cachedAreas.length > 0) {
+    res.json(cachedAreas)
+    return
+  }
+  res.json([])
+})
+
+// Orders list — serve from local DB
+app.get('/api/v1/orders', async (_req, res) => {
+  try {
+    const orders = await localPrisma.localOrder.findMany({
+      where: { status: { notIn: ['Settled', 'Cancelled'] } },
+      include: { items: true, kots: true, settlement: true },
+      orderBy: { createdAt: 'desc' },
+    })
+    res.json(orders)
+  } catch (err) {
+    console.error('[orders] List error:', err)
+    res.status(500).json({ error: 'Failed to fetch orders' })
+  }
+})
+
+// Employees — serve from cloud cache or empty (admins managed via cloud)
+app.get('/api/v1/employees', (_req, res) => {
   res.json([])
 })
 

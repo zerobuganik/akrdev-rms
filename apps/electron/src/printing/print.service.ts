@@ -430,7 +430,13 @@ export class PrintService {
       for (const item of data.items) {
         const qtyStr = this.centerIn(String(item.quantity), qtyColW)
         const nameStr = this.pad(item.name, itemColW)
-        lines.push(qtyStr + '  ' + nameStr)
+        lines.push(
+          CMD.DOUBLE_HEIGHT,
+          CMD.BOLD_ON,
+          qtyStr + '  ' + nameStr,
+          CMD.BOLD_OFF,
+          CMD.NORMAL,
+        )
         if (item.note) {
           lines.push(' '.repeat(qtyColW + 2) + `> ${item.note}`)
         }

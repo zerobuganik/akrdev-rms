@@ -16,10 +16,18 @@ export default function CartPage() {
   const [takeawayOrderId, setTakeawayOrderId] = useState<string | null>(null)
   const queryClient = useQueryClient()
 
-  // Handle takeaway-new: no order created yet, will create on first item add
   const isTakeawayNew = routeTableId === 'takeaway-new'
 
-  // Set tableId on mount
+  const getOrCreateTakeawayOrder = useCallback(async (): Promise<string> => {
+    if (takeawayOrderId) return takeawayOrderId
+    const { data } = await apiClient.post('/orders/takeaway')
+    const id = data.id as string
+    setTakeawayOrderId(id)
+    setTableId(id)
+    queryClient.invalidateQueries({ queryKey: ['takeaway-orders'] })
+    return id
+  }, [takeawayOrderId, queryClient])
+
   useEffect(() => {
     if (routeTableId && routeTableId !== 'takeaway-new') {
       setTableId(routeTableId)

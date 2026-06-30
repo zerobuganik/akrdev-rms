@@ -10,7 +10,7 @@ interface ProtectedRouteProps {
 
 export function ProtectedRoute({ children, requirePin = true }: ProtectedRouteProps) {
   const token = localStorage.getItem('accessToken')
-  const { needsPinSetup, showSyncScreen, lastLoginPhone, lastLoginPassword, finishSync } = useAuthStore()
+  const { needsPinSetup, showSyncScreen, finishSync } = useAuthStore()
 
   if (!token) {
     return <Navigate to="/login" replace />
@@ -21,7 +21,7 @@ export function ProtectedRoute({ children, requirePin = true }: ProtectedRoutePr
   }
 
   if (showSyncScreen) {
-    return <SyncScreen onComplete={finishSync} phone={lastLoginPhone ?? undefined} password={lastLoginPassword ?? undefined} />
+    return <SyncScreen onComplete={finishSync} authToken={token} />
   }
 
   return <>{children}</>

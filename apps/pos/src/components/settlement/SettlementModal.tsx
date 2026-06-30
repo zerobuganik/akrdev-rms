@@ -40,7 +40,7 @@ export function SettlementModal({ order, tableName, taxType, onClose, onSettled 
     ? (order.subtotal * discountValue) / 100
     : discountValue
 
-  const { taxTotal } = calculateTax(order.subtotal ?? 0, 0, taxType)
+  const { taxTotal } = calculateTax(order.subtotal ?? 0, 0, taxType as 'Inclusive' | 'Exclusive')
   const exactGrandTotal = taxType === 'Inclusive'
     ? order.subtotal - discountAmount
     : order.subtotal + taxTotal - discountAmount

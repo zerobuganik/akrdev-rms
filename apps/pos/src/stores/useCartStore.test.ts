@@ -6,10 +6,9 @@ describe('useCartStore', () => {
     useCartStore.getState().clearCart()
   })
 
-  it('starts with null active table and order', () => {
-    const { activeTableId, activeOrderId } = useCartStore.getState()
+  it('starts with null active table', () => {
+    const { activeTableId } = useCartStore.getState()
     expect(activeTableId).toBeNull()
-    expect(activeOrderId).toBeNull()
   })
 
   it('sets active table', () => {
@@ -23,9 +22,8 @@ describe('useCartStore', () => {
     useCartStore.getState().setOrderNote('no onions')
     useCartStore.getState().clearCart()
 
-    const { activeTableId, activeOrderId, guestCount, items, orderNote } = useCartStore.getState()
+    const { activeTableId, guestCount, items, orderNote } = useCartStore.getState()
     expect(activeTableId).toBeNull()
-    expect(activeOrderId).toBeNull()
     expect(guestCount).toBe(2)
     expect(items).toEqual([])
     expect(orderNote).toBe('')

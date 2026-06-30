@@ -60,6 +60,8 @@ export type PrintType = 'kot' | 'bill' | 'reprint-bill' | 'test-print'
 const PAPER_80MM = 48 // 80mm = 48 chars at default font
 const PAPER_58MM = 34 // 58mm = 34 chars at default font
 
+const ESC_POS_CUT = Buffer.from([0x1D, 0x56, 0x42, 0x00])
+
 // ESC/POS command bytes
 const ESC = '\x1b'
 const CMD = {
@@ -188,7 +190,6 @@ export class PrintService {
 
     const buffer = this.formatTestPrint()
     await adapter.write(buffer)
-    await adapter.cut?.()
   }
 
   /**
@@ -319,7 +320,6 @@ export class PrintService {
     try {
       const buffer = await formatFn()
       await adapter.write(buffer)
-      await adapter.cut?.()
       await printQueueService.markCompleted(job.id)
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)
@@ -433,7 +433,8 @@ export class PrintService {
       CMD.SPACER,
     )
 
-    return Buffer.from(lines.filter(Boolean).join('\n'), 'utf-8')
+    const textBuf = Buffer.from(lines.filter(Boolean).join('\n'), 'utf-8')
+    return Buffer.concat([textBuf, ESC_POS_CUT])
   }
 
   /**
@@ -709,9 +710,9 @@ export class PrintService {
     const textBuf = Buffer.from(lines.filter(Boolean).join('\n'), 'utf-8')
     const initBuf = Buffer.from(CMD.INIT, 'utf-8')
     if (logoBuf) {
-      return Buffer.concat([initBuf, logoBuf, textBuf])
+      return Buffer.concat([initBuf, logoBuf, textBuf, ESC_POS_CUT])
     }
-    return Buffer.concat([initBuf, textBuf])
+    return Buffer.concat([initBuf, textBuf, ESC_POS_CUT])
   }
 
   /**
@@ -732,8 +733,8 @@ export class PrintService {
       ].join('\n'),
       'utf-8',
     )
-    // Remove CMD.INIT from the bill (first 2 bytes) and insert reprint header
-    return Buffer.concat([header, original.slice(2)])
+    const body = original.slice(CMD.INIT.length, original.length - ESC_POS_CUT.length)
+    return Buffer.concat([header, body, ESC_POS_CUT])
   }
 
   /**
@@ -761,7 +762,8 @@ export class PrintService {
       'Printer is working correctly!',
       CMD.SPACER,
     ]
-    return Buffer.from(lines.join('\n'), 'utf-8')
+    const textBuf = Buffer.from(lines.join('\n'), 'utf-8')
+    return Buffer.concat([textBuf, ESC_POS_CUT])
   }
 
   /**
@@ -806,7 +808,6 @@ export class PrintService {
         // Send a simple reprint
         const testBuffer = this.formatTestPrint()
         await adapter.write(testBuffer)
-        await adapter.cut?.()
         await printQueueService.markCompleted(job.id)
         processed++
       } catch (err) {

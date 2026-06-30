@@ -2,6 +2,9 @@
   "$schema": "https://schema.railpack.com",
   "steps": {
     "install": {
+      "env": {
+        "COREPACK_ENABLE_STRICT": "0"
+      },
       "commands": [
         "corepack enable",
         "corepack prepare pnpm@11.5.0 --activate",

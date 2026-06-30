@@ -216,12 +216,12 @@ export function TableGrid() {
 
   const filteredByArea = selectedAreas.length === 0
     ? tables
-    : tables.filter((t) => selectedAreas.includes(t.area.id))
+    : tables.filter((t) => selectedAreas.includes(t.area?.id ?? ''))
 
   const groupedByArea = areas.reduce(
     (acc, area) => {
       const areaTables = filteredByArea
-        .filter((t) => t.area.id === area.id)
+        .filter((t) => t.area?.id === area.id)
         .sort((a, b) => a.position - b.position)
       acc[area.name] = { areaId: area.id, tables: areaTables }
       return acc

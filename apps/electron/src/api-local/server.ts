@@ -985,21 +985,72 @@ app.delete('/api/v1/tax-slabs/:id', (req, res) => {
   adminQueued(res)
 })
 
-app.post('/api/v1/employees', (req, res) => {
-  syncQueueService.enqueue('admin-create', { path: '/employees', body: req.body }).catch(() => {})
-  adminQueued(res)
+app.post('/api/v1/employees', async (req, res) => {
+  try {
+    const { name, phone, pin, password, role } = req.body
+    // Also save locally so the employee can log in immediately
+    const passwordHash = await argon2.hash(password ?? 'admin123')
+    const pinHash = pin ? await argon2.hash(pin) : null
+    await localPrisma.localCredential.upsert({
+      where: { phone },
+      create: { phone, passwordHash, pinHash, name: name ?? '', role: role ?? 'Cashier' },
+      update: { passwordHash, pinHash, name: name ?? '', role: role ?? 'Cashier' },
+    })
+    syncQueueService.enqueue('admin-create', { path: '/employees', body: req.body }).catch(() => {})
+    adminQueued(res)
+  } catch (err) {
+    console.error('[employees] Create error:', err)
+    res.status(500).json({ error: { message: 'Failed to create employee' } })
+  }
 })
-app.put('/api/v1/employees/:id', (req, res) => {
-  syncQueueService.enqueue('admin-put', { path: `/employees/${req.params.id}`, body: req.body }).catch(() => {})
-  adminQueued(res)
+app.put('/api/v1/employees/:id', async (req, res) => {
+  try {
+    const { name, phone, pin, password, role, active } = req.body
+    if (phone) {
+      const updateData: Record<string, unknown> = { phone }
+      if (name) updateData.name = name
+      if (role) updateData.role = role
+      if (password) updateData.passwordHash = await argon2.hash(password)
+      if (pin) updateData.pinHash = await argon2.hash(pin)
+      if (active !== undefined) updateData.active = active
+      await localPrisma.localCredential.upsert({
+        where: { phone },
+        create: { phone, passwordHash: await argon2.hash(password ?? 'admin123'), pinHash: pin ? await argon2.hash(pin) : null, name: name ?? '', role: role ?? 'Cashier' },
+        update: updateData,
+      })
+    }
+    syncQueueService.enqueue('admin-put', { path: `/employees/${req.params.id}`, body: req.body }).catch(() => {})
+    adminQueued(res)
+  } catch (err) {
+    console.error('[employees] Update error:', err)
+    res.status(500).json({ error: { message: 'Failed to update employee' } })
+  }
 })
-app.delete('/api/v1/employees/:id', (req, res) => {
-  syncQueueService.enqueue('admin-delete', { path: `/employees/${req.params.id}` }).catch(() => {})
-  adminQueued(res)
+app.delete('/api/v1/employees/:id', async (req, res) => {
+  try {
+    syncQueueService.enqueue('admin-delete', { path: `/employees/${req.params.id}` }).catch(() => {})
+    adminQueued(res)
+  } catch (err) {
+    console.error('[employees] Delete error:', err)
+    res.status(500).json({ error: { message: 'Failed to delete employee' } })
+  }
 })
-app.put('/api/v1/employees/:id/change-password', (req, res) => {
-  syncQueueService.enqueue('admin-put', { path: `/employees/${req.params.id}/change-password`, body: req.body }).catch(() => {})
-  adminQueued(res)
+app.put('/api/v1/employees/:id/change-password', async (req, res) => {
+  try {
+    const { phone, newPassword } = req.body
+    if (phone && newPassword) {
+      const passwordHash = await argon2.hash(newPassword)
+      await localPrisma.localCredential.update({
+        where: { phone },
+        data: { passwordHash },
+      })
+    }
+    syncQueueService.enqueue('admin-put', { path: `/employees/${req.params.id}/change-password`, body: req.body }).catch(() => {})
+    adminQueued(res)
+  } catch (err) {
+    console.error('[employees] Change password error:', err)
+    res.status(500).json({ error: { message: 'Failed to change password' } })
+  }
 })
 
 app.post('/api/v1/orders/:id/void', (req, res) => {

@@ -81,9 +81,9 @@ git push -u origin main
 
 | Field | Value |
 |-------|-------|
-| **Root Directory** | `apps/api` |
-| **Build Command** | `npm install -g pnpm && pnpm install --frozen-lockfile --filter @akrdev/api... && pnpm --filter @akrdev/api build:full` |
-| **Start Command** | `pnpm --filter @akrdev/api start` |
+| **Root Directory** | (leave empty — use repository root for monorepo) |
+| **Build Command** | `corepack enable && corepack prepare pnpm@11.5.0 --activate && pnpm install --frozen-lockfile --filter @akrdev/api... && pnpm --filter @akrdev/api build:full` |
+| **Start Command** | `cd apps/api && pnpm --filter @akrdev/api start` |
 
 5. Click **Variables** tab and add these 8 variables:
 
@@ -207,8 +207,8 @@ For VPS deployment, see `scripts/deploy-vps.sh`.
 
 | Problem | Fix |
 |---------|-----|
-| Railway deploy fails | Check DATABASE_URL has no extra spaces. Verify Root Directory is `apps/api`. |
-| `pnpm` not found | Ensure `npm install -g pnpm` is in the Build Command. |
+| Railway deploy fails | Check DATABASE_URL has no extra spaces. Root Directory must be empty (repo root). |
+| `pnpm` not found | Use `corepack enable && corepack prepare pnpm@11.5.0 --activate` in the Build Command. |
 | EXE won't start | Check `apps\electron\.env` has correct `CLOUD_API_URL` ending in `/api/v1`. |
 | Login fails | Check DATABASE_URL is correct. Re-deploy to run seed again. |
 | CORS errors in browser | Set `CORS_ORIGINS` to your frontend domain instead of `*`. |

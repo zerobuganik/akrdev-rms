@@ -1130,10 +1130,15 @@ app.get('/api/v1/areas', (_req, res) => {
 })
 
 // Orders list — serve from local DB
-app.get('/api/v1/orders', async (_req, res) => {
+app.get('/api/v1/orders', async (req, res) => {
   try {
+    const statusFilter = req.query.status as string | undefined
+    const where: Record<string, unknown> = {}
+    if (statusFilter) {
+      where.status = statusFilter
+    }
     const orders = await localPrisma.localOrder.findMany({
-      where: { status: { notIn: ['Settled', 'Cancelled'] } },
+      where,
       include: { items: true, kots: true, settlement: true },
       orderBy: { createdAt: 'desc' },
     })

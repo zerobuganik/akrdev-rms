@@ -1497,6 +1497,21 @@ app.get('/api/v1/print/history', async (req, res) => {
   }
 })
 
+app.get('/api/v1/health', (_req, res) => {
+  res.json({
+    status: 'ok',
+    cloudApiBase: getCloudApiBase(),
+    cloudAccessToken: !!cloudAccessToken,
+    tablesCached: cachedCloudTables?.length ?? 0,
+    itemsCached: cachedCloudItems?.length ?? 0,
+    settingsCached: !!cachedSettings,
+    categoriesCached: (cachedCategories as unknown[])?.length ?? 0,
+    employeesCached: (cachedCloudEmployees as unknown[])?.length ?? 0,
+    lastSyncTime,
+    storedCloudToken: !!getCloudAccessToken(),
+  })
+})
+
 // Final catch-all for unmatched /api/v1 routes — queue writes, 404 for unknown GETs
 app.use('/api/v1', async (req, res) => {
   if (res.headersSent) return

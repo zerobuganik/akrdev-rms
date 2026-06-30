@@ -61,6 +61,13 @@ export async function ensureTables() {
       "categoryId" TEXT, "categoryName" TEXT,
       "variations" TEXT DEFAULT '[]', "imageUrl" TEXT
     )`,
+    `CREATE TABLE IF NOT EXISTS "cached_categories" (
+      "id" TEXT NOT NULL PRIMARY KEY, "name" TEXT NOT NULL,
+      "displayOrder" INTEGER DEFAULT 0,
+      "imageUrl" TEXT, "kitchenId" TEXT,
+      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )`,
     `CREATE TABLE IF NOT EXISTS "cached_settings" (
       "id" TEXT NOT NULL PRIMARY KEY DEFAULT 'default', "data" TEXT
     )`,

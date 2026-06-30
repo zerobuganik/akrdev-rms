@@ -128,7 +128,14 @@ async function restoreLocalCache() {
     if (localSettings) {
       try { cachedSettings = JSON.parse(localSettings.data) } catch { /* corrupt */ }
     }
-    console.log(`[cache] Restored from local DB: tables=${cachedCloudTables?.length ?? 0}, items=${cachedCloudItems?.length ?? 0}, settings=${!!cachedSettings}`)
+    const localCategories = await localPrisma.cachedCategory.findMany()
+    if (localCategories.length > 0) {
+      cachedCategories = localCategories.map(c => ({
+        id: c.id, name: c.name, displayOrder: c.displayOrder, imageUrl: c.imageUrl,
+        _count: { items: 0 },
+      })) as unknown[]
+    }
+    console.log(`[cache] Restored from local DB: tables=${cachedCloudTables?.length ?? 0}, items=${cachedCloudItems?.length ?? 0}, settings=${!!cachedSettings}, cats=${(cachedCategories as unknown[])?.length ?? 0}`)
   } catch (err) {
     console.warn('[cache] Could not restore from local DB:', (err as Error).message)
   }
@@ -320,115 +327,6 @@ async function syncFromCloud(phone: string, password: string) {
   }
 }
 
-// Re-sync using a stored cloud token (no password needed — skips re-auth)
-async function syncFromCloudWithToken(token: string) {
-  try {
-    const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 30_000)
-    const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
-    const [tablesRes, areasRes, itemsRes, settingsRes, categoriesRes, taxSlabsRes, employeesRes, ordersRes] = await Promise.all([
-      fetch(`${getCloudApiBase()}/tables`, { headers, signal: controller.signal }),
-      fetch(`${getCloudApiBase()}/areas`, { headers, signal: controller.signal }),
-      fetch(`${getCloudApiBase()}/items`, { headers, signal: controller.signal }),
-      fetch(`${getCloudApiBase()}/settings`, { headers, signal: controller.signal }),
-      fetch(`${getCloudApiBase()}/categories`, { headers, signal: controller.signal }),
-      fetch(`${getCloudApiBase()}/tax-slabs`, { headers, signal: controller.signal }),
-      fetch(`${getCloudApiBase()}/employees`, { headers, signal: controller.signal }),
-      fetch(`${getCloudApiBase()}/orders`, { headers, signal: controller.signal }),
-    ])
-    clearTimeout(timeout)
-
-    let synced = false
-    if (tablesRes.ok) {
-      const raw = await tablesRes.json()
-      cachedCloudTables = Array.isArray(raw) ? raw.map((t: Record<string, unknown>) => ({
-        id: t.id, name: t.name, capacity: t.capacity ?? 0, status: t.status ?? 'Available',
-        area: t.area ?? null,
-      })) : null
-      if (cachedCloudTables) {
-        for (const t of cachedCloudTables as Array<{ id: string; name: string; capacity: number; status: string; area: { id?: string; name?: string } | null }>) {
-          await localPrisma.cachedTable.upsert({
-            where: { id: t.id },
-            create: { id: t.id, name: t.name, capacity: t.capacity, status: t.status, areaId: t.area?.id ?? null, areaName: t.area?.name ?? null },
-            update: { name: t.name, capacity: t.capacity, status: t.status, areaId: t.area?.id ?? null, areaName: t.area?.name ?? null },
-          }).catch(() => {})
-        }
-      }
-      synced = true
-    }
-    if (areasRes.ok) { cachedAreas = await areasRes.json(); synced = true }
-    if (settingsRes.ok) {
-      cachedSettings = await settingsRes.json(); synced = true
-      await localPrisma.cachedSetting.upsert({
-        where: { id: 'default' },
-        create: { id: 'default', data: JSON.stringify(cachedSettings) },
-        update: { data: JSON.stringify(cachedSettings) },
-      }).catch(() => {})
-    }
-    if (categoriesRes.ok) { cachedCategories = await categoriesRes.json(); synced = true }
-    if (taxSlabsRes.ok) { cachedTaxSlabs = await taxSlabsRes.json(); synced = true }
-    if (employeesRes.ok) { cachedCloudEmployees = await employeesRes.json(); synced = true }
-    if (ordersRes.ok) {
-      const raw = await ordersRes.json()
-      if (Array.isArray(raw)) {
-        for (const o of raw as Array<Record<string, unknown>>) {
-          await localPrisma.localOrder.upsert({
-            where: { id: o.id as string },
-            create: {
-              id: o.id as string, tableId: o.tableId as string ?? null, tableName: o.tableName as string ?? null,
-              guestCount: o.guestCount as number ?? 2, status: o.status as string ?? 'Draft',
-              subtotal: o.subtotal as number ?? 0, taxTotal: o.taxTotal as number ?? 0,
-              discountTotal: o.discountTotal as number ?? 0, grandTotal: o.grandTotal as number ?? 0,
-              orderType: o.orderType as string ?? 'DineIn', syncStatus: 'Synced',
-            },
-            update: { status: o.status as string, subtotal: o.subtotal as number, taxTotal: o.taxTotal as number, discountTotal: o.discountTotal as number, grandTotal: o.grandTotal as number },
-          }).catch(() => {})
-          const items = o.items as Array<Record<string, unknown>> | undefined
-          if (items?.length) {
-            for (const item of items) {
-              const oi = item.item as Record<string, unknown> | undefined
-              await localPrisma.localOrderItem.upsert({
-                where: { id: item.id as string },
-                create: {
-                  id: item.id as string, orderId: o.id as string, itemId: item.itemId as string ?? '',
-                  itemName: oi?.name as string ?? item.itemName as string ?? '',
-                  quantity: item.quantity as number ?? 1, unitPrice: item.unitPrice as number ?? 0,
-                  lineTotal: item.lineTotal as number ?? 0, status: item.status as string ?? 'New',
-                  variationId: item.variationId as string ?? null,
-                  variationName: item.variationName as string ?? null,
-                },
-                update: { quantity: item.quantity as number, unitPrice: item.unitPrice as number, lineTotal: item.lineTotal as number, status: item.status as string },
-              }).catch(() => {})
-            }
-          }
-          const settlement = o.settlement as Record<string, unknown> | undefined
-          if (settlement?.id) {
-            await localPrisma.localSettlement.upsert({
-              where: { orderId: o.id as string },
-              create: {
-                id: settlement.id as string, orderId: o.id as string,
-                subtotal: settlement.subtotal as number ?? 0, taxTotal: settlement.taxTotal as number ?? 0,
-                discountTotal: settlement.discountTotal as number ?? 0, grandTotal: settlement.grandTotal as number ?? 0,
-                cashPaid: settlement.cashPaid as number ?? 0, cardPaid: settlement.cardPaid as number ?? 0,
-                upiPaid: settlement.upiPaid as number ?? 0, changeGiven: settlement.changeGiven as number ?? 0,
-                settledAt: settlement.settledAt as string ?? new Date().toISOString(),
-              },
-              update: { cashPaid: settlement.cashPaid as number, cardPaid: settlement.cardPaid as number, upiPaid: settlement.upiPaid as number },
-            }).catch(() => {})
-          }
-        }
-      }
-      synced = true
-    }
-    if (synced) {
-      lastSyncTime = Date.now()
-      console.log(`[bg-sync] Re-synced: tables=${cachedCloudTables?.length ?? 0}, orders=${rawOrdersCount()}`)
-    }
-  } catch {
-    // Background retry — silent
-  }
-}
-
 function rawOrdersCount(): number {
   return cachedCloudTables?.length ?? 0
 }
@@ -490,7 +388,18 @@ async function syncWithProgress(phone?: string, password?: string) {
           update: { data: JSON.stringify(cachedSettings) },
         }).catch(() => {})
       }},
-      { key: 'categories', url: `${getCloudApiBase()}/categories`, handler: async (r: Response) => { cachedCategories = await r.json() }},
+      { key: 'categories', url: `${getCloudApiBase()}/categories`, handler: async (r: Response) => {
+        cachedCategories = await r.json()
+        if (Array.isArray(cachedCategories)) {
+          for (const c of cachedCategories as Array<{ id: string; name: string; displayOrder?: number; imageUrl?: string | null; kitchenId?: string | null }>) {
+            await localPrisma.cachedCategory.upsert({
+              where: { id: c.id },
+              create: { id: c.id, name: c.name, displayOrder: c.displayOrder ?? 0, imageUrl: c.imageUrl ?? null, kitchenId: c.kitchenId ?? null },
+              update: { name: c.name, displayOrder: c.displayOrder ?? 0, imageUrl: c.imageUrl ?? null },
+            }).catch(() => {})
+          }
+        }
+      }},
       { key: 'items', url: `${getCloudApiBase()}/items`, handler: async (r: Response) => {
         const raw = await r.json()
         cachedCloudItems = Array.isArray(raw) ? raw : null
@@ -837,34 +746,140 @@ app.delete('/api/v1/tables/:id', (req, res) => {
   adminQueued(res)
 })
 
-app.post('/api/v1/items', (req, res) => {
-  syncQueueService.enqueue('admin-create', { path: '/items', body: req.body }).catch(() => {})
-  adminQueued(res)
+app.post('/api/v1/items', async (req, res) => {
+  try {
+    const body = req.body
+    const id = body.id ?? crypto.randomUUID()
+    await localPrisma.cachedItem.upsert({
+      where: { id },
+      create: {
+        id, name: body.name ?? 'New Item', basePrice: body.basePrice ?? 0,
+        inStock: body.inStock ?? true, categoryId: body.categoryId ?? null,
+        categoryName: body.categoryName ?? null,
+        variations: JSON.stringify(body.variations ?? []), imageUrl: body.imageUrl ?? null,
+      },
+      update: {
+        name: body.name, basePrice: body.basePrice, categoryId: body.categoryId,
+        categoryName: body.categoryName, variations: JSON.stringify(body.variations ?? []), imageUrl: body.imageUrl,
+      },
+    })
+    // Also update in-memory cache so cloud-synced data stays fresh
+    if (cachedCloudItems) {
+      const idx = cachedCloudItems.findIndex((i: { id: string }) => i.id === id)
+      if (idx >= 0) Object.assign(cachedCloudItems[idx], { ...body, variations: body.variations ?? [] })
+      else cachedCloudItems.unshift({ id, ...body, variations: body.variations ?? [] })
+    }
+    syncQueueService.enqueue(body.id ? 'admin-put' : 'admin-create', { path: '/items', body: { ...body, id } }).catch(() => {})
+    res.json({ ok: true, id })
+  } catch (err) {
+    console.error('[items] Create error:', err)
+    res.status(500).json({ error: { message: 'Failed to save item' } })
+  }
 })
-app.put('/api/v1/items/:id', (req, res) => {
-  syncQueueService.enqueue('admin-put', { path: `/items/${req.params.id}`, body: req.body }).catch(() => {})
-  adminQueued(res)
+app.put('/api/v1/items/:id', async (req, res) => {
+  try {
+    const { id } = req.params
+    const body = req.body
+    await localPrisma.cachedItem.upsert({
+      where: { id },
+      create: {
+        id, name: body.name ?? 'New Item', basePrice: body.basePrice ?? 0,
+        inStock: body.inStock ?? true, categoryId: body.categoryId ?? null,
+        categoryName: body.categoryName ?? null,
+        variations: JSON.stringify(body.variations ?? []), imageUrl: body.imageUrl ?? null,
+      },
+      update: {
+        name: body.name, basePrice: body.basePrice, inStock: body.inStock,
+        categoryId: body.categoryId, categoryName: body.categoryName,
+        variations: JSON.stringify(body.variations ?? []), imageUrl: body.imageUrl,
+      },
+    })
+    if (cachedCloudItems) {
+      const idx = cachedCloudItems.findIndex((i: { id: string }) => i.id === id)
+      if (idx >= 0) Object.assign(cachedCloudItems[idx], body)
+    }
+    syncQueueService.enqueue('admin-put', { path: `/items/${id}`, body }).catch(() => {})
+    res.json({ ok: true })
+  } catch (err) {
+    console.error('[items] Update error:', err)
+    res.status(500).json({ error: { message: 'Failed to update item' } })
+  }
 })
-app.delete('/api/v1/items/:id', (req, res) => {
-  syncQueueService.enqueue('admin-delete', { path: `/items/${req.params.id}` }).catch(() => {})
-  adminQueued(res)
-})
-app.delete('/api/v1/variations/:id', (req, res) => {
-  syncQueueService.enqueue('admin-delete', { path: `/variations/${req.params.id}` }).catch(() => {})
-  adminQueued(res)
+app.delete('/api/v1/items/:id', async (req, res) => {
+  try {
+    const { id } = req.params
+    await localPrisma.cachedItem.delete({ where: { id } }).catch(() => {})
+    if (cachedCloudItems) {
+      const idx = cachedCloudItems.findIndex((i: { id: string }) => i.id === id)
+      if (idx >= 0) cachedCloudItems.splice(idx, 1)
+    }
+    syncQueueService.enqueue('admin-delete', { path: `/items/${id}` }).catch(() => {})
+    res.json({ ok: true })
+  } catch (err) {
+    console.error('[items] Delete error:', err)
+    res.status(500).json({ error: { message: 'Failed to delete item' } })
+  }
 })
 
-app.post('/api/v1/categories', (req, res) => {
-  syncQueueService.enqueue('admin-create', { path: '/categories', body: req.body }).catch(() => {})
-  adminQueued(res)
+app.post('/api/v1/categories', async (req, res) => {
+  try {
+    const body = req.body
+    const id = body.id ?? crypto.randomUUID()
+    await localPrisma.cachedCategory.upsert({
+      where: { id },
+      create: { id, name: body.name ?? 'New Category', displayOrder: body.displayOrder ?? 0, imageUrl: body.imageUrl ?? null, kitchenId: body.kitchenId ?? null },
+      update: { name: body.name, displayOrder: body.displayOrder, imageUrl: body.imageUrl, kitchenId: body.kitchenId },
+    })
+    if (cachedCategories) {
+      const arr = cachedCategories as Array<{ id: string; name: string; _count?: { items: number } }>
+      const idx = arr.findIndex(c => c.id === id)
+      const entry = { id, name: body.name ?? 'New Category', _count: { items: 0 } }
+      if (idx >= 0) arr[idx] = entry
+      else arr.unshift(entry)
+    }
+    syncQueueService.enqueue('admin-create', { path: '/categories', body: { ...body, id } }).catch(() => {})
+    res.json({ ok: true, id })
+  } catch (err) {
+    console.error('[categories] Create error:', err)
+    res.status(500).json({ error: { message: 'Failed to save category' } })
+  }
 })
-app.put('/api/v1/categories/:id', (req, res) => {
-  syncQueueService.enqueue('admin-put', { path: `/categories/${req.params.id}`, body: req.body }).catch(() => {})
-  adminQueued(res)
+app.put('/api/v1/categories/:id', async (req, res) => {
+  try {
+    const { id } = req.params
+    const body = req.body
+    await localPrisma.cachedCategory.upsert({
+      where: { id },
+      create: { id, name: body.name ?? 'Category', displayOrder: body.displayOrder ?? 0, imageUrl: body.imageUrl ?? null, kitchenId: body.kitchenId ?? null },
+      update: { name: body.name, displayOrder: body.displayOrder, imageUrl: body.imageUrl, kitchenId: body.kitchenId },
+    })
+    if (cachedCategories) {
+      const arr = cachedCategories as Array<{ id: string; name: string }>
+      const idx = arr.findIndex(c => c.id === id)
+      if (idx >= 0) arr[idx] = { ...arr[idx], ...body }
+    }
+    syncQueueService.enqueue('admin-put', { path: `/categories/${id}`, body }).catch(() => {})
+    res.json({ ok: true })
+  } catch (err) {
+    console.error('[categories] Update error:', err)
+    res.status(500).json({ error: { message: 'Failed to update category' } })
+  }
 })
-app.delete('/api/v1/categories/:id', (req, res) => {
-  syncQueueService.enqueue('admin-delete', { path: `/categories/${req.params.id}` }).catch(() => {})
-  adminQueued(res)
+app.delete('/api/v1/categories/:id', async (req, res) => {
+  try {
+    const { id } = req.params
+    await localPrisma.cachedCategory.delete({ where: { id } }).catch(() => {})
+    if (cachedCategories) {
+      const arr = cachedCategories as Array<{ id: string }>
+      const idx = arr.findIndex(c => c.id === id)
+      if (idx >= 0) arr.splice(idx, 1)
+    }
+    syncQueueService.enqueue('admin-delete', { path: `/categories/${id}` }).catch(() => {})
+    res.json({ ok: true })
+  } catch (err) {
+    console.error('[categories] Delete error:', err)
+    res.status(500).json({ error: { message: 'Failed to delete category' } })
+  }
 })
 
 app.post('/api/v1/areas', (req, res) => {
@@ -1044,24 +1059,41 @@ app.get('/api/v1/tables', async (req, res) => {
   }
 })
 
-// Items and categories — served from cloud sync cache
-app.get('/api/v1/items', (_req, res) => {
+// Items and categories — served from local DB (persisted, updated on writes)
+// Falls back to in-memory cloud cache, then seed data
+app.get('/api/v1/items', async (_req, res) => {
+  // 1. Local SQLite (persisted across restarts, updated on every create/edit)
+  const localItems = await localPrisma.cachedItem.findMany()
+  if (localItems.length > 0) {
+    res.json(localItems.map(i => ({
+      id: i.id, name: i.name, basePrice: i.basePrice, inStock: i.inStock,
+      categoryId: i.categoryId, category: i.categoryId ? { id: i.categoryId, name: i.categoryName ?? '' } : null,
+      variations: JSON.parse(i.variations), imageUrl: i.imageUrl,
+    })))
+    return
+  }
+  // 2. In-memory cloud cache
   if (cachedCloudItems && cachedCloudItems.length > 0) {
     res.json(cachedCloudItems)
     return
   }
-  if (LOCAL_SEED_ITEMS.length > 0) {
-    res.json(LOCAL_SEED_ITEMS)
-    return
-  }
-  res.json([])
+  // 3. Seed data as last resort
+  res.json(LOCAL_SEED_ITEMS)
 })
 
-app.get('/api/v1/categories', (_req, res) => {
+app.get('/api/v1/categories', async (_req, res) => {
+  // 1. Local SQLite (persisted, updated on every create/edit)
+  const localCats = await localPrisma.cachedCategory.findMany({ orderBy: { displayOrder: 'asc' } })
+  if (localCats.length > 0) {
+    res.json(localCats.map(c => ({ id: c.id, name: c.name, displayOrder: c.displayOrder, imageUrl: c.imageUrl, _count: { items: 0 } })))
+    return
+  }
+  // 2. In-memory cloud cache
   if (cachedCategories && (cachedCategories as unknown[]).length > 0) {
     res.json(cachedCategories)
     return
   }
+  // 3. Seed data derived from items
   if (LOCAL_SEED_ITEMS.length > 0) {
     const cats = new Map<string, { id: string; name: string; _count: { items: number } }>()
     for (const item of LOCAL_SEED_ITEMS) {

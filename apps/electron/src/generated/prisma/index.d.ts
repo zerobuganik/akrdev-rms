@@ -64,6 +64,11 @@ export type LocalCredential = $Result.DefaultSelection<Prisma.$LocalCredentialPa
  */
 export type CachedTable = $Result.DefaultSelection<Prisma.$CachedTablePayload>
 /**
+ * Model CachedCategory
+ * 
+ */
+export type CachedCategory = $Result.DefaultSelection<Prisma.$CachedCategoryPayload>
+/**
  * Model CachedItem
  * 
  */
@@ -294,6 +299,16 @@ export class PrismaClient<
     * ```
     */
   get cachedTable(): Prisma.CachedTableDelegate<ExtArgs, ClientOptions>;
+
+  /**
+   * `prisma.cachedCategory`: Exposes CRUD operations for the **CachedCategory** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more CachedCategories
+    * const cachedCategories = await prisma.cachedCategory.findMany()
+    * ```
+    */
+  get cachedCategory(): Prisma.CachedCategoryDelegate<ExtArgs, ClientOptions>;
 
   /**
    * `prisma.cachedItem`: Exposes CRUD operations for the **CachedItem** model.
@@ -758,6 +773,7 @@ export namespace Prisma {
     PrintHistory: 'PrintHistory',
     LocalCredential: 'LocalCredential',
     CachedTable: 'CachedTable',
+    CachedCategory: 'CachedCategory',
     CachedItem: 'CachedItem',
     CachedSetting: 'CachedSetting'
   };
@@ -775,7 +791,7 @@ export namespace Prisma {
       omit: GlobalOmitOptions
     }
     meta: {
-      modelProps: "localOrder" | "localOrderItem" | "localKOT" | "localSettlement" | "syncQueue" | "syncState" | "printerConfig" | "printHistory" | "localCredential" | "cachedTable" | "cachedItem" | "cachedSetting"
+      modelProps: "localOrder" | "localOrderItem" | "localKOT" | "localSettlement" | "syncQueue" | "syncState" | "printerConfig" | "printHistory" | "localCredential" | "cachedTable" | "cachedCategory" | "cachedItem" | "cachedSetting"
       txIsolationLevel: Prisma.TransactionIsolationLevel
     }
     model: {
@@ -1519,6 +1535,80 @@ export namespace Prisma {
           }
         }
       }
+      CachedCategory: {
+        payload: Prisma.$CachedCategoryPayload<ExtArgs>
+        fields: Prisma.CachedCategoryFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.CachedCategoryFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CachedCategoryPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.CachedCategoryFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CachedCategoryPayload>
+          }
+          findFirst: {
+            args: Prisma.CachedCategoryFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CachedCategoryPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.CachedCategoryFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CachedCategoryPayload>
+          }
+          findMany: {
+            args: Prisma.CachedCategoryFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CachedCategoryPayload>[]
+          }
+          create: {
+            args: Prisma.CachedCategoryCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CachedCategoryPayload>
+          }
+          createMany: {
+            args: Prisma.CachedCategoryCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.CachedCategoryCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CachedCategoryPayload>[]
+          }
+          delete: {
+            args: Prisma.CachedCategoryDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CachedCategoryPayload>
+          }
+          update: {
+            args: Prisma.CachedCategoryUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CachedCategoryPayload>
+          }
+          deleteMany: {
+            args: Prisma.CachedCategoryDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.CachedCategoryUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateManyAndReturn: {
+            args: Prisma.CachedCategoryUpdateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CachedCategoryPayload>[]
+          }
+          upsert: {
+            args: Prisma.CachedCategoryUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CachedCategoryPayload>
+          }
+          aggregate: {
+            args: Prisma.CachedCategoryAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateCachedCategory>
+          }
+          groupBy: {
+            args: Prisma.CachedCategoryGroupByArgs<ExtArgs>
+            result: $Utils.Optional<CachedCategoryGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.CachedCategoryCountArgs<ExtArgs>
+            result: $Utils.Optional<CachedCategoryCountAggregateOutputType> | number
+          }
+        }
+      }
       CachedItem: {
         payload: Prisma.$CachedItemPayload<ExtArgs>
         fields: Prisma.CachedItemFieldRefs
@@ -1785,6 +1875,7 @@ export namespace Prisma {
     printHistory?: PrintHistoryOmit
     localCredential?: LocalCredentialOmit
     cachedTable?: CachedTableOmit
+    cachedCategory?: CachedCategoryOmit
     cachedItem?: CachedItemOmit
     cachedSetting?: CachedSettingOmit
   }
@@ -13509,6 +13600,1064 @@ export namespace Prisma {
 
 
   /**
+   * Model CachedCategory
+   */
+
+  export type AggregateCachedCategory = {
+    _count: CachedCategoryCountAggregateOutputType | null
+    _avg: CachedCategoryAvgAggregateOutputType | null
+    _sum: CachedCategorySumAggregateOutputType | null
+    _min: CachedCategoryMinAggregateOutputType | null
+    _max: CachedCategoryMaxAggregateOutputType | null
+  }
+
+  export type CachedCategoryAvgAggregateOutputType = {
+    displayOrder: number | null
+  }
+
+  export type CachedCategorySumAggregateOutputType = {
+    displayOrder: number | null
+  }
+
+  export type CachedCategoryMinAggregateOutputType = {
+    id: string | null
+    name: string | null
+    displayOrder: number | null
+    imageUrl: string | null
+    kitchenId: string | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type CachedCategoryMaxAggregateOutputType = {
+    id: string | null
+    name: string | null
+    displayOrder: number | null
+    imageUrl: string | null
+    kitchenId: string | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type CachedCategoryCountAggregateOutputType = {
+    id: number
+    name: number
+    displayOrder: number
+    imageUrl: number
+    kitchenId: number
+    createdAt: number
+    updatedAt: number
+    _all: number
+  }
+
+
+  export type CachedCategoryAvgAggregateInputType = {
+    displayOrder?: true
+  }
+
+  export type CachedCategorySumAggregateInputType = {
+    displayOrder?: true
+  }
+
+  export type CachedCategoryMinAggregateInputType = {
+    id?: true
+    name?: true
+    displayOrder?: true
+    imageUrl?: true
+    kitchenId?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type CachedCategoryMaxAggregateInputType = {
+    id?: true
+    name?: true
+    displayOrder?: true
+    imageUrl?: true
+    kitchenId?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type CachedCategoryCountAggregateInputType = {
+    id?: true
+    name?: true
+    displayOrder?: true
+    imageUrl?: true
+    kitchenId?: true
+    createdAt?: true
+    updatedAt?: true
+    _all?: true
+  }
+
+  export type CachedCategoryAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which CachedCategory to aggregate.
+     */
+    where?: CachedCategoryWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of CachedCategories to fetch.
+     */
+    orderBy?: CachedCategoryOrderByWithRelationInput | CachedCategoryOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: CachedCategoryWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` CachedCategories from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` CachedCategories.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned CachedCategories
+    **/
+    _count?: true | CachedCategoryCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to average
+    **/
+    _avg?: CachedCategoryAvgAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to sum
+    **/
+    _sum?: CachedCategorySumAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: CachedCategoryMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: CachedCategoryMaxAggregateInputType
+  }
+
+  export type GetCachedCategoryAggregateType<T extends CachedCategoryAggregateArgs> = {
+        [P in keyof T & keyof AggregateCachedCategory]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateCachedCategory[P]>
+      : GetScalarType<T[P], AggregateCachedCategory[P]>
+  }
+
+
+
+
+  export type CachedCategoryGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: CachedCategoryWhereInput
+    orderBy?: CachedCategoryOrderByWithAggregationInput | CachedCategoryOrderByWithAggregationInput[]
+    by: CachedCategoryScalarFieldEnum[] | CachedCategoryScalarFieldEnum
+    having?: CachedCategoryScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: CachedCategoryCountAggregateInputType | true
+    _avg?: CachedCategoryAvgAggregateInputType
+    _sum?: CachedCategorySumAggregateInputType
+    _min?: CachedCategoryMinAggregateInputType
+    _max?: CachedCategoryMaxAggregateInputType
+  }
+
+  export type CachedCategoryGroupByOutputType = {
+    id: string
+    name: string
+    displayOrder: number
+    imageUrl: string | null
+    kitchenId: string | null
+    createdAt: Date
+    updatedAt: Date
+    _count: CachedCategoryCountAggregateOutputType | null
+    _avg: CachedCategoryAvgAggregateOutputType | null
+    _sum: CachedCategorySumAggregateOutputType | null
+    _min: CachedCategoryMinAggregateOutputType | null
+    _max: CachedCategoryMaxAggregateOutputType | null
+  }
+
+  type GetCachedCategoryGroupByPayload<T extends CachedCategoryGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<CachedCategoryGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof CachedCategoryGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], CachedCategoryGroupByOutputType[P]>
+            : GetScalarType<T[P], CachedCategoryGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type CachedCategorySelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    name?: boolean
+    displayOrder?: boolean
+    imageUrl?: boolean
+    kitchenId?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }, ExtArgs["result"]["cachedCategory"]>
+
+  export type CachedCategorySelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    name?: boolean
+    displayOrder?: boolean
+    imageUrl?: boolean
+    kitchenId?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }, ExtArgs["result"]["cachedCategory"]>
+
+  export type CachedCategorySelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    name?: boolean
+    displayOrder?: boolean
+    imageUrl?: boolean
+    kitchenId?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }, ExtArgs["result"]["cachedCategory"]>
+
+  export type CachedCategorySelectScalar = {
+    id?: boolean
+    name?: boolean
+    displayOrder?: boolean
+    imageUrl?: boolean
+    kitchenId?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }
+
+  export type CachedCategoryOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "name" | "displayOrder" | "imageUrl" | "kitchenId" | "createdAt" | "updatedAt", ExtArgs["result"]["cachedCategory"]>
+
+  export type $CachedCategoryPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "CachedCategory"
+    objects: {}
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      name: string
+      displayOrder: number
+      imageUrl: string | null
+      kitchenId: string | null
+      createdAt: Date
+      updatedAt: Date
+    }, ExtArgs["result"]["cachedCategory"]>
+    composites: {}
+  }
+
+  type CachedCategoryGetPayload<S extends boolean | null | undefined | CachedCategoryDefaultArgs> = $Result.GetResult<Prisma.$CachedCategoryPayload, S>
+
+  type CachedCategoryCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
+    Omit<CachedCategoryFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+      select?: CachedCategoryCountAggregateInputType | true
+    }
+
+  export interface CachedCategoryDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['CachedCategory'], meta: { name: 'CachedCategory' } }
+    /**
+     * Find zero or one CachedCategory that matches the filter.
+     * @param {CachedCategoryFindUniqueArgs} args - Arguments to find a CachedCategory
+     * @example
+     * // Get one CachedCategory
+     * const cachedCategory = await prisma.cachedCategory.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends CachedCategoryFindUniqueArgs>(args: SelectSubset<T, CachedCategoryFindUniqueArgs<ExtArgs>>): Prisma__CachedCategoryClient<$Result.GetResult<Prisma.$CachedCategoryPayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find one CachedCategory that matches the filter or throw an error with `error.code='P2025'`
+     * if no matches were found.
+     * @param {CachedCategoryFindUniqueOrThrowArgs} args - Arguments to find a CachedCategory
+     * @example
+     * // Get one CachedCategory
+     * const cachedCategory = await prisma.cachedCategory.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends CachedCategoryFindUniqueOrThrowArgs>(args: SelectSubset<T, CachedCategoryFindUniqueOrThrowArgs<ExtArgs>>): Prisma__CachedCategoryClient<$Result.GetResult<Prisma.$CachedCategoryPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first CachedCategory that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CachedCategoryFindFirstArgs} args - Arguments to find a CachedCategory
+     * @example
+     * // Get one CachedCategory
+     * const cachedCategory = await prisma.cachedCategory.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends CachedCategoryFindFirstArgs>(args?: SelectSubset<T, CachedCategoryFindFirstArgs<ExtArgs>>): Prisma__CachedCategoryClient<$Result.GetResult<Prisma.$CachedCategoryPayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first CachedCategory that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CachedCategoryFindFirstOrThrowArgs} args - Arguments to find a CachedCategory
+     * @example
+     * // Get one CachedCategory
+     * const cachedCategory = await prisma.cachedCategory.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends CachedCategoryFindFirstOrThrowArgs>(args?: SelectSubset<T, CachedCategoryFindFirstOrThrowArgs<ExtArgs>>): Prisma__CachedCategoryClient<$Result.GetResult<Prisma.$CachedCategoryPayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find zero or more CachedCategories that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CachedCategoryFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all CachedCategories
+     * const cachedCategories = await prisma.cachedCategory.findMany()
+     * 
+     * // Get first 10 CachedCategories
+     * const cachedCategories = await prisma.cachedCategory.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const cachedCategoryWithIdOnly = await prisma.cachedCategory.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends CachedCategoryFindManyArgs>(args?: SelectSubset<T, CachedCategoryFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$CachedCategoryPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+
+    /**
+     * Create a CachedCategory.
+     * @param {CachedCategoryCreateArgs} args - Arguments to create a CachedCategory.
+     * @example
+     * // Create one CachedCategory
+     * const CachedCategory = await prisma.cachedCategory.create({
+     *   data: {
+     *     // ... data to create a CachedCategory
+     *   }
+     * })
+     * 
+     */
+    create<T extends CachedCategoryCreateArgs>(args: SelectSubset<T, CachedCategoryCreateArgs<ExtArgs>>): Prisma__CachedCategoryClient<$Result.GetResult<Prisma.$CachedCategoryPayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Create many CachedCategories.
+     * @param {CachedCategoryCreateManyArgs} args - Arguments to create many CachedCategories.
+     * @example
+     * // Create many CachedCategories
+     * const cachedCategory = await prisma.cachedCategory.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends CachedCategoryCreateManyArgs>(args?: SelectSubset<T, CachedCategoryCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many CachedCategories and returns the data saved in the database.
+     * @param {CachedCategoryCreateManyAndReturnArgs} args - Arguments to create many CachedCategories.
+     * @example
+     * // Create many CachedCategories
+     * const cachedCategory = await prisma.cachedCategory.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many CachedCategories and only return the `id`
+     * const cachedCategoryWithIdOnly = await prisma.cachedCategory.createManyAndReturn({
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends CachedCategoryCreateManyAndReturnArgs>(args?: SelectSubset<T, CachedCategoryCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$CachedCategoryPayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Delete a CachedCategory.
+     * @param {CachedCategoryDeleteArgs} args - Arguments to delete one CachedCategory.
+     * @example
+     * // Delete one CachedCategory
+     * const CachedCategory = await prisma.cachedCategory.delete({
+     *   where: {
+     *     // ... filter to delete one CachedCategory
+     *   }
+     * })
+     * 
+     */
+    delete<T extends CachedCategoryDeleteArgs>(args: SelectSubset<T, CachedCategoryDeleteArgs<ExtArgs>>): Prisma__CachedCategoryClient<$Result.GetResult<Prisma.$CachedCategoryPayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Update one CachedCategory.
+     * @param {CachedCategoryUpdateArgs} args - Arguments to update one CachedCategory.
+     * @example
+     * // Update one CachedCategory
+     * const cachedCategory = await prisma.cachedCategory.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends CachedCategoryUpdateArgs>(args: SelectSubset<T, CachedCategoryUpdateArgs<ExtArgs>>): Prisma__CachedCategoryClient<$Result.GetResult<Prisma.$CachedCategoryPayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Delete zero or more CachedCategories.
+     * @param {CachedCategoryDeleteManyArgs} args - Arguments to filter CachedCategories to delete.
+     * @example
+     * // Delete a few CachedCategories
+     * const { count } = await prisma.cachedCategory.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends CachedCategoryDeleteManyArgs>(args?: SelectSubset<T, CachedCategoryDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more CachedCategories.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CachedCategoryUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many CachedCategories
+     * const cachedCategory = await prisma.cachedCategory.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends CachedCategoryUpdateManyArgs>(args: SelectSubset<T, CachedCategoryUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more CachedCategories and returns the data updated in the database.
+     * @param {CachedCategoryUpdateManyAndReturnArgs} args - Arguments to update many CachedCategories.
+     * @example
+     * // Update many CachedCategories
+     * const cachedCategory = await prisma.cachedCategory.updateManyAndReturn({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Update zero or more CachedCategories and only return the `id`
+     * const cachedCategoryWithIdOnly = await prisma.cachedCategory.updateManyAndReturn({
+     *   select: { id: true },
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    updateManyAndReturn<T extends CachedCategoryUpdateManyAndReturnArgs>(args: SelectSubset<T, CachedCategoryUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$CachedCategoryPayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Create or update one CachedCategory.
+     * @param {CachedCategoryUpsertArgs} args - Arguments to update or create a CachedCategory.
+     * @example
+     * // Update or create a CachedCategory
+     * const cachedCategory = await prisma.cachedCategory.upsert({
+     *   create: {
+     *     // ... data to create a CachedCategory
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the CachedCategory we want to update
+     *   }
+     * })
+     */
+    upsert<T extends CachedCategoryUpsertArgs>(args: SelectSubset<T, CachedCategoryUpsertArgs<ExtArgs>>): Prisma__CachedCategoryClient<$Result.GetResult<Prisma.$CachedCategoryPayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+
+    /**
+     * Count the number of CachedCategories.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CachedCategoryCountArgs} args - Arguments to filter CachedCategories to count.
+     * @example
+     * // Count the number of CachedCategories
+     * const count = await prisma.cachedCategory.count({
+     *   where: {
+     *     // ... the filter for the CachedCategories we want to count
+     *   }
+     * })
+    **/
+    count<T extends CachedCategoryCountArgs>(
+      args?: Subset<T, CachedCategoryCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], CachedCategoryCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a CachedCategory.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CachedCategoryAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends CachedCategoryAggregateArgs>(args: Subset<T, CachedCategoryAggregateArgs>): Prisma.PrismaPromise<GetCachedCategoryAggregateType<T>>
+
+    /**
+     * Group by CachedCategory.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CachedCategoryGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends CachedCategoryGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: CachedCategoryGroupByArgs['orderBy'] }
+        : { orderBy?: CachedCategoryGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, CachedCategoryGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetCachedCategoryGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the CachedCategory model
+   */
+  readonly fields: CachedCategoryFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for CachedCategory.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__CachedCategoryClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the CachedCategory model
+   */
+  interface CachedCategoryFieldRefs {
+    readonly id: FieldRef<"CachedCategory", 'String'>
+    readonly name: FieldRef<"CachedCategory", 'String'>
+    readonly displayOrder: FieldRef<"CachedCategory", 'Int'>
+    readonly imageUrl: FieldRef<"CachedCategory", 'String'>
+    readonly kitchenId: FieldRef<"CachedCategory", 'String'>
+    readonly createdAt: FieldRef<"CachedCategory", 'DateTime'>
+    readonly updatedAt: FieldRef<"CachedCategory", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * CachedCategory findUnique
+   */
+  export type CachedCategoryFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CachedCategory
+     */
+    select?: CachedCategorySelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CachedCategory
+     */
+    omit?: CachedCategoryOmit<ExtArgs> | null
+    /**
+     * Filter, which CachedCategory to fetch.
+     */
+    where: CachedCategoryWhereUniqueInput
+  }
+
+  /**
+   * CachedCategory findUniqueOrThrow
+   */
+  export type CachedCategoryFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CachedCategory
+     */
+    select?: CachedCategorySelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CachedCategory
+     */
+    omit?: CachedCategoryOmit<ExtArgs> | null
+    /**
+     * Filter, which CachedCategory to fetch.
+     */
+    where: CachedCategoryWhereUniqueInput
+  }
+
+  /**
+   * CachedCategory findFirst
+   */
+  export type CachedCategoryFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CachedCategory
+     */
+    select?: CachedCategorySelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CachedCategory
+     */
+    omit?: CachedCategoryOmit<ExtArgs> | null
+    /**
+     * Filter, which CachedCategory to fetch.
+     */
+    where?: CachedCategoryWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of CachedCategories to fetch.
+     */
+    orderBy?: CachedCategoryOrderByWithRelationInput | CachedCategoryOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for CachedCategories.
+     */
+    cursor?: CachedCategoryWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` CachedCategories from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` CachedCategories.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of CachedCategories.
+     */
+    distinct?: CachedCategoryScalarFieldEnum | CachedCategoryScalarFieldEnum[]
+  }
+
+  /**
+   * CachedCategory findFirstOrThrow
+   */
+  export type CachedCategoryFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CachedCategory
+     */
+    select?: CachedCategorySelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CachedCategory
+     */
+    omit?: CachedCategoryOmit<ExtArgs> | null
+    /**
+     * Filter, which CachedCategory to fetch.
+     */
+    where?: CachedCategoryWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of CachedCategories to fetch.
+     */
+    orderBy?: CachedCategoryOrderByWithRelationInput | CachedCategoryOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for CachedCategories.
+     */
+    cursor?: CachedCategoryWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` CachedCategories from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` CachedCategories.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of CachedCategories.
+     */
+    distinct?: CachedCategoryScalarFieldEnum | CachedCategoryScalarFieldEnum[]
+  }
+
+  /**
+   * CachedCategory findMany
+   */
+  export type CachedCategoryFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CachedCategory
+     */
+    select?: CachedCategorySelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CachedCategory
+     */
+    omit?: CachedCategoryOmit<ExtArgs> | null
+    /**
+     * Filter, which CachedCategories to fetch.
+     */
+    where?: CachedCategoryWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of CachedCategories to fetch.
+     */
+    orderBy?: CachedCategoryOrderByWithRelationInput | CachedCategoryOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing CachedCategories.
+     */
+    cursor?: CachedCategoryWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` CachedCategories from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` CachedCategories.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of CachedCategories.
+     */
+    distinct?: CachedCategoryScalarFieldEnum | CachedCategoryScalarFieldEnum[]
+  }
+
+  /**
+   * CachedCategory create
+   */
+  export type CachedCategoryCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CachedCategory
+     */
+    select?: CachedCategorySelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CachedCategory
+     */
+    omit?: CachedCategoryOmit<ExtArgs> | null
+    /**
+     * The data needed to create a CachedCategory.
+     */
+    data: XOR<CachedCategoryCreateInput, CachedCategoryUncheckedCreateInput>
+  }
+
+  /**
+   * CachedCategory createMany
+   */
+  export type CachedCategoryCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many CachedCategories.
+     */
+    data: CachedCategoryCreateManyInput | CachedCategoryCreateManyInput[]
+  }
+
+  /**
+   * CachedCategory createManyAndReturn
+   */
+  export type CachedCategoryCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CachedCategory
+     */
+    select?: CachedCategorySelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the CachedCategory
+     */
+    omit?: CachedCategoryOmit<ExtArgs> | null
+    /**
+     * The data used to create many CachedCategories.
+     */
+    data: CachedCategoryCreateManyInput | CachedCategoryCreateManyInput[]
+  }
+
+  /**
+   * CachedCategory update
+   */
+  export type CachedCategoryUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CachedCategory
+     */
+    select?: CachedCategorySelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CachedCategory
+     */
+    omit?: CachedCategoryOmit<ExtArgs> | null
+    /**
+     * The data needed to update a CachedCategory.
+     */
+    data: XOR<CachedCategoryUpdateInput, CachedCategoryUncheckedUpdateInput>
+    /**
+     * Choose, which CachedCategory to update.
+     */
+    where: CachedCategoryWhereUniqueInput
+  }
+
+  /**
+   * CachedCategory updateMany
+   */
+  export type CachedCategoryUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update CachedCategories.
+     */
+    data: XOR<CachedCategoryUpdateManyMutationInput, CachedCategoryUncheckedUpdateManyInput>
+    /**
+     * Filter which CachedCategories to update
+     */
+    where?: CachedCategoryWhereInput
+    /**
+     * Limit how many CachedCategories to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * CachedCategory updateManyAndReturn
+   */
+  export type CachedCategoryUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CachedCategory
+     */
+    select?: CachedCategorySelectUpdateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the CachedCategory
+     */
+    omit?: CachedCategoryOmit<ExtArgs> | null
+    /**
+     * The data used to update CachedCategories.
+     */
+    data: XOR<CachedCategoryUpdateManyMutationInput, CachedCategoryUncheckedUpdateManyInput>
+    /**
+     * Filter which CachedCategories to update
+     */
+    where?: CachedCategoryWhereInput
+    /**
+     * Limit how many CachedCategories to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * CachedCategory upsert
+   */
+  export type CachedCategoryUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CachedCategory
+     */
+    select?: CachedCategorySelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CachedCategory
+     */
+    omit?: CachedCategoryOmit<ExtArgs> | null
+    /**
+     * The filter to search for the CachedCategory to update in case it exists.
+     */
+    where: CachedCategoryWhereUniqueInput
+    /**
+     * In case the CachedCategory found by the `where` argument doesn't exist, create a new CachedCategory with this data.
+     */
+    create: XOR<CachedCategoryCreateInput, CachedCategoryUncheckedCreateInput>
+    /**
+     * In case the CachedCategory was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<CachedCategoryUpdateInput, CachedCategoryUncheckedUpdateInput>
+  }
+
+  /**
+   * CachedCategory delete
+   */
+  export type CachedCategoryDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CachedCategory
+     */
+    select?: CachedCategorySelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CachedCategory
+     */
+    omit?: CachedCategoryOmit<ExtArgs> | null
+    /**
+     * Filter which CachedCategory to delete.
+     */
+    where: CachedCategoryWhereUniqueInput
+  }
+
+  /**
+   * CachedCategory deleteMany
+   */
+  export type CachedCategoryDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which CachedCategories to delete
+     */
+    where?: CachedCategoryWhereInput
+    /**
+     * Limit how many CachedCategories to delete.
+     */
+    limit?: number
+  }
+
+  /**
+   * CachedCategory without action
+   */
+  export type CachedCategoryDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CachedCategory
+     */
+    select?: CachedCategorySelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CachedCategory
+     */
+    omit?: CachedCategoryOmit<ExtArgs> | null
+  }
+
+
+  /**
    * Model CachedItem
    */
 
@@ -15711,6 +16860,19 @@ export namespace Prisma {
   export type CachedTableScalarFieldEnum = (typeof CachedTableScalarFieldEnum)[keyof typeof CachedTableScalarFieldEnum]
 
 
+  export const CachedCategoryScalarFieldEnum: {
+    id: 'id',
+    name: 'name',
+    displayOrder: 'displayOrder',
+    imageUrl: 'imageUrl',
+    kitchenId: 'kitchenId',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt'
+  };
+
+  export type CachedCategoryScalarFieldEnum = (typeof CachedCategoryScalarFieldEnum)[keyof typeof CachedCategoryScalarFieldEnum]
+
+
   export const CachedItemScalarFieldEnum: {
     id: 'id',
     name: 'name',
@@ -16618,6 +17780,70 @@ export namespace Prisma {
     areaName?: StringNullableWithAggregatesFilter<"CachedTable"> | string | null
     capacity?: IntWithAggregatesFilter<"CachedTable"> | number
     status?: StringWithAggregatesFilter<"CachedTable"> | string
+  }
+
+  export type CachedCategoryWhereInput = {
+    AND?: CachedCategoryWhereInput | CachedCategoryWhereInput[]
+    OR?: CachedCategoryWhereInput[]
+    NOT?: CachedCategoryWhereInput | CachedCategoryWhereInput[]
+    id?: StringFilter<"CachedCategory"> | string
+    name?: StringFilter<"CachedCategory"> | string
+    displayOrder?: IntFilter<"CachedCategory"> | number
+    imageUrl?: StringNullableFilter<"CachedCategory"> | string | null
+    kitchenId?: StringNullableFilter<"CachedCategory"> | string | null
+    createdAt?: DateTimeFilter<"CachedCategory"> | Date | string
+    updatedAt?: DateTimeFilter<"CachedCategory"> | Date | string
+  }
+
+  export type CachedCategoryOrderByWithRelationInput = {
+    id?: SortOrder
+    name?: SortOrder
+    displayOrder?: SortOrder
+    imageUrl?: SortOrderInput | SortOrder
+    kitchenId?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type CachedCategoryWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    AND?: CachedCategoryWhereInput | CachedCategoryWhereInput[]
+    OR?: CachedCategoryWhereInput[]
+    NOT?: CachedCategoryWhereInput | CachedCategoryWhereInput[]
+    name?: StringFilter<"CachedCategory"> | string
+    displayOrder?: IntFilter<"CachedCategory"> | number
+    imageUrl?: StringNullableFilter<"CachedCategory"> | string | null
+    kitchenId?: StringNullableFilter<"CachedCategory"> | string | null
+    createdAt?: DateTimeFilter<"CachedCategory"> | Date | string
+    updatedAt?: DateTimeFilter<"CachedCategory"> | Date | string
+  }, "id">
+
+  export type CachedCategoryOrderByWithAggregationInput = {
+    id?: SortOrder
+    name?: SortOrder
+    displayOrder?: SortOrder
+    imageUrl?: SortOrderInput | SortOrder
+    kitchenId?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    _count?: CachedCategoryCountOrderByAggregateInput
+    _avg?: CachedCategoryAvgOrderByAggregateInput
+    _max?: CachedCategoryMaxOrderByAggregateInput
+    _min?: CachedCategoryMinOrderByAggregateInput
+    _sum?: CachedCategorySumOrderByAggregateInput
+  }
+
+  export type CachedCategoryScalarWhereWithAggregatesInput = {
+    AND?: CachedCategoryScalarWhereWithAggregatesInput | CachedCategoryScalarWhereWithAggregatesInput[]
+    OR?: CachedCategoryScalarWhereWithAggregatesInput[]
+    NOT?: CachedCategoryScalarWhereWithAggregatesInput | CachedCategoryScalarWhereWithAggregatesInput[]
+    id?: StringWithAggregatesFilter<"CachedCategory"> | string
+    name?: StringWithAggregatesFilter<"CachedCategory"> | string
+    displayOrder?: IntWithAggregatesFilter<"CachedCategory"> | number
+    imageUrl?: StringNullableWithAggregatesFilter<"CachedCategory"> | string | null
+    kitchenId?: StringNullableWithAggregatesFilter<"CachedCategory"> | string | null
+    createdAt?: DateTimeWithAggregatesFilter<"CachedCategory"> | Date | string
+    updatedAt?: DateTimeWithAggregatesFilter<"CachedCategory"> | Date | string
   }
 
   export type CachedItemWhereInput = {
@@ -17665,6 +18891,76 @@ export namespace Prisma {
     status?: StringFieldUpdateOperationsInput | string
   }
 
+  export type CachedCategoryCreateInput = {
+    id: string
+    name: string
+    displayOrder?: number
+    imageUrl?: string | null
+    kitchenId?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type CachedCategoryUncheckedCreateInput = {
+    id: string
+    name: string
+    displayOrder?: number
+    imageUrl?: string | null
+    kitchenId?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type CachedCategoryUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    displayOrder?: IntFieldUpdateOperationsInput | number
+    imageUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    kitchenId?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type CachedCategoryUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    displayOrder?: IntFieldUpdateOperationsInput | number
+    imageUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    kitchenId?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type CachedCategoryCreateManyInput = {
+    id: string
+    name: string
+    displayOrder?: number
+    imageUrl?: string | null
+    kitchenId?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type CachedCategoryUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    displayOrder?: IntFieldUpdateOperationsInput | number
+    imageUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    kitchenId?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type CachedCategoryUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    displayOrder?: IntFieldUpdateOperationsInput | number
+    imageUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    kitchenId?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
   export type CachedItemCreateInput = {
     id: string
     name: string
@@ -18565,6 +19861,44 @@ export namespace Prisma {
 
   export type CachedTableSumOrderByAggregateInput = {
     capacity?: SortOrder
+  }
+
+  export type CachedCategoryCountOrderByAggregateInput = {
+    id?: SortOrder
+    name?: SortOrder
+    displayOrder?: SortOrder
+    imageUrl?: SortOrder
+    kitchenId?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type CachedCategoryAvgOrderByAggregateInput = {
+    displayOrder?: SortOrder
+  }
+
+  export type CachedCategoryMaxOrderByAggregateInput = {
+    id?: SortOrder
+    name?: SortOrder
+    displayOrder?: SortOrder
+    imageUrl?: SortOrder
+    kitchenId?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type CachedCategoryMinOrderByAggregateInput = {
+    id?: SortOrder
+    name?: SortOrder
+    displayOrder?: SortOrder
+    imageUrl?: SortOrder
+    kitchenId?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type CachedCategorySumOrderByAggregateInput = {
+    displayOrder?: SortOrder
   }
 
   export type CachedItemCountOrderByAggregateInput = {

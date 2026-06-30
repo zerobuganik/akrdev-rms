@@ -249,6 +249,16 @@ exports.Prisma.CachedTableScalarFieldEnum = {
   status: 'status'
 };
 
+exports.Prisma.CachedCategoryScalarFieldEnum = {
+  id: 'id',
+  name: 'name',
+  displayOrder: 'displayOrder',
+  imageUrl: 'imageUrl',
+  kitchenId: 'kitchenId',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
 exports.Prisma.CachedItemScalarFieldEnum = {
   id: 'id',
   name: 'name',
@@ -287,6 +297,7 @@ exports.Prisma.ModelName = {
   PrintHistory: 'PrintHistory',
   LocalCredential: 'LocalCredential',
   CachedTable: 'CachedTable',
+  CachedCategory: 'CachedCategory',
   CachedItem: 'CachedItem',
   CachedSetting: 'CachedSetting'
 };

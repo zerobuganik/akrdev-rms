@@ -49,14 +49,16 @@ export function SyncScreen({ onComplete, phone, password }: SyncScreenProps) {
     const poll = async () => {
       try {
         const res = await fetch(`${base}/sync-progress`)
+        if (!res.ok) return
         const data = await res.json() as SyncState
         setState(data)
         const done = data.complete || data.phase === 'complete' || (data.tablesCached > 0 && data.settingsCached && data.completed >= data.total)
         if (done) {
-          if (pollTimer) clearInterval(pollTimer)
-          setTimeout(() => onCompleteRef.current(), 500)
-        } else if (data.error && data.completed === 0 && data.phase === 'error') {
-          // Auth failed — retry trigger
+          if (pollTimer) { clearInterval(pollTimer); pollTimer = null }
+          onCompleteRef.current()
+          return
+        }
+        if (data.error && data.completed === 0 && data.phase === 'error') {
           triggerSync()
         }
       } catch {
@@ -64,10 +66,10 @@ export function SyncScreen({ onComplete, phone, password }: SyncScreenProps) {
       }
     }
 
-    // Initial trigger
-    triggerSync()
+    // First poll immediately to check if data already exists
+    poll()
 
-    // Start polling
+    // Start interval polling
     pollTimer = setInterval(poll, 500)
 
     return () => {

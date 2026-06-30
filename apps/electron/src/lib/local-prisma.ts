@@ -4,25 +4,21 @@ import path from 'path'
 import fs from 'fs'
 
 function resolveDbPath(): string {
-  if (process.env.SQLITE_DB_PATH) return process.env.SQLITE_DB_PATH
-
   try {
     const { app } = require('electron')
     if (app?.isPackaged) {
       const userData = app.getPath('userData')
       const dbPath = path.join(userData, 'local.db')
-      const seedPath = path.join(process.resourcesPath!, 'app.asar.unpacked', 'data', 'local.db')
-
-      if (!fs.existsSync(dbPath) && fs.existsSync(seedPath)) {
-        fs.mkdirSync(path.dirname(dbPath), { recursive: true })
-        fs.copyFileSync(seedPath, dbPath)
-      }
-
+      // On first run, the DB is created fresh by Prisma — no need to copy a seed
+      fs.mkdirSync(userData, { recursive: true })
       return dbPath
     }
-  } catch { /* not in Electron context */ }
-
-  return path.join(process.cwd(), 'data', 'local.db')
+    // Dev mode — use app.getPath('userData') goes to %APPDATA%/Electron or similar. Better to use project data/
+    return process.env.SQLITE_DB_PATH || path.join(process.cwd(), 'data', 'local.db')
+  } catch {
+    // Not in Electron context (e.g., running as standalone Node for dev/test)
+    return process.env.SQLITE_DB_PATH || path.join(process.cwd(), 'data', 'local.db')
+  }
 }
 
 const dbPath = resolveDbPath()

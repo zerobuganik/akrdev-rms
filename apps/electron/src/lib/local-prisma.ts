@@ -71,13 +71,89 @@ export async function ensureTables() {
     `CREATE TABLE IF NOT EXISTS "cached_settings" (
       "id" TEXT NOT NULL PRIMARY KEY DEFAULT 'default', "data" TEXT
     )`,
+    `CREATE TABLE IF NOT EXISTS "printer_configs" (
+      "id" TEXT NOT NULL PRIMARY KEY, "name" TEXT NOT NULL,
+      "displayName" TEXT NOT NULL, "type" TEXT NOT NULL,
+      "connection" TEXT NOT NULL, "address" TEXT,
+      "vendorId" INTEGER, "productId" INTEGER,
+      "paperWidth" INTEGER NOT NULL DEFAULT 80,
+      "isDefault" BOOLEAN NOT NULL DEFAULT false,
+      "isActive" BOOLEAN NOT NULL DEFAULT true,
+      "isKitchen" BOOLEAN NOT NULL DEFAULT false,
+      "isBilling" BOOLEAN NOT NULL DEFAULT false,
+      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )`,
+    `CREATE TABLE IF NOT EXISTS "print_history" (
+      "id" TEXT NOT NULL PRIMARY KEY, "printerId" TEXT NOT NULL,
+      "printType" TEXT NOT NULL, "orderId" TEXT,
+      "tableName" TEXT, "status" TEXT NOT NULL DEFAULT 'Pending',
+      "retryCount" INTEGER NOT NULL DEFAULT 0, "error" TEXT,
+      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY ("printerId") REFERENCES "printer_configs"("id") ON DELETE CASCADE
+    )`,
+    `CREATE TABLE IF NOT EXISTS "local_orders" (
+      "id" TEXT NOT NULL PRIMARY KEY, "tableId" TEXT,
+      "tableName" TEXT, "customerId" TEXT,
+      "customerPhone" TEXT, "guestCount" INTEGER NOT NULL DEFAULT 2,
+      "status" TEXT NOT NULL DEFAULT 'Draft',
+      "syncStatus" TEXT NOT NULL DEFAULT 'Pending',
+      "subtotal" REAL NOT NULL DEFAULT 0, "taxTotal" REAL NOT NULL DEFAULT 0,
+      "discountTotal" REAL NOT NULL DEFAULT 0, "grandTotal" REAL NOT NULL DEFAULT 0,
+      "orderType" TEXT NOT NULL DEFAULT 'DineIn', "note" TEXT,
+      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )`,
+    `CREATE TABLE IF NOT EXISTS "local_order_items" (
+      "id" TEXT NOT NULL PRIMARY KEY, "orderId" TEXT NOT NULL,
+      "itemId" TEXT NOT NULL, "itemName" TEXT NOT NULL,
+      "variationId" TEXT, "variationName" TEXT,
+      "kotId" TEXT, "quantity" INTEGER NOT NULL DEFAULT 1,
+      "unitPrice" REAL NOT NULL, "lineTotal" REAL NOT NULL,
+      "status" TEXT NOT NULL DEFAULT 'New', "note" TEXT,
+      FOREIGN KEY ("orderId") REFERENCES "local_orders"("id") ON DELETE CASCADE,
+      FOREIGN KEY ("kotId") REFERENCES "local_kots"("id")
+    )`,
+    `CREATE TABLE IF NOT EXISTS "local_kots" (
+      "id" TEXT NOT NULL PRIMARY KEY, "orderId" TEXT NOT NULL,
+      "kotNumber" INTEGER NOT NULL, "sentAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "sentBy" TEXT NOT NULL,
+      FOREIGN KEY ("orderId") REFERENCES "local_orders"("id") ON DELETE CASCADE
+    )`,
+    `CREATE TABLE IF NOT EXISTS "local_settlements" (
+      "id" TEXT NOT NULL PRIMARY KEY, "orderId" TEXT NOT NULL UNIQUE,
+      "subtotal" REAL NOT NULL, "taxTotal" REAL NOT NULL,
+      "discountTotal" REAL NOT NULL, "grandTotal" REAL NOT NULL,
+      "cashPaid" REAL NOT NULL DEFAULT 0, "cardPaid" REAL NOT NULL DEFAULT 0,
+      "upiPaid" REAL NOT NULL DEFAULT 0, "discountType" TEXT,
+      "discountValue" REAL, "discountReason" TEXT,
+      "changeGiven" REAL NOT NULL DEFAULT 0,
+      "settledAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY ("orderId") REFERENCES "local_orders"("id") ON DELETE CASCADE
+    )`,
+    `CREATE TABLE IF NOT EXISTS "sync_queue" (
+      "id" TEXT NOT NULL PRIMARY KEY, "action" TEXT NOT NULL,
+      "payload" TEXT NOT NULL, "status" TEXT NOT NULL DEFAULT 'Pending',
+      "retryCount" INTEGER NOT NULL DEFAULT 0, "retryAt" DATETIME,
+      "error" TEXT, "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )`,
+    `CREATE TABLE IF NOT EXISTS "sync_state" (
+      "id" TEXT NOT NULL PRIMARY KEY DEFAULT 'singleton',
+      "lastSyncAt" DATETIME, "pendingCount" INTEGER NOT NULL DEFAULT 0,
+      "syncInProgress" BOOLEAN NOT NULL DEFAULT false,
+      "cloudAvailable" BOOLEAN NOT NULL DEFAULT true,
+      "backoffMs" INTEGER NOT NULL DEFAULT 1000,
+      "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )`,
   ]
   for (const sql of tables) {
     try { await localPrisma.$executeRawUnsafe(sql) } catch { /* ignore */ }
   }
   console.log('[local-prisma] Ensured local tables exist')
 }
-ensureTables().catch(() => {})
+
+export const tablesReady = ensureTables()
 
 if (process.env.NODE_ENV !== 'production') {
   globalForPrisma.localPrisma = localPrisma

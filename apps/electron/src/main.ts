@@ -3,6 +3,7 @@ import path from 'path'
 import { config } from 'dotenv'
 import { createLocalApiServer, setSystemPrinterResolver } from './api-local.bundle.js'
 import { startMDNS, stopMDNS } from './services/mdns.service.js'
+import { localPrisma, tablesReady } from './lib/local-prisma.js'
 import { printService, type PrintData } from './printing/print.service.js'
 import { syncWorkerService } from './services/sync-worker.service.js'
 import { setAccessToken, setRefreshToken } from './lib/token-store.js'
@@ -210,6 +211,8 @@ async function discoverSystemPrinters() {
 app.whenReady().then(async () => {
   createWindow()
   registerIpcHandlers()
+
+  await tablesReady.catch(() => {})
 
   // Always initialize printing
   try { await printService.initialize() } catch (err) { console.error('[Main] Print service init failed:', err) }

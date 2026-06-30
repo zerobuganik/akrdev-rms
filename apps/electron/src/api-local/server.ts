@@ -733,17 +733,66 @@ function computeOrderTotals(subtotal: number): { taxTotal: number; discountTotal
   return { taxTotal, discountTotal, grandTotal }
 }
 
-app.post('/api/v1/tables', (req, res) => {
-  syncQueueService.enqueue('admin-create', { path: '/tables', body: req.body }).catch(() => {})
-  adminQueued(res)
+app.post('/api/v1/tables', async (req, res) => {
+  try {
+    const body = req.body
+    const id = body.id ?? crypto.randomUUID()
+    const areaObj = body.area as { id?: string; name?: string } | undefined
+    await localPrisma.cachedTable.upsert({
+      where: { id },
+      create: { id, name: body.name ?? 'New Table', capacity: body.capacity ?? 4, status: body.status ?? 'Available', areaId: areaObj?.id ?? null, areaName: areaObj?.name ?? null },
+      update: { name: body.name, capacity: body.capacity, status: body.status, areaId: areaObj?.id ?? null, areaName: areaObj?.name ?? null },
+    })
+    if (cachedCloudTables) {
+      const idx = (cachedCloudTables as Array<{ id: string }>).findIndex(t => t.id === id)
+      const entry = { id, name: body.name, capacity: body.capacity ?? 4, status: body.status ?? 'Available', area: areaObj ?? null }
+      if (idx >= 0) Object.assign(cachedCloudTables[idx], entry)
+      else cachedCloudTables.unshift(entry)
+    }
+    syncQueueService.enqueue('admin-create', { path: '/tables', body: { ...body, id } }).catch(() => {})
+    res.json({ ok: true, id })
+  } catch (err) {
+    console.error('[tables] Create error:', err)
+    res.status(500).json({ error: { message: 'Failed to save table' } })
+  }
 })
-app.put('/api/v1/tables/:id', (req, res) => {
-  syncQueueService.enqueue('admin-put', { path: `/tables/${req.params.id}`, body: req.body }).catch(() => {})
-  adminQueued(res)
+app.put('/api/v1/tables/:id', async (req, res) => {
+  try {
+    const { id } = req.params
+    const body = req.body
+    const areaObj = body.area as { id?: string; name?: string } | undefined
+    await localPrisma.cachedTable.upsert({
+      where: { id },
+      create: { id, name: body.name ?? 'Table', capacity: body.capacity ?? 4, status: body.status ?? 'Available', areaId: areaObj?.id ?? null, areaName: areaObj?.name ?? null },
+      update: { name: body.name, capacity: body.capacity, status: body.status, areaId: areaObj?.id ?? null, areaName: areaObj?.name ?? null },
+    })
+    if (cachedCloudTables) {
+      const arr = cachedCloudTables as Array<{ id: string }>
+      const idx = arr.findIndex(t => t.id === id)
+      if (idx >= 0) Object.assign(arr[idx], body)
+    }
+    syncQueueService.enqueue('admin-put', { path: `/tables/${id}`, body }).catch(() => {})
+    res.json({ ok: true })
+  } catch (err) {
+    console.error('[tables] Update error:', err)
+    res.status(500).json({ error: { message: 'Failed to update table' } })
+  }
 })
-app.delete('/api/v1/tables/:id', (req, res) => {
-  syncQueueService.enqueue('admin-delete', { path: `/tables/${req.params.id}` }).catch(() => {})
-  adminQueued(res)
+app.delete('/api/v1/tables/:id', async (req, res) => {
+  try {
+    const { id } = req.params
+    await localPrisma.cachedTable.delete({ where: { id } }).catch(() => {})
+    if (cachedCloudTables) {
+      const arr = cachedCloudTables as Array<{ id: string }>
+      const idx = arr.findIndex(t => t.id === id)
+      if (idx >= 0) arr.splice(idx, 1)
+    }
+    syncQueueService.enqueue('admin-delete', { path: `/tables/${id}` }).catch(() => {})
+    res.json({ ok: true })
+  } catch (err) {
+    console.error('[tables] Delete error:', err)
+    res.status(500).json({ error: { message: 'Failed to delete table' } })
+  }
 })
 
 app.post('/api/v1/items', async (req, res) => {
@@ -1007,9 +1056,36 @@ app.get('/api/v1/tables', async (req, res) => {
   try {
     const tableName = req.query.tableName as string | undefined
 
-    // Use cached tables from POS sync if available
-    const sourceTables = cachedCloudTables
+    // 1. Load tables from local SQLite (persisted, updated on every create/edit, survives offline)
+    const localTables = await localPrisma.cachedTable.findMany()
+    let activeOrders: Array<{ tableId: string | null; tableName: string | null; status: string; subtotal: number; grandTotal: number }> = []
+    if (localTables.length > 0) {
+      activeOrders = await localPrisma.localOrder.findMany({
+        where: { status: { not: 'Settled' } },
+        select: { tableId: true, tableName: true, status: true, subtotal: true, grandTotal: true },
+      })
+      const orderByTableName = new Map<string, (typeof activeOrders)[number]>()
+      for (const o of activeOrders) {
+        if (o.tableName) orderByTableName.set(o.tableName, o)
+      }
+      let tables = localTables.map((t) => {
+        const local = orderByTableName.get(t.name)
+        return {
+          id: t.id,
+          name: t.name,
+          capacity: t.capacity,
+          status: local?.status ?? t.status,
+          area: t.areaId ? { id: t.areaId, name: t.areaName ?? '' } : null,
+          activeOrder: local ? { grandTotal: local.grandTotal, status: local.status } : null,
+        }
+      })
+      if (tableName) tables = tables.filter((t) => t.name.toLowerCase().includes(tableName.toLowerCase()))
+      res.json(tables)
+      return
+    }
 
+    // 2. Use in-memory cloud cache if local DB is empty
+    const sourceTables = cachedCloudTables
     if (sourceTables && (sourceTables as unknown[]).length > 0) {
       const localOrders = await localPrisma.localOrder.findMany({
         where: { status: { not: 'Settled' } },
@@ -1030,14 +1106,12 @@ app.get('/api/v1/tables', async (req, res) => {
           activeOrder: local ? { grandTotal: local.grandTotal, status: local.status } : null,
         }
       })
-      if (tableName) {
-        tables = tables.filter((t) => t.name.toLowerCase().includes(tableName.toLowerCase()))
-      }
+      if (tableName) tables = tables.filter((t) => t.name.toLowerCase().includes(tableName.toLowerCase()))
       res.json(tables)
       return
     }
 
-    // Local-only fallback — use seed tables with order status overlay
+    // 3. Seed fallback as last resort
     const orders = await localPrisma.localOrder.findMany({
       where: { status: { not: 'Settled' } },
       select: { tableId: true, tableName: true, status: true, subtotal: true, grandTotal: true },

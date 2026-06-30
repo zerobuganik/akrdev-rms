@@ -21,7 +21,7 @@ import {
 import { FooterStatusBar } from './FooterStatusBar'
 import { Toaster } from './Toaster'
 import { ProfilePopup } from './ProfilePopup'
-import { getImageBaseUrl } from '@/lib/imageBaseUrl'
+import { resolveImageUrl } from '@/lib/imageBaseUrl'
 
 const navItems = [
   { path: '/tables', label: 'Tables', icon: Grid3X3 },
@@ -50,9 +50,7 @@ export function Layout() {
   })
 
   const restaurantName = settings?.companyName ?? ''
-  const logoUrl = settings?.logoUrl
-    ? `${getImageBaseUrl()}${settings.logoUrl}`
-    : null
+  const logoUrl = resolveImageUrl(settings?.logoUrl)
 
   const handleClose = () => {
     if (window.electron?.ipcRenderer) {
@@ -162,7 +160,7 @@ export function Layout() {
               >
                 {user?.imageUrl ? (
                   <img
-                    src={`${getImageBaseUrl()}${user.imageUrl}`}
+                    src={resolveImageUrl(user.imageUrl) ?? ''}
                     alt=""
                     className="h-full w-full object-cover"
                   />
@@ -193,7 +191,7 @@ export function Layout() {
               >
                 {user?.imageUrl ? (
                   <img
-                    src={`${getImageBaseUrl()}${user.imageUrl}`}
+                    src={resolveImageUrl(user.imageUrl) ?? ''}
                     alt=""
                     className="h-full w-full object-cover"
                   />

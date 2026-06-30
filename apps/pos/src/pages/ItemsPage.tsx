@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { flushSync } from 'react-dom'
 import { apiClient } from '@/lib/apiClient'
 import { printerApi } from '@/lib/printerApi'
-import { getImageBaseUrl } from '@/lib/imageBaseUrl'
+import { resolveImageUrl } from '@/lib/imageBaseUrl'
 import { toast } from '@/stores/useToastStore'
 import { Pencil, Trash2, Plus, Search, X, Upload, ChevronDown } from 'lucide-react'
 
@@ -41,8 +41,6 @@ const DIETARY_TYPES = ['Veg', 'Non-Veg', 'Egg', 'Beverage'] as const
 
 const TABS = ['Items', 'Category'] as const
 type Tab = (typeof TABS)[number]
-
-const API_BASE = getImageBaseUrl()
 
 export default function ItemsPage() {
   const [tab, setTab] = useState<Tab>('Items')
@@ -84,7 +82,7 @@ export default function ItemsPage() {
     setEditingCategory(cat)
     setCatForm({ name: cat.name, defaultTaxPercent: cat.defaultTaxPercent, displayOrder: cat.displayOrder })
     setCatKitchenId(cat.kitchenId ?? null)
-    setCatImage(cat.imageUrl ? `${API_BASE}${cat.imageUrl}` : null)
+    setCatImage(resolveImageUrl(cat.imageUrl))
     setCatImageFile(null)
     setShowCategoryPopup(true)
   }
@@ -321,7 +319,7 @@ export default function ItemsPage() {
         dietaryType: (item as any).dietaryType ?? '',
       })
       setItemKitchenId(kitchenPrinters[0]?.id ?? null)
-      setItemImage(item.imageUrl ? `${API_BASE}${item.imageUrl}` : null)
+      setItemImage(resolveImageUrl(item.imageUrl))
       setEditingItem(item)
     })
   }
@@ -465,7 +463,7 @@ export default function ItemsPage() {
                       <td className="p-4"><input type="checkbox" className="h-4 w-4 rounded border-gray-300 text-gray-900 focus:ring-gray-900/50" /></td>
                       <td className="p-4">
                         {cat.imageUrl ? (
-                          <img src={`${API_BASE}${cat.imageUrl}`} alt={cat.name} className="size-10 rounded-lg object-cover" />
+                          <img src={resolveImageUrl(cat.imageUrl) ?? ''} alt={cat.name} className="size-10 rounded-lg object-cover" />
                         ) : (
                           <div className="size-10 rounded-lg bg-muted flex items-center justify-center text-muted-foreground font-bold text-xs">
                             {cat.name.charAt(0).toUpperCase()}
@@ -521,7 +519,7 @@ export default function ItemsPage() {
                     <td className="p-4"><input type="checkbox" className="h-4 w-4 rounded border-gray-300 text-gray-900 focus:ring-gray-900/50" /></td>
                     <td className="p-4">
                       {item.imageUrl ? (
-                        <img src={`${API_BASE}${item.imageUrl}`} alt={item.name} className="size-10 rounded-lg object-cover" />
+                        <img src={resolveImageUrl(item.imageUrl) ?? ''} alt={item.name} className="size-10 rounded-lg object-cover" />
                       ) : (
                         <div className="size-10 rounded-lg bg-muted flex items-center justify-center text-muted-foreground font-bold text-xs">
                           {item.name.charAt(0).toUpperCase()}

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { apiClient } from '@/lib/apiClient'
-import { getImageBaseUrl } from '@/lib/imageBaseUrl'
+import { resolveImageUrl } from '@/lib/imageBaseUrl'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { toast } from '@/stores/useToastStore'
 import { X, Camera } from 'lucide-react'
@@ -19,8 +19,7 @@ export function ProfilePopup({ onClose }: ProfilePopupProps) {
   const [uploading, setUploading] = useState(false)
   const [saving, setSaving] = useState<'profile' | 'password' | 'pin' | null>(null)
 
-  const imageBase = getImageBaseUrl()
-  const avatarSrc = user?.imageUrl ? `${imageBase}${user.imageUrl}` : null
+  const avatarSrc = resolveImageUrl(user?.imageUrl)
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]

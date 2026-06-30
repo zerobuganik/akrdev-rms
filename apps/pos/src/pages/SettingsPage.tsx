@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '@/lib/apiClient'
-import { getImageBaseUrl } from '@/lib/imageBaseUrl'
+import { resolveImageUrl } from '@/lib/imageBaseUrl'
 import { toast } from '@/stores/useToastStore'
 import { useState, useEffect, useRef } from 'react'
 import { Plus, Pencil, Trash2, Save, Phone, Mail, Globe, Camera, CheckCircle2, QrCode, Copy, RefreshCw, Monitor } from 'lucide-react'
@@ -34,12 +34,11 @@ interface TaxSlab {
 type TabId = 'basic' | 'printer' | 'pairing'
 
 function getLogoUrl(logoUrl: string | null | undefined) {
-  if (!logoUrl) return null
-  return `${getImageBaseUrl()}${logoUrl}`
+  return resolveImageUrl(logoUrl)
 }
 
 function getPrintLogoUrl(printLogoUrl: string | null | undefined) {
-  return getLogoUrl(printLogoUrl)
+  return resolveImageUrl(printLogoUrl)
 }
 
 export default function SettingsPage() {

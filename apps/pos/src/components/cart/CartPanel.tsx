@@ -8,7 +8,7 @@ import { useAuthStore } from '@/stores/useAuthStore'
 import { toast } from '@/stores/useToastStore'
 import { printerApi } from '@/lib/printerApi'
 import { formatPrintDate, formatPrintTime } from '@/lib/utils'
-import { getImageBaseUrl } from '@/lib/imageBaseUrl'
+import { resolveImageUrl } from '@/lib/imageBaseUrl'
 import { SettlementModal } from '@/components/settlement/SettlementModal'
 import { PaymentChangeModal } from '@/components/settlement/PaymentChangeModal'
 
@@ -311,7 +311,7 @@ export function CartPanel({ tableId }: CartPanelProps) {
           taxName: 'GST',
           date: formatPrintDate(),
           orderType: order.orderType === 'Takeaway' ? 'Takeaway' : 'Dine In',
-          logoUrl: settings?.printLogoUrl ? `${getImageBaseUrl()}${settings.printLogoUrl}` : undefined,
+          logoUrl: resolveImageUrl(settings?.printLogoUrl) ?? undefined,
         }).catch(() => {})
       }).catch(() => {})
     },
@@ -373,7 +373,7 @@ export function CartPanel({ tableId }: CartPanelProps) {
         taxName: 'GST',
         date: formatPrintDate(),
         orderType: orderData.orderType === 'Takeaway' ? 'Takeaway' : 'Dine In',
-        logoUrl: data?.printLogoUrl ? `${getImageBaseUrl()}${data.printLogoUrl}` : undefined,
+        logoUrl: resolveImageUrl(data?.printLogoUrl) ?? undefined,
       }).catch(() => {})
     },
     onSuccess: () => {

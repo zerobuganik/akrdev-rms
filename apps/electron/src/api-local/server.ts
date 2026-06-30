@@ -272,12 +272,49 @@ async function syncFromCloud(phone: string, password: string) {
             },
             update: { status: o.status as string, subtotal: o.subtotal as number, taxTotal: o.taxTotal as number, discountTotal: o.discountTotal as number, grandTotal: o.grandTotal as number },
           }).catch(() => {})
+
+          // Sync order items
+          const items = o.items as Array<Record<string, unknown>> | undefined
+          if (items?.length) {
+            for (const item of items) {
+              const oi = item.item as Record<string, unknown> | undefined
+              await localPrisma.localOrderItem.upsert({
+                where: { id: item.id as string },
+                create: {
+                  id: item.id as string, orderId: o.id as string, itemId: item.itemId as string ?? '',
+                  itemName: oi?.name as string ?? item.itemName as string ?? '',
+                  quantity: item.quantity as number ?? 1, unitPrice: item.unitPrice as number ?? 0,
+                  lineTotal: item.lineTotal as number ?? 0, status: item.status as string ?? 'New',
+                  variationId: item.variationId as string ?? null,
+                  variationName: item.variationName as string ?? null,
+                },
+                update: { quantity: item.quantity as number, unitPrice: item.unitPrice as number, lineTotal: item.lineTotal as number, status: item.status as string },
+              }).catch(() => {})
+            }
+          }
+
+          // Sync settlement
+          const settlement = o.settlement as Record<string, unknown> | undefined
+          if (settlement?.id) {
+            await localPrisma.localSettlement.upsert({
+              where: { orderId: o.id as string },
+              create: {
+                id: settlement.id as string, orderId: o.id as string,
+                subtotal: settlement.subtotal as number ?? 0, taxTotal: settlement.taxTotal as number ?? 0,
+                discountTotal: settlement.discountTotal as number ?? 0, grandTotal: settlement.grandTotal as number ?? 0,
+                cashPaid: settlement.cashPaid as number ?? 0, cardPaid: settlement.cardPaid as number ?? 0,
+                upiPaid: settlement.upiPaid as number ?? 0, changeGiven: settlement.changeGiven as number ?? 0,
+                settledAt: settlement.settledAt as string ?? new Date().toISOString(),
+              },
+              update: { cashPaid: settlement.cashPaid as number, cardPaid: settlement.cardPaid as number, upiPaid: settlement.upiPaid as number },
+            }).catch(() => {})
+          }
         }
       }
     }
 
     lastSyncTime = Date.now()
-    console.log(`[cloud-sync] Synced: tables=${cachedCloudTables?.length ?? 0}, items=${cachedCloudItems?.length ?? 0}, settings=${!!cachedSettings}, categories=${(cachedCategories as unknown[])?.length ?? 0}, employees=${(cachedCloudEmployees as unknown[])?.length ?? 0}, orders=${(cachedCloudEmployees as unknown[])?.length ?? 0}`)
+    console.log(`[cloud-sync] Synced: tables=${cachedCloudTables?.length ?? 0}, items=${cachedCloudItems?.length ?? 0}, settings=${!!cachedSettings}, categories=${(cachedCategories as unknown[])?.length ?? 0}, employees=${(cachedCloudEmployees as unknown[])?.length ?? 0}`)
   } catch (err) {
     console.warn('[cloud-sync] Sync failed:', (err as Error).message)
   }
@@ -362,6 +399,41 @@ async function startupCloudSync() {
             },
             update: { status: o.status as string, subtotal: o.subtotal as number, taxTotal: o.taxTotal as number, discountTotal: o.discountTotal as number, grandTotal: o.grandTotal as number },
           }).catch(() => {})
+
+          const items = o.items as Array<Record<string, unknown>> | undefined
+          if (items?.length) {
+            for (const item of items) {
+              const oi = item.item as Record<string, unknown> | undefined
+              await localPrisma.localOrderItem.upsert({
+                where: { id: item.id as string },
+                create: {
+                  id: item.id as string, orderId: o.id as string, itemId: item.itemId as string ?? '',
+                  itemName: oi?.name as string ?? item.itemName as string ?? '',
+                  quantity: item.quantity as number ?? 1, unitPrice: item.unitPrice as number ?? 0,
+                  lineTotal: item.lineTotal as number ?? 0, status: item.status as string ?? 'New',
+                  variationId: item.variationId as string ?? null,
+                  variationName: item.variationName as string ?? null,
+                },
+                update: { quantity: item.quantity as number, unitPrice: item.unitPrice as number, lineTotal: item.lineTotal as number, status: item.status as string },
+              }).catch(() => {})
+            }
+          }
+
+          const settlement = o.settlement as Record<string, unknown> | undefined
+          if (settlement?.id) {
+            await localPrisma.localSettlement.upsert({
+              where: { orderId: o.id as string },
+              create: {
+                id: settlement.id as string, orderId: o.id as string,
+                subtotal: settlement.subtotal as number ?? 0, taxTotal: settlement.taxTotal as number ?? 0,
+                discountTotal: settlement.discountTotal as number ?? 0, grandTotal: settlement.grandTotal as number ?? 0,
+                cashPaid: settlement.cashPaid as number ?? 0, cardPaid: settlement.cardPaid as number ?? 0,
+                upiPaid: settlement.upiPaid as number ?? 0, changeGiven: settlement.changeGiven as number ?? 0,
+                settledAt: settlement.settledAt as string ?? new Date().toISOString(),
+              },
+              update: { cashPaid: settlement.cashPaid as number, cardPaid: settlement.cardPaid as number, upiPaid: settlement.upiPaid as number },
+            }).catch(() => {})
+          }
         }
       }
     }

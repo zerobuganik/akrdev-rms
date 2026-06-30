@@ -576,7 +576,7 @@ export function TableGrid() {
                     <span>{new Date(order.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</span>
                   </div>
                   <p className="text-xs text-muted-foreground truncate">
-                    {order.items.slice(0, 3).map((i) => i.item.name).join(', ')}
+                    {order.items.slice(0, 3).map((i: any) => i.item?.name ?? i.itemName ?? '?').join(', ')}
                     {order.items.length > 3 && '...'}
                   </p>
                   {order.grandTotal > 0 && (

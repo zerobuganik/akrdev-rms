@@ -148,7 +148,9 @@ export async function ensureTables() {
     )`,
   ]
   for (const sql of tables) {
-    try { await localPrisma.$executeRawUnsafe(sql) } catch { /* ignore */ }
+    try { await localPrisma.$executeRawUnsafe(sql) } catch (err) {
+      console.error(`[local-prisma] Failed to execute: ${sql.slice(0, 80)}... — ${(err as Error).message}`)
+    }
   }
   console.log('[local-prisma] Ensured local tables exist')
 }

@@ -438,6 +438,9 @@ export function CartPanel({ tableId }: CartPanelProps) {
     for (const i of items) {
       const key = `${i.itemId}-${i.variationId ?? 'none'}`
       const existing = map.get(key)
+      const itemName = (i as { item?: { name?: string }; itemName?: string }).item?.name ?? (i as { itemName?: string }).itemName ?? 'Unknown Item'
+      const variationName = (i as { variation?: { name?: string }; variationName?: string }).variation?.name ?? (i as { variationName?: string }).variationName
+      const displayName = variationName ? `${itemName} (${variationName})` : itemName
       if (existing) {
         existing.quantity += i.quantity
         existing.lineTotal += i.lineTotal
@@ -447,7 +450,7 @@ export function CartPanel({ tableId }: CartPanelProps) {
         map.set(key, {
           itemId: i.itemId,
           variationId: i.variationId,
-          name: i.variation ? `${i.item.name} (${i.variation.name})` : i.item.name,
+          name: displayName,
           quantity: i.quantity,
           unitPrice: i.unitPrice,
           lineTotal: i.lineTotal,
@@ -514,8 +517,8 @@ export function CartPanel({ tableId }: CartPanelProps) {
                     <Trash2 size={14} />
                   </button>
                   <span className="flex-1">
-                    {item.item.name}
-                    {item.variation && <span className="text-xs text-muted-foreground"> — {item.variation.name}</span>}
+                    {(item as any).item?.name ?? (item as any).itemName ?? 'Unknown Item'}
+                    {(item as any).variation && <span className="text-xs text-muted-foreground"> — {(item as any).variation.name}</span>}
                   </span>
                   <div className="flex items-center gap-0.5">
                     <button
@@ -623,7 +626,7 @@ export function CartPanel({ tableId }: CartPanelProps) {
                   )}
                   {group.items.map((item) => (
                     <div key={item.id} className="flex items-center gap-2 rounded py-1 text-sm line-through opacity-50">
-                      <span className="flex-1">{item.item.name}</span>
+                      <span className="flex-1">{(item as any).item?.name ?? (item as any).itemName ?? 'Unknown Item'}</span>
                       <span className="text-[10px] text-muted-foreground">
                         {item.cancelledAt ? new Date(item.cancelledAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : ''}
                         {item.cancelledByUser?.name ? ` by ${item.cancelledByUser.name}` : ''}

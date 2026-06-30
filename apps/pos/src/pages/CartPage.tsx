@@ -70,7 +70,7 @@ export default function CartPage() {
           taxTotal: 0,
           discountTotal: 0,
           grandTotal: 0,
-          status: 'Draft',
+          status: 'New',
           orderType: 'DineIn',
           items: [],
           kots: [],

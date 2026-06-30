@@ -14,7 +14,7 @@ model LocalOrder {
   customerId    String?
   customerPhone String?
   guestCount    Int      @default(2)
-  status        String   @default("Draft")
+  status        String   @default("New")
   syncStatus    String   @default("Pending")
   subtotal      Float    @default(0)
   taxTotal      Float    @default(0)

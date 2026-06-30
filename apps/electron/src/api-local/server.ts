@@ -650,7 +650,11 @@ async function initLocalDb() {
   await ensureTables()
   await ensureLocalAdmin()
 }
-initLocalDb().catch((err) => console.error('[server] DB init failed:', err))
+// Await DB init before accepting requests
+let dbReady = false
+initLocalDb()
+  .then(() => { dbReady = true; console.log('[server] Local DB init complete') })
+  .catch((err) => console.error('[server] DB init failed:', err))
 
 // ==================== AUTH ====================
 

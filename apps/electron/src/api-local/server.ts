@@ -441,8 +441,11 @@ async function syncWithProgress(phone?: string, password?: string) {
 
   try {
     let token = cloudAccessToken ?? getCloudAccessToken()
+    console.log('[sync-progress] Starting. storedToken:', !!token, 'hasPhone:', !!phone, 'hasPassword:', !!password)
     if (!token && phone && password) {
+      console.log('[sync-progress] Authenticating with cloud...')
       token = await authenticateCloud(phone, password)
+      console.log('[sync-progress] Auth result:', !!token ? 'SUCCESS' : 'FAILED')
       if (!token) {
         syncProgress = { total: 8, completed: 0, phase: 'error', error: 'Cloud authentication failed — check internet or credentials' }
         syncInProgress = false
@@ -1832,6 +1835,7 @@ app.get('/api/v1/sync-progress', (_req, res) => {
   const isComplete = (cachedCloudTables?.length ?? 0) > 0 && !!cachedSettings
   res.json({
     ...syncProgress,
+    cloudApiBase: getCloudApiBase(),
     complete: isComplete || syncProgress.completed >= syncProgress.total,
     tablesCached: cachedCloudTables?.length ?? 0,
     itemsCached: cachedCloudItems?.length ?? 0,
@@ -1847,9 +1851,10 @@ app.post('/api/v1/sync/trigger', async (req, res) => {
     return
   }
   const { phone, password } = req.body ?? {}
+  console.log('[sync-trigger] Received:', { phone, hasPassword: !!password })
   res.json({ ok: true, message: 'Sync started' })
   // Start sync in background
-  syncWithProgress(phone, password).catch(() => {})
+  syncWithProgress(phone, password).catch((err) => console.error('[sync-trigger] Fatal:', err))
 })
 
 // Final catch-all for unmatched /api/v1 routes — queue writes, 404 for unknown GETs

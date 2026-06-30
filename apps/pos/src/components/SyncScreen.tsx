@@ -20,16 +20,29 @@ export function SyncScreen({ onComplete, phone, password }: SyncScreenProps) {
   const [triggered, setTriggered] = useState(false)
 
   useEffect(() => {
-    if (triggered) return
+    if (!triggered) return
     setTriggered(true)
 
-    // Trigger sync on the local API
     const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3001/api/v1'
-    fetch(`${base}/sync/trigger`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phone, password }),
-    }).catch(() => {})
+
+    // Wait a small delay for the local server to be ready after login
+    const triggerFn = () => {
+      fetch(`${base}/sync/trigger`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone, password }),
+      }).catch(() => {})
+    }
+
+    // Trigger with slight delay, retry if needed
+    triggerFn()
+    const retryTrigger = setInterval(() => {
+      fetch(`${base}/sync-progress`).then(r => r.json()).then(d => {
+        if (d.error && d.completed === 0) {
+          triggerFn()
+        }
+      }).catch(() => {})
+    }, 5000)
 
     // Poll progress every 500ms
     const interval = setInterval(async () => {
@@ -39,6 +52,7 @@ export function SyncScreen({ onComplete, phone, password }: SyncScreenProps) {
         setState(data)
         if (data.complete || (data.tablesCached > 0 && data.settingsCached && data.completed >= data.total)) {
           clearInterval(interval)
+          clearInterval(retryTrigger)
           setTimeout(onComplete, 800)
         }
       } catch {
@@ -46,7 +60,10 @@ export function SyncScreen({ onComplete, phone, password }: SyncScreenProps) {
       }
     }, 500)
 
-    return () => clearInterval(interval)
+    return () => {
+      clearInterval(interval)
+      clearInterval(retryTrigger)
+    }
   }, [triggered])
 
   const pct = state.total > 0 ? Math.round((state.completed / state.total) * 100) : 0

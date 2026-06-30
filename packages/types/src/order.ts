@@ -53,6 +53,10 @@ export interface KOT {
 export interface Settlement {
   id: string
   orderId: string
+  subtotal: number
+  taxTotal: number
+  discountTotal: number
+  grandTotal: number
   cashPaid: number
   cardPaid: number
   upiPaid: number

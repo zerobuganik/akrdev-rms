@@ -13,6 +13,7 @@ export class SyncWorkerService {
   private syncTimer: NodeJS.Timeout | null = null
   private cloudAvailable = false
   private cloudToken: string | null = null
+  private running = false
 
   setCloudToken(token: string | null) {
     this.cloudToken = token
@@ -20,7 +21,10 @@ export class SyncWorkerService {
 
   async start() {
     this.cloudToken = getCloudAccessToken()
+    // Recover items stuck in Syncing status from a previous crash
+    await syncQueueService.resetStaleSyncing()
     await this.checkHealth()
+    this.running = true
     this.healthTimer = setInterval(() => this.checkHealth(), HEALTH_CHECK_INTERVAL)
     this.syncTimer = setInterval(() => this.processQueue(), SYNC_INTERVAL)
 
@@ -28,9 +32,12 @@ export class SyncWorkerService {
     this.cloudAvailable = state.cloudAvailable ?? false
   }
 
-  stop() {
+  async stop() {
+    this.running = false
     if (this.healthTimer) clearInterval(this.healthTimer)
     if (this.syncTimer) clearInterval(this.syncTimer)
+    // Wait briefly for any in-flight processQueue to finish
+    await new Promise((r) => setTimeout(r, 500))
   }
 
   private async checkHealth() {
@@ -70,6 +77,8 @@ export class SyncWorkerService {
           await syncQueueService.markFailed(item.id, String(err), nextBackoffMs)
         }
       }
+      // Periodically clean up completed items to prevent DB bloat
+      await syncQueueService.clearCompleted()
     } finally {
       await syncQueueService.setSyncInProgress(false)
     }

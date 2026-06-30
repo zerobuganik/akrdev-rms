@@ -3,6 +3,8 @@ import { useMutation } from '@tanstack/react-query'
 import { apiClient } from '@/lib/apiClient'
 import { X } from 'lucide-react'
 import { toast } from '@/stores/useToastStore'
+import { calculateRounding } from '@akrdev/shared'
+import { calculateTax } from '@akrdev/shared'
 
 interface SettlementModalProps {
   order: {
@@ -38,11 +40,11 @@ export function SettlementModal({ order, tableName, taxType, onClose, onSettled 
     ? (order.subtotal * discountValue) / 100
     : discountValue
 
-  const grandTotal = Math.round(
-    taxType === 'Inclusive'
-      ? order.subtotal - discountAmount
-      : order.subtotal + order.taxTotal - discountAmount
-  )
+  const { taxTotal } = calculateTax(order.subtotal ?? 0, 0, taxType)
+  const exactGrandTotal = taxType === 'Inclusive'
+    ? order.subtotal - discountAmount
+    : order.subtotal + taxTotal - discountAmount
+  const { grandTotal } = calculateRounding(exactGrandTotal)
   const totalPaid = cashNum + cardNum + upiNum
   const change = totalPaid - grandTotal
 

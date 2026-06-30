@@ -67,7 +67,8 @@ router.post('/:id/upload-image', requireRole('Admin'), async (req, res) => {
     await prisma.item.update({ where: { id: req.params.id as string }, data: { imageUrl } })
     res.json({ imageUrl })
   } catch (err) {
-    res.status(500).json({ error: { message: 'Upload failed', statusCode: 500 } })
+    console.error('[item:upload-image] Failed:', (err as Error).message)
+    next(err)
   }
 })
 

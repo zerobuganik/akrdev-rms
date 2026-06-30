@@ -9,7 +9,6 @@ interface CartItem extends Pick<OrderItem, 'id' | 'itemId' | 'quantity' | 'unitP
 
 interface CartState {
   activeTableId: string | null
-  activeOrderId: string | null
   guestCount: number
   items: CartItem[]
   orderNote: string
@@ -21,7 +20,6 @@ interface CartState {
 
 export const useCartStore = create<CartState>((set) => ({
   activeTableId: null,
-  activeOrderId: null,
   guestCount: 2,
   items: [],
   orderNote: '',
@@ -30,7 +28,6 @@ export const useCartStore = create<CartState>((set) => ({
   clearCart: () =>
     set({
       activeTableId: null,
-      activeOrderId: null,
       guestCount: 2,
       items: [],
       orderNote: '',

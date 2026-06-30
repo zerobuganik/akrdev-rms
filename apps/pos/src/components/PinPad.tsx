@@ -1,3 +1,5 @@
+import { useRef, useEffect } from 'react'
+
 interface PinPadProps {
   value: string
   onChange: (value: string) => void
@@ -7,6 +9,11 @@ interface PinPadProps {
 }
 
 export function PinPad({ value, onChange, maxLength = 4, onSubmit, disabled = false }: PinPadProps) {
+  const mounted = useRef(true)
+
+  useEffect(() => {
+    return () => { mounted.current = false }
+  }, [])
   const handleKeyPress = (key: string) => {
     if (disabled) return
 
@@ -22,7 +29,9 @@ export function PinPad({ value, onChange, maxLength = 4, onSubmit, disabled = fa
           const newValue = value + key
           onChange(newValue)
           if (newValue.length === maxLength && onSubmit) {
-            setTimeout(() => onSubmit(newValue), 200)
+            setTimeout(() => {
+              if (mounted.current) onSubmit(newValue)
+            }, 200)
           }
         }
     }

@@ -36,7 +36,9 @@ app.use(
 )
 app.use(
   cors({
-    origin: process.env.CORS_ORIGINS === '*' ? '*' : (process.env.CORS_ORIGINS?.split(',') ?? '*'),
+    origin: process.env.NODE_ENV === 'production'
+      ? (process.env.CORS_ORIGINS?.split(',') ?? 'http://localhost:5173')
+      : '*',
   }),
 )
 app.use(express.json())

@@ -39,7 +39,10 @@ export class EmployeeService {
   }
 
   async delete(id: string) {
-    await prisma.user.delete({ where: { id } })
+    const user = await prisma.user.findUnique({ where: { id } })
+    if (!user) throw new NotFoundError('Employee')
+    // Soft-delete to preserve audit trail and financial history
+    await prisma.user.update({ where: { id }, data: { active: false } })
   }
 
   async changePassword(id: string, newPassword: string) {

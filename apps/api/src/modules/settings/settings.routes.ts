@@ -49,7 +49,8 @@ router.post('/upload-logo', requireRole('Admin'), async (req, res) => {
     })
     res.json({ logoUrl })
   } catch (err) {
-    res.status(500).json({ error: { message: 'Upload failed', statusCode: 500 } })
+    console.error('[settings:upload-logo] Failed:', (err as Error).message)
+    next(err)
   }
 })
 
@@ -87,7 +88,8 @@ router.post('/upload-print-logo', requireRole('Admin'), async (req, res) => {
     })
     res.json({ printLogoUrl })
   } catch (err) {
-    res.status(500).json({ error: { message: 'Upload failed', statusCode: 500 } })
+    console.error('[settings:upload-print-logo] Failed:', (err as Error).message)
+    next(err)
   }
 })
 

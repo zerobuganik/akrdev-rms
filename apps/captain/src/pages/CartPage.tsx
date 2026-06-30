@@ -132,12 +132,9 @@ export default function CartPage() {
 
   const addItemMut = useMutation({
     mutationFn: async (item: { id: string; variation?: { id: string } }) => {
-      let orderRes = await apiClient.get(`/orders/${tableId}/active`)
-      let orderId = orderRes.data?.id
-      if (!orderId) {
-        const createRes = await apiClient.post('/orders', { tableId, tableName })
-        orderId = createRes.data?.id
-      }
+      // Server-side POST /orders handles idempotent get-or-create atomically
+      const createRes = await apiClient.post('/orders', { tableId, tableName })
+      const orderId = createRes.data?.id
       await apiClient.post('/cart/add-item', {
         orderId,
         itemId: item.id,
@@ -150,6 +147,9 @@ export default function CartPage() {
       setView('cart')
       successHaptic()
     },
+    onError: () => {
+      mediumHaptic()
+    },
   })
 
   const removeItemMut = useMutation({
@@ -160,6 +160,9 @@ export default function CartPage() {
       queryClient.invalidateQueries({ queryKey: ['local-order', tableId] })
       mediumHaptic()
     },
+    onError: () => {
+      mediumHaptic()
+    },
   })
 
   const updateQtyMut = useMutation({
@@ -168,6 +171,9 @@ export default function CartPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['local-order', tableId] })
+      lightHaptic()
+    },
+    onError: () => {
       lightHaptic()
     },
   })

@@ -3,7 +3,7 @@ import { z } from 'zod'
 export const settlementSchema = z.object({
   orderId: z.string().uuid(),
   discountType: z.enum(['Percentage', 'Flat']).optional(),
-  discountValue: z.number().min(0).optional(),
+  discountValue: z.number().min(0).max(100).optional(),
   discountReason: z.string().max(200).optional(),
   payments: z.object({
     cash: z.number().min(0).default(0),

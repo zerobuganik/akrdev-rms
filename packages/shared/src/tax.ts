@@ -24,3 +24,11 @@ export function calculateRounding(exactGrandTotal: number): {
   const grandTotal = Math.round(exactGrandTotal)
   return { grandTotal, roundingAdjustment: grandTotal - exactGrandTotal }
 }
+
+export function calculateItemTax(
+  unitPrice: number,
+  taxPercent: number,
+  taxType: 'Inclusive' | 'Exclusive',
+): TaxCalcResult {
+  return calculateTax(unitPrice, taxPercent, taxType)
+}

@@ -159,9 +159,12 @@ export function CartPanel({ tableId }: CartPanelProps) {
         if (!old) return old
         const newItems = old.items.filter((i) => i.id !== orderItemId)
         hasItemsLeft = newItems.some((i) => i.status !== 'Cancelled')
-        // Recalculate subtotal optimistically
         const subtotal = newItems.reduce((sum, i) => sum + i.lineTotal, 0)
-        return { ...old, items: newItems, subtotal, grandTotal: subtotal }
+        // Recalculate grandTotal optimistically preserving tax and discount
+        const taxTotal = old.taxTotal ?? 0
+        const discountTotal = old.discountTotal ?? 0
+        const grandTotal = subtotal + taxTotal - discountTotal
+        return { ...old, items: newItems, subtotal, taxTotal, discountTotal, grandTotal }
       })
       // If no items remain, wipe the order cache completely so table click shows fresh data
       if (!hasItemsLeft) {

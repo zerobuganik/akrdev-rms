@@ -37,6 +37,6 @@ export const taxSlabService = {
 
   async getDefaultTaxPercent(): Promise<number> {
     const slab = await prisma.taxSlab.findFirst({ where: { isDefault: true, isActive: true } })
-    return slab?.percent ?? 5
+    return slab?.percent ?? 0
   },
 }

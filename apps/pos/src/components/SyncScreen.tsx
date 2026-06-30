@@ -17,11 +17,10 @@ interface SyncState {
 
 export interface SyncScreenProps {
   onComplete: () => void
-  phone?: string
-  password?: string
+  authToken?: string
 }
 
-export function SyncScreen({ onComplete, phone, password }: SyncScreenProps) {
+export function SyncScreen({ onComplete, authToken }: SyncScreenProps) {
   const [state, setState] = useState<SyncState>({
     total: 8, completed: 0, phase: 'Starting...', error: null, complete: false,
     tablesCached: 0, itemsCached: 0, settingsCached: false, categoriesCached: 0, employeesCached: 0, cloudApiBase: '',
@@ -41,8 +40,7 @@ export function SyncScreen({ onComplete, phone, password }: SyncScreenProps) {
       triggerAttempts++
       fetch(`${base}/sync/trigger`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone, password }),
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken ?? ''}` },
       }).catch(() => {})
     }
 

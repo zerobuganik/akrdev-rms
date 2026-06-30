@@ -347,12 +347,13 @@ function rawOrdersCount(): number {
 }
 
 // Sync with progress tracking for the frontend polling
-async function syncWithProgress(phone?: string, password?: string) {
-  if (syncInProgress) return
+async function syncWithProgress(phone?: string, password?: string): Promise<void> {
+  if (syncPromise) return syncPromise
   syncInProgress = true
   syncProgress = { total: 8, completed: 0, phase: 'authenticating', error: null }
 
-  try {
+  syncPromise = (async () => {
+    try {
     let token = cloudAccessToken ?? getCloudAccessToken()
     console.log('[sync-progress] Starting. storedToken:', !!token, 'hasPhone:', !!phone, 'hasPassword:', !!password)
     if (!token && phone && password) {
@@ -361,7 +362,6 @@ async function syncWithProgress(phone?: string, password?: string) {
       console.log('[sync-progress] Auth result:', !!token ? 'SUCCESS' : 'FAILED')
       if (!token) {
         syncProgress = { total: 8, completed: 0, phase: 'error', error: 'Cloud authentication failed — check internet or credentials' }
-        syncInProgress = false
         return
       }
       cloudAccessToken = token
@@ -370,7 +370,6 @@ async function syncWithProgress(phone?: string, password?: string) {
     }
     if (!token) {
       syncProgress = { total: 8, completed: 0, phase: 'error', error: 'No cloud token — log in with password first' }
-      syncInProgress = false
       return
     }
 
@@ -498,11 +497,15 @@ async function syncWithProgress(phone?: string, password?: string) {
     clearTimeout(timeout)
     lastSyncTime = Date.now()
     syncProgress = { total: endpoints.length, completed: endpoints.length, phase: 'complete', error: null }
-  } catch (err) {
-    syncProgress = { ...syncProgress, phase: 'error', error: (err as Error).message }
-  } finally {
-    syncInProgress = false
-  }
+    } catch (err) {
+      syncProgress = { ...syncProgress, phase: 'error', error: (err as Error).message }
+    } finally {
+      syncInProgress = false
+      syncPromise = null
+    }
+  })()
+
+  return syncPromise
 }
 
 async function startupCloudSync() {
@@ -752,6 +755,7 @@ function adminQueued(res: import('express').Response) {
 let cloudAccessToken: string | null = null
 let lastSyncTime = 0
 let syncInProgress = false
+let syncPromise: Promise<void> | null = null
 let syncProgress = { total: 8, completed: 0, phase: 'idle' as string, error: null as string | null }
 
 function resolveTaxSettings(): { taxPercent: number; taxType: 'Inclusive' | 'Exclusive' } {
@@ -762,11 +766,14 @@ function resolveTaxSettings(): { taxPercent: number; taxType: 'Inclusive' | 'Exc
   return { taxPercent, taxType }
 }
 
-function computeOrderTotals(subtotal: number): { taxTotal: number; discountTotal: number; grandTotal: number } {
+function computeOrderTotals(subtotal: number, discounts?: Array<{ type: string; value: number }>): { taxTotal: number; discountTotal: number; grandTotal: number } {
   const { taxPercent, taxType } = resolveTaxSettings()
   const { taxTotal } = calculateTax(subtotal, taxPercent, taxType)
-  const discountTotal = 0
-  const { grandTotal } = calculateRounding(subtotal + taxTotal - discountTotal)
+  const discountTotal = discounts
+    ? discounts.reduce((sum, d) => sum + (d.type === 'Percentage' ? (subtotal * d.value / 100) : d.value), 0)
+    : 0
+  const exactGrandTotal = taxType === 'Inclusive' ? subtotal - discountTotal : subtotal + taxTotal - discountTotal
+  const { grandTotal } = calculateRounding(exactGrandTotal)
   return { taxTotal, discountTotal, grandTotal }
 }
 
@@ -1337,20 +1344,24 @@ app.get('/api/v1/orders/:tableId/active', async (req, res) => {
 app.post('/api/v1/orders', async (req, res) => {
   try {
     const { tableId, tableName, guestCount, orderType } = req.body
-    const existing = await localPrisma.localOrder.findFirst({
-      where: { tableId: tableId ?? null, status: { not: 'Settled' } },
-      include: { items: true, kots: true, settlement: true },
+    // Use $transaction to prevent race conditions on concurrent create-order calls
+    const order = await localPrisma.$transaction(async (tx) => {
+      const existing = await tx.localOrder.findFirst({
+        where: { tableId: tableId ?? null, status: { not: 'Settled' } },
+        include: { items: true, kots: true, settlement: true },
+      })
+      if (existing && tableId) return existing
+      const created = await tx.localOrder.create({
+        data: { tableId: tableId ?? null, tableName: tableName ?? `Table ${tableId ?? 'Takeaway'}`, guestCount: guestCount ?? 2, orderType: orderType ?? 'DineIn' },
+        include: { items: true, kots: true, settlement: true },
+      })
+      return created
     })
-    if (existing && tableId) {
-      res.json(existing)
-      return
+    const isNew = !order.items.length
+    if (isNew) {
+      syncQueueService.enqueue('create-order', { tableId, tableName, guestCount, orderType: orderType ?? 'DineIn' }).catch(() => {})
     }
-    const order = await localPrisma.localOrder.create({
-      data: { tableId: tableId ?? null, tableName: tableName ?? `Table ${tableId ?? 'Takeaway'}`, guestCount: guestCount ?? 2, orderType: orderType ?? 'DineIn' },
-      include: { items: true, kots: true, settlement: true },
-    })
-    syncQueueService.enqueue('create-order', { tableId, tableName, guestCount, orderType: orderType ?? 'DineIn' }).catch(() => {})
-    res.status(201).json(order)
+    res.status(isNew ? 201 : 200).json(order)
   } catch (err) {
     console.error('Error creating order:', err)
     res.status(500).json({ error: 'Failed to create order' })
@@ -2038,6 +2049,9 @@ export function createLocalApiServer() {
     })
     socket.on('unsubscribe:table', (tableId: string) => {
       socket.leave(`table:${tableId}`)
+    })
+    socket.on('disconnect', () => {
+      tableLockService.releaseForSocket(socket.id)
     })
   })
 

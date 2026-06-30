@@ -18,12 +18,14 @@ router.get('/takeaway/active', async (req, res, next) => {
 router.post('/takeaway', async (req, res, next) => {
   try {
     const year = new Date().getFullYear() % 100
-    const counter = await prisma.orderCounter.upsert({
-      where: { year },
-      create: { year, seq: 1 },
-      update: { seq: { increment: 1 } },
+    const displayId = await prisma.$transaction(async (tx) => {
+      const counter = await tx.orderCounter.upsert({
+        where: { year },
+        create: { year, seq: 1 },
+        update: { seq: { increment: 1 } },
+      })
+      return `T/${year}/${counter.seq}`
     })
-    const displayId = `T/${year}/${counter.seq}`
 
     const order = await prisma.order.create({
       data: {

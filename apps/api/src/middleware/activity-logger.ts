@@ -8,7 +8,7 @@ const MODEL_MAP: Record<string, { model: string; idField: string }> = {
   tables: { model: 'table', idField: 'id' },
   categories: { model: 'category', idField: 'id' },
   items: { model: 'item', idField: 'id' },
-  employees: { model: 'employee', idField: 'id' },
+  employees: { model: 'user', idField: 'id' },
   orders: { model: 'order', idField: 'id' },
   settings: { model: 'storeSettings', idField: 'id' },
   customers: { model: 'customer', idField: 'id' },

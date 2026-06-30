@@ -45,12 +45,14 @@ export const areaService = {
       throw new ConflictError(`Cannot delete area. Tables with active orders: ${names}. Settle or cancel all orders first.`)
     }
 
-    // Soft-delete all active tables in this area
-    await prisma.table.updateMany({
-      where: { areaId: id, deactivatedAt: null },
-      data: { deactivatedAt: new Date() },
+    // Soft-delete all active tables and delete the area atomically
+    const now = new Date()
+    await prisma.$transaction(async (tx) => {
+      await tx.table.updateMany({
+        where: { areaId: id, deactivatedAt: null },
+        data: { deactivatedAt: now },
+      })
+      await tx.area.delete({ where: { id } })
     })
-
-    await prisma.area.delete({ where: { id } })
   },
 }

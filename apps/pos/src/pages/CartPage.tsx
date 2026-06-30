@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { TableSwitcher } from '@/components/cart/TableSwitcher'
 import { MenuPanel } from '@/components/cart/MenuPanel'
@@ -19,22 +19,13 @@ export default function CartPage() {
   // Handle takeaway-new: no order created yet, will create on first item add
   const isTakeawayNew = routeTableId === 'takeaway-new'
 
-  const getOrCreateTakeawayOrder = async (): Promise<string> => {
-    if (takeawayOrderId) return takeawayOrderId
-    const { data } = await apiClient.post('/orders/takeaway')
-    const id = data.id as string
-    setTakeawayOrderId(id)
-    setTableId(id)
-    queryClient.invalidateQueries({ queryKey: ['takeaway-orders'] })
-    return id
-  }
-
   // Set tableId on mount
-  useState(() => {
+  useEffect(() => {
     if (routeTableId && routeTableId !== 'takeaway-new') {
       setTableId(routeTableId)
+      setActiveTable(routeTableId)
     }
-  })
+  }, [routeTableId, setActiveTable])
 
   const addItemMut = useMutation({
     mutationFn: async (payload: { itemId: string; variationId?: string }) => {

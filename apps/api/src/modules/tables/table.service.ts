@@ -17,7 +17,7 @@ export const tableService = {
     })
   },
   async findById(id: string) {
-    const table = await prisma.table.findUnique({ where: { id, deactivatedAt: null }, include: { area: true } })
+    const table = await prisma.table.findUnique({ where: { id } })
     if (!table) throw new NotFoundError('Table')
     return table
   },

@@ -4,7 +4,8 @@ function requireEnv(name: string): string {
   const value = process.env[name]
   if (!value) {
     console.error(`FATAL: Required environment variable ${name} is not set`)
-    process.exit(1)
+    if (process.env.NODE_ENV !== 'test') process.exit(1)
+    return ''
   }
   return value
 }

@@ -87,6 +87,15 @@ const CMD = {
 export class PrintService {
   private adapters = new Map<string, PrinterAdapter>()
   private logoCache = new Map<string, Buffer>()
+  private readonly MAX_LOGO_CACHE = 5
+
+  private cacheLogo(key: string, buffer: Buffer) {
+    if (this.logoCache.size >= this.MAX_LOGO_CACHE) {
+      const firstKey = this.logoCache.keys().next().value
+      if (firstKey) this.logoCache.delete(firstKey)
+    }
+    this.logoCache.set(key, buffer)
+  }
 
   /**
    * Initialize all configured printers.

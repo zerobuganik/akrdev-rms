@@ -42,6 +42,13 @@ export const categoryService = {
   async delete(id: string) {
     const existing = await prisma.category.findUnique({ where: { id } })
     if (!existing) throw new NotFoundError('Category')
-    await prisma.category.delete({ where: { id } })
+    // Soft-delete items first to preserve order history, then delete category
+    await prisma.$transaction(async (tx) => {
+      await tx.item.updateMany({
+        where: { categoryId: id },
+        data: { deletedAt: new Date() },
+      })
+      await tx.category.delete({ where: { id } })
+    })
   },
 }

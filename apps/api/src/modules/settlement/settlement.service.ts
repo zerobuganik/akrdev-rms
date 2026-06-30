@@ -14,6 +14,9 @@ export const settlementService = {
     })
     if (!order) throw new NotFoundError('Order')
 
+    if (order.status === 'Settled') throw new ValidationError('Order is already settled')
+    if (order.status === 'Cancelled') throw new ValidationError('Cannot settle a cancelled order')
+
     if (!data.payments) {
       throw new ValidationError('Payment details are required')
     }
@@ -53,6 +56,10 @@ export const settlementService = {
 
     if (totalPaid < grandTotal) {
       throw new ValidationError('Insufficient payment')
+    }
+
+    if (totalPaid > grandTotal * 10) {
+      throw new ValidationError('Payment amount is unreasonably large — please verify')
     }
 
     const changeAmt = totalPaid - grandTotal

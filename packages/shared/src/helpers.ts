@@ -20,7 +20,7 @@ export function debounce<T extends (...args: unknown[]) => unknown>(fn: T, ms: n
 }
 
 export function truncate(str: string, maxLength: number): string {
-  if (maxLength < 1) return str
+  if (maxLength <= 0) return ''
   if (str.length <= maxLength) return str
-  return str.slice(0, maxLength - 1) + '\u2026'
+  return str.slice(0, maxLength - 3) + '...'
 }

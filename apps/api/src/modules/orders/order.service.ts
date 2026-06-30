@@ -10,24 +10,29 @@ export const orderService = {
     if (!table) throw new NotFoundError('Table')
 
     const user = await prisma.user.findUnique({ where: { id: data.createdBy } })
-    if (!user) throw new UnauthorizedError('Session user no longer exists. Please log in again.')
+    if (!user) throw new UnauthorizedError('Please log in again.')
 
     const existingActive = await prisma.order.findFirst({
       where: { tableId: data.tableId, status: { notIn: ['Settled', 'Cancelled'] } },
+      include: { items: { include: { item: true, variation: true } }, table: true },
     })
     if (existingActive) {
       return existingActive
     }
 
-    const year = new Date().getFullYear() % 100
-    const counter = await prisma.orderCounter.upsert({
-      where: { year },
-      create: { year, seq: 1 },
-      update: { seq: { increment: 1 } },
-    })
     const orderType = data.orderType ?? 'DineIn'
     const prefix = orderType === 'DineIn' ? 'D' : 'T'
-    const displayId = `${prefix}/${year}/${counter.seq}`
+    const year = new Date().getFullYear() % 100
+
+    // Atomic counter increment via $transaction to prevent race conditions
+    const displayId = await prisma.$transaction(async (tx) => {
+      const counter = await tx.orderCounter.upsert({
+        where: { year },
+        create: { year, seq: 1 },
+        update: { seq: { increment: 1 } },
+      })
+      return `${prefix}/${year}/${counter.seq}`
+    })
 
     const order = await prisma.order.create({
       data: {
@@ -129,15 +134,8 @@ export const orderService = {
     if (!order) throw new NotFoundError('Order')
     if (order.status !== 'Settled') throw new ValidationError('Can only refund settled orders')
 
-    // Mark for refund and re-queue sync to cloud; table becomes available again
-    const updates: Array<{ where: unknown; data: unknown }> = [
-      { where: { id }, data: { status: 'Settled', syncStatus: 'Pending' } },
-    ]
-    if (order.tableId) {
-      updates.push({ where: { id: order.tableId }, data: { status: 'Available' } })
-    }
     await prisma.$transaction([
-      prisma.order.update({ where: { id }, data: { status: 'Settled', syncStatus: 'Pending' } }),
+      prisma.order.update({ where: { id }, data: { status: 'Cancelled', syncStatus: 'Pending' } }),
       ...(order.tableId ? [prisma.table.update({ where: { id: order.tableId }, data: { status: 'Available' } })] : []),
     ])
   },

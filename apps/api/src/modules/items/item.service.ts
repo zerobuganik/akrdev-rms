@@ -22,9 +22,9 @@ export const itemService = {
     }
     return prisma.item.create({
       data: {
-        categoryId: categoryId!,
-        name: name!,
-        basePrice: basePrice!,
+        categoryId,
+        name,
+        basePrice: basePrice ?? 0,
         ...(shortcode !== undefined && shortcode !== '' && { shortcode }),
         ...(taxOverride !== undefined && { taxOverride }),
         ...(inStock !== undefined && { inStock }),

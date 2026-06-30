@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom'
+import { useState, useEffect } from 'react'
 import { useAuthStore } from '@/stores/useAuthStore'
-import { getConnectionState } from '@/lib/connection-manager'
+import { getConnectionState, onConnectionChange } from '@/lib/connection-manager'
 import { lightHaptic } from '@/lib/native-bridge'
 import { LogOut, Wifi, WifiOff, Smartphone, Shield, Server } from 'lucide-react'
 
@@ -13,7 +14,11 @@ const roleLabels: Record<string, string> = {
 export default function ProfilePage() {
   const { user, logout } = useAuthStore()
   const navigate = useNavigate()
-  const conn = getConnectionState()
+  const [conn, setConn] = useState(() => getConnectionState())
+
+  useEffect(() => {
+    return onConnectionChange((state) => setConn(state))
+  }, [])
 
   const handleLogout = () => {
     lightHaptic()

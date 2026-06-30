@@ -10,6 +10,13 @@ function onRefreshed(token: string) {
   refreshSubscribers = []
 }
 
+function onRefreshFailed(error: unknown) {
+  refreshSubscribers.forEach((cb) => {
+    cb('') // resolve with empty string to signal failure to callers
+  })
+  refreshSubscribers = []
+}
+
 function addRefreshSubscriber(cb: (token: string) => void) {
   refreshSubscribers.push(cb)
 }
@@ -66,6 +73,7 @@ apiClient.interceptors.response.use(
         originalRequest.headers.Authorization = `Bearer ${data.accessToken}`
         return apiClient(originalRequest)
       } catch {
+        onRefreshFailed(error)
         // On refresh failure, keep existing token (may still be valid when cloud returns)
         if (!(window as unknown as { electron?: unknown }).electron) {
           localStorage.removeItem('accessToken')

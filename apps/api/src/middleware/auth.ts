@@ -50,6 +50,7 @@ export function authMiddleware(req: Request, _res: Response, next: NextFunction)
         next(err)
         return
       }
-      next()
+      // Do NOT allow requests through on database errors — reject with 500
+      next(new Error('Authentication service unavailable'))
     })
 }

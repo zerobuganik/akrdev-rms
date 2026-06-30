@@ -9,6 +9,7 @@ interface TableLock {
 }
 
 const locks = new Map<string, TableLock>()
+const socketLocks = new Map<string, string[]>()
 const LOCK_TIMEOUT_MS = 5 * 60 * 1000
 
 let io: SocketIOServer | null = null
@@ -23,7 +24,7 @@ function broadcastLockState(tableId: string, locked: boolean, owner?: string) {
 }
 
 export const tableLockService = {
-  acquire(tableId: string, userId: string, userName: string): boolean {
+  acquire(tableId: string, userId: string, userName: string, socketId?: string): boolean {
     const existing = locks.get(tableId)
     if (existing) {
       if (existing.userId === userId) {
@@ -36,6 +37,11 @@ export const tableLockService = {
 
     const timeout = setTimeout(() => this.release(tableId), LOCK_TIMEOUT_MS)
     locks.set(tableId, { tableId, userId, userName, acquiredAt: new Date(), timeout })
+    if (socketId) {
+      const existingSockets = socketLocks.get(socketId) ?? []
+      existingSockets.push(tableId)
+      socketLocks.set(socketId, existingSockets)
+    }
     broadcastLockState(tableId, true, userName)
     return true
   },
@@ -47,6 +53,15 @@ export const tableLockService = {
       locks.delete(tableId)
       broadcastLockState(tableId, false)
     }
+  },
+
+  releaseForSocket(socketId: string): void {
+    const tableIds = socketLocks.get(socketId)
+    if (!tableIds) return
+    for (const tableId of tableIds) {
+      this.release(tableId)
+    }
+    socketLocks.delete(socketId)
   },
 
   getLock(tableId: string): { userId: string; userName: string } | null {

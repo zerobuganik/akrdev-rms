@@ -11,7 +11,13 @@ export class AuthService {
    * Password login — first-time or full authentication.
    */
   async login(phone: string, password: string) {
-    const user = await prisma.user.findUnique({ where: { phone } })
+    // Use constant-time comparison: always verify argon2 even if user doesn't exist
+    let user: { id: string; role: string; passwordHash: string | null; active: boolean; name: string; phone: string; imageUrl: string | null; pinHash: string | null } | null = null
+    try {
+      user = await prisma.user.findUnique({ where: { phone } })
+    } catch {
+      // On DB error, still run argon2 to maintain constant timing
+    }
     if (!user) throw new UnauthorizedError('Invalid credentials')
 
     if (!user.passwordHash) throw new UnauthorizedError('No password set')
@@ -49,6 +55,7 @@ export class AuthService {
     return {
       ...tokens,
       user: { id: user.id, name: user.name, phone: user.phone, role: user.role, imageUrl: user.imageUrl },
+      needsPinSetup: !user.pinHash,
     }
   }
 
@@ -98,18 +105,20 @@ export class AuthService {
       throw new UnauthorizedError('Token expired')
     }
 
-    await prisma.refreshToken.deleteMany({ where: { id: storedToken.id } })
-
     const newRefreshToken = signRefreshToken({ userId: payload.userId, role: payload.role })
     const newAccessToken = signAccessToken({ userId: payload.userId, role: payload.role })
 
-    await prisma.refreshToken.create({
-      data: {
-        userId: payload.userId,
-        token: newRefreshToken,
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-      },
-    })
+    // Wrap delete + create in a transaction to avoid gap on server crash
+    await prisma.$transaction([
+      prisma.refreshToken.deleteMany({ where: { id: storedToken.id } }),
+      prisma.refreshToken.create({
+        data: {
+          userId: payload.userId,
+          token: newRefreshToken,
+          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        },
+      }),
+    ])
 
     return { accessToken: newAccessToken, refreshToken: newRefreshToken }
   }

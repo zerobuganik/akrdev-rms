@@ -106,6 +106,14 @@ export class SyncQueueService {
   async clearCompleted() {
     await localPrisma.syncQueue.deleteMany({ where: { status: 'Synced' } })
   }
+
+  async resetStaleSyncing() {
+    // Recover items stuck in Syncing status from a previous crash
+    await localPrisma.syncQueue.updateMany({
+      where: { status: 'Syncing' },
+      data: { status: 'Pending' },
+    })
+  }
 }
 
 export const syncQueueService = new SyncQueueService()

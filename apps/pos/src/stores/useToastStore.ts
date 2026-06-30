@@ -17,13 +17,14 @@ export const useToastStore = create<ToastStore>((set) => ({
   addToast: (message, type = 'info') => {
     const id = crypto.randomUUID()
     set((state) => ({ toasts: [...state.toasts, { id, message, type }] }))
-    setTimeout(() => {
+    const timer = setTimeout(() => {
       set((state) => ({ toasts: state.toasts.filter((t) => t.id !== id) }))
     }, 4000)
+    return () => clearTimeout(timer)
   },
   removeToast: (id) => set((state) => ({ toasts: state.toasts.filter((t) => t.id !== id) })),
 }))
 
 export const toast = (message: string, type?: Toast['type']) => {
-  useToastStore.getState().addToast(message, type)
+  return useToastStore.getState().addToast(message, type)
 }

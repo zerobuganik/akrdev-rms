@@ -121,12 +121,7 @@ function startHealthCheck() {
           if (ok) return
         }
       }
-
-      const ok = await connectToEndpoint(state.currentUrl)
-      if (ok) return
-    }
-
-    if (healthy && !state.isConnected) {
+    } else if (!state.isConnected) {
       state.isConnected = true
       notifyListeners()
     }

@@ -3,7 +3,7 @@ import { z } from 'zod'
 export const orderItemSchema = z.object({
   itemId: z.string().uuid(),
   variationId: z.string().uuid().optional(),
-  quantity: z.number().int().min(1).default(1),
+  quantity: z.number().int().min(1).max(999).default(1),
   note: z.string().max(500).optional(),
 })
 
@@ -11,7 +11,7 @@ export const cartAddItemSchema = z.object({
   orderId: z.string().uuid(),
   itemId: z.string().uuid(),
   variationId: z.string().uuid().optional(),
-  quantity: z.number().int().min(1).default(1),
+  quantity: z.number().int().min(1).max(999).default(1),
 })
 
 export const cartRemoveItemSchema = z.object({

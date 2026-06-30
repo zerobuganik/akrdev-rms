@@ -58,10 +58,13 @@ function DurationDisplay({ createdAt }: { createdAt: string }) {
 
 export default function TablesPage() {
   const navigate = useNavigate()
-  const [connected, setConnected] = useState(true)
+  const [connected, setConnected] = useState(() => getConnectionState().isConnected)
 
   useEffect(() => {
-    setConnected(getConnectionState().isConnected)
+    const cleanup = onConnectionChange((state) => {
+      setConnected(state.isConnected)
+    })
+    return cleanup
   }, [])
 
   const { data: tables = [], isLoading } = useQuery<Table[]>({

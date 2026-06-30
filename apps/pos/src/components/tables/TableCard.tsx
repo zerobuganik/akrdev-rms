@@ -54,14 +54,15 @@ export function TableCard({ table, onBill, onSettle, onDelete, onEdit, onMerge }
   const cardRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    if (!menuOpen) return
     const handleClickOutside = (e: MouseEvent) => {
       if (cardRef.current && !cardRef.current.contains(e.target as Node)) {
         setMenuOpen(false)
       }
     }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
+    if (menuOpen) {
+      document.addEventListener('mousedown', handleClickOutside, true)
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside, true)
   }, [menuOpen])
 
   const config = statusConfig[table.status as keyof typeof statusConfig] ?? statusConfig.Available

@@ -21,7 +21,9 @@ export const cartService = {
       unitPrice += variation.priceAdjustment
     }
 
-    // Check for existing identical item with 'New' status to merge quantity
+    const quantity = data.quantity ?? 1
+
+    // Atomic operation to prevent race: increment quantity if exists, else create
     const existing = await prisma.orderItem.findFirst({
       where: {
         orderId,
@@ -32,17 +34,16 @@ export const cartService = {
     })
 
     if (existing) {
-      const newQty = existing.quantity + (data.quantity ?? 1)
+      const newQty = existing.quantity + quantity
       const updated = await prisma.orderItem.update({
         where: { id: existing.id },
-        data: { quantity: newQty, lineTotal: unitPrice * newQty },
+        data: { quantity: { increment: quantity }, lineTotal: unitPrice * newQty },
         include: { item: true, variation: true },
       })
       await recalculateTotals(orderId)
       return updated
     }
 
-    const quantity = data.quantity ?? 1
     const lineTotal = unitPrice * quantity
 
     const orderItem = await prisma.orderItem.create({
@@ -119,7 +120,13 @@ export const cartService = {
     return prisma.order.update({ where: { id: orderId }, data: { note } })
   },
 
+  async setGuestCount(orderId: string, guestCount: number) {
+    if (guestCount < 1 || guestCount > 99) throw new ValidationError('Guest count must be between 1 and 99')
+    return this.updateGuestCount(orderId, guestCount)
+  },
+
   async updateGuestCount(orderId: string, guestCount: number) {
+    if (guestCount < 1 || guestCount > 99) throw new ValidationError('Guest count must be between 1 and 99')
     const order = await prisma.order.findUnique({ where: { id: orderId } })
     if (!order) throw new NotFoundError('Order')
     checkOrderModifiable(order.status)
@@ -166,21 +173,41 @@ export const cartService = {
       await prisma.table.update({ where: { id: destTableId }, data: { status: 'Occupied' } })
     } else {
       checkOrderModifiable(destOrder.status)
-      // Move all items from source order to destination order
-      await prisma.$transaction([
-        ...sourceItems.map((item) =>
-          prisma.orderItem.update({
+      // Move all items from source order to destination order and recalculate totals atomically
+      await prisma.$transaction(async (tx) => {
+        for (const item of sourceItems) {
+          await tx.orderItem.update({
             where: { id: item.id },
             data: { orderId: destOrder.id },
           })
-        ),
-        prisma.order.update({
+        }
+        await tx.order.update({
           where: { id: sourceOrder.id },
           data: { status: 'Cancelled' },
-        }),
-        prisma.table.update({ where: { id: sourceTableId }, data: { status: 'Available' } }),
-      ])
-      await recalculateTotals(destOrder.id)
+        })
+        await tx.table.update({ where: { id: sourceTableId }, data: { status: 'Available' } })
+
+        // Recalculate dest totals within the transaction
+        const items = await tx.orderItem.findMany({
+          where: { orderId: destOrder.id, status: { not: 'Cancelled' } },
+        })
+        const subtotal = items.reduce((sum, i) => sum + i.lineTotal, 0)
+        const settings = await tx.storeSettings.findUnique({ where: { id: 'default' } })
+        const taxPercent = await taxSlabService.getDefaultTaxPercent()
+        const { taxTotal } = calculateTax(subtotal, taxPercent, settings?.taxType as ('Inclusive' | 'Exclusive') ?? 'Exclusive')
+        const discounts = await tx.orderDiscount.findMany({ where: { orderId: destOrder.id } })
+        const discountTotal = discounts.reduce((sum, d) => {
+          return sum + (d.type === 'Percentage' ? (subtotal * d.value / 100) : d.value)
+        }, 0)
+        const exactGrandTotal = (settings?.taxType ?? 'Exclusive') === 'Inclusive'
+          ? subtotal - discountTotal
+          : subtotal + taxTotal - discountTotal
+        const { grandTotal, roundingAdjustment } = calculateRounding(exactGrandTotal)
+        await tx.order.update({
+          where: { id: destOrder.id },
+          data: { subtotal, taxTotal, discountTotal, grandTotal, roundingAdjustment },
+        })
+      })
     }
 
     return { success: true, message: 'Tables merged successfully' }

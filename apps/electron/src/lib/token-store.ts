@@ -1,8 +1,8 @@
 import fs from 'fs'
 import path from 'path'
-import { app } from 'electron'
+import { app, safeStorage } from 'electron'
 
-const TOKEN_FILE = '_auth_tokens.json'
+const TOKEN_FILE = '_auth_tokens.dat'
 
 function getTokenPath(): string {
   const userDataPath = app.getPath('userData')
@@ -12,6 +12,12 @@ function getTokenPath(): string {
 function readTokens(): Record<string, string> {
   try {
     const tokenPath = getTokenPath()
+    if (fs.existsSync(tokenPath) && safeStorage.isEncryptionAvailable()) {
+      const encrypted = fs.readFileSync(tokenPath)
+      const raw = safeStorage.decryptString(encrypted)
+      return JSON.parse(raw)
+    }
+    // Fallback for platforms without encryption support
     if (fs.existsSync(tokenPath)) {
       const raw = fs.readFileSync(tokenPath, 'utf-8')
       return JSON.parse(raw)
@@ -24,7 +30,13 @@ function readTokens(): Record<string, string> {
 
 function writeTokens(tokens: Record<string, string>): void {
   try {
-    fs.writeFileSync(getTokenPath(), JSON.stringify(tokens), 'utf-8')
+    const raw = JSON.stringify(tokens)
+    if (safeStorage.isEncryptionAvailable()) {
+      const encrypted = safeStorage.encryptString(raw)
+      fs.writeFileSync(getTokenPath(), encrypted)
+    } else {
+      fs.writeFileSync(getTokenPath(), raw, 'utf-8')
+    }
   } catch {
     // Fail silently — tokens will be refreshed on next auth
   }

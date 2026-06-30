@@ -1,7 +1,7 @@
 import { z } from 'zod'
 
 export const createOrderSchema = z.object({
-  tableId: z.string().uuid().optional(),
+  tableId: z.string().uuid(),
   tableName: z.string().max(50).optional(),
   guestCount: z.number().int().min(1).max(100).default(2),
   orderType: z.enum(['DineIn', 'Takeaway']).default('DineIn'),
@@ -12,7 +12,7 @@ export const takeawayOrderSchema = z.object({
 })
 
 export const updateOrderSchema = z.object({
-  status: z.enum(['KOT_Sent', 'Ready', 'Bill_Printed', 'Settled']).optional(),
+  status: z.enum(['Draft', 'KOT_Sent', 'Ready', 'Bill_Printed', 'Settled', 'Cancelled']).optional(),
   note: z.string().max(500).optional(),
   guestCount: z.number().int().min(1).max(100).optional(),
 })

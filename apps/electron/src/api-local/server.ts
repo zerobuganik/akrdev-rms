@@ -320,6 +320,119 @@ async function syncFromCloud(phone: string, password: string) {
   }
 }
 
+// Re-sync using a stored cloud token (no password needed — skips re-auth)
+async function syncFromCloudWithToken(token: string) {
+  try {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 30_000)
+    const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
+    const [tablesRes, areasRes, itemsRes, settingsRes, categoriesRes, taxSlabsRes, employeesRes, ordersRes] = await Promise.all([
+      fetch(`${getCloudApiBase()}/tables`, { headers, signal: controller.signal }),
+      fetch(`${getCloudApiBase()}/areas`, { headers, signal: controller.signal }),
+      fetch(`${getCloudApiBase()}/items`, { headers, signal: controller.signal }),
+      fetch(`${getCloudApiBase()}/settings`, { headers, signal: controller.signal }),
+      fetch(`${getCloudApiBase()}/categories`, { headers, signal: controller.signal }),
+      fetch(`${getCloudApiBase()}/tax-slabs`, { headers, signal: controller.signal }),
+      fetch(`${getCloudApiBase()}/employees`, { headers, signal: controller.signal }),
+      fetch(`${getCloudApiBase()}/orders`, { headers, signal: controller.signal }),
+    ])
+    clearTimeout(timeout)
+
+    let synced = false
+    if (tablesRes.ok) {
+      const raw = await tablesRes.json()
+      cachedCloudTables = Array.isArray(raw) ? raw.map((t: Record<string, unknown>) => ({
+        id: t.id, name: t.name, capacity: t.capacity ?? 0, status: t.status ?? 'Available',
+        area: t.area ?? null,
+      })) : null
+      if (cachedCloudTables) {
+        for (const t of cachedCloudTables as Array<{ id: string; name: string; capacity: number; status: string; area: { id?: string; name?: string } | null }>) {
+          await localPrisma.cachedTable.upsert({
+            where: { id: t.id },
+            create: { id: t.id, name: t.name, capacity: t.capacity, status: t.status, areaId: t.area?.id ?? null, areaName: t.area?.name ?? null },
+            update: { name: t.name, capacity: t.capacity, status: t.status, areaId: t.area?.id ?? null, areaName: t.area?.name ?? null },
+          }).catch(() => {})
+        }
+      }
+      synced = true
+    }
+    if (areasRes.ok) { cachedAreas = await areasRes.json(); synced = true }
+    if (settingsRes.ok) {
+      cachedSettings = await settingsRes.json(); synced = true
+      await localPrisma.cachedSetting.upsert({
+        where: { id: 'default' },
+        create: { id: 'default', data: JSON.stringify(cachedSettings) },
+        update: { data: JSON.stringify(cachedSettings) },
+      }).catch(() => {})
+    }
+    if (categoriesRes.ok) { cachedCategories = await categoriesRes.json(); synced = true }
+    if (taxSlabsRes.ok) { cachedTaxSlabs = await taxSlabsRes.json(); synced = true }
+    if (employeesRes.ok) { cachedCloudEmployees = await employeesRes.json(); synced = true }
+    if (ordersRes.ok) {
+      const raw = await ordersRes.json()
+      if (Array.isArray(raw)) {
+        for (const o of raw as Array<Record<string, unknown>>) {
+          await localPrisma.localOrder.upsert({
+            where: { id: o.id as string },
+            create: {
+              id: o.id as string, tableId: o.tableId as string ?? null, tableName: o.tableName as string ?? null,
+              guestCount: o.guestCount as number ?? 2, status: o.status as string ?? 'Draft',
+              subtotal: o.subtotal as number ?? 0, taxTotal: o.taxTotal as number ?? 0,
+              discountTotal: o.discountTotal as number ?? 0, grandTotal: o.grandTotal as number ?? 0,
+              orderType: o.orderType as string ?? 'DineIn', syncStatus: 'Synced',
+            },
+            update: { status: o.status as string, subtotal: o.subtotal as number, taxTotal: o.taxTotal as number, discountTotal: o.discountTotal as number, grandTotal: o.grandTotal as number },
+          }).catch(() => {})
+          const items = o.items as Array<Record<string, unknown>> | undefined
+          if (items?.length) {
+            for (const item of items) {
+              const oi = item.item as Record<string, unknown> | undefined
+              await localPrisma.localOrderItem.upsert({
+                where: { id: item.id as string },
+                create: {
+                  id: item.id as string, orderId: o.id as string, itemId: item.itemId as string ?? '',
+                  itemName: oi?.name as string ?? item.itemName as string ?? '',
+                  quantity: item.quantity as number ?? 1, unitPrice: item.unitPrice as number ?? 0,
+                  lineTotal: item.lineTotal as number ?? 0, status: item.status as string ?? 'New',
+                  variationId: item.variationId as string ?? null,
+                  variationName: item.variationName as string ?? null,
+                },
+                update: { quantity: item.quantity as number, unitPrice: item.unitPrice as number, lineTotal: item.lineTotal as number, status: item.status as string },
+              }).catch(() => {})
+            }
+          }
+          const settlement = o.settlement as Record<string, unknown> | undefined
+          if (settlement?.id) {
+            await localPrisma.localSettlement.upsert({
+              where: { orderId: o.id as string },
+              create: {
+                id: settlement.id as string, orderId: o.id as string,
+                subtotal: settlement.subtotal as number ?? 0, taxTotal: settlement.taxTotal as number ?? 0,
+                discountTotal: settlement.discountTotal as number ?? 0, grandTotal: settlement.grandTotal as number ?? 0,
+                cashPaid: settlement.cashPaid as number ?? 0, cardPaid: settlement.cardPaid as number ?? 0,
+                upiPaid: settlement.upiPaid as number ?? 0, changeGiven: settlement.changeGiven as number ?? 0,
+                settledAt: settlement.settledAt as string ?? new Date().toISOString(),
+              },
+              update: { cashPaid: settlement.cashPaid as number, cardPaid: settlement.cardPaid as number, upiPaid: settlement.upiPaid as number },
+            }).catch(() => {})
+          }
+        }
+      }
+      synced = true
+    }
+    if (synced) {
+      lastSyncTime = Date.now()
+      console.log(`[bg-sync] Re-synced: tables=${cachedCloudTables?.length ?? 0}, orders=${rawOrdersCount()}`)
+    }
+  } catch {
+    // Background retry — silent
+  }
+}
+
+function rawOrdersCount(): number {
+  return cachedCloudTables?.length ?? 0
+}
+
 async function startupCloudSync() {
   try {
     const cloudToken = getCloudAccessToken()
@@ -515,19 +628,13 @@ app.post('/api/v1/auth/login', async (req, res) => {
     const tokens = generateLocalToken(user)
 
     if (password) {
-      try {
-        await Promise.race([
-          syncFromCloud(phone, password),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 25_000)),
-        ])
-      } catch (err) {
-        console.warn('[login] Cloud sync error:', (err as Error).message)
-      }
+      // Fire cloud sync in background — do NOT block login response
+      syncFromCloud(phone, password).catch((err) => console.warn('[login] Cloud sync error:', (err as Error).message))
     }
 
-    // After sync attempt, include sync status in response
+    // Respond immediately — cloud data arrives asynchronously
     const hasCloudData = cachedCloudTables && cachedCloudTables.length > 0
-    console.log('[login] Login complete. Has cloud data:', hasCloudData, 'tables:', cachedCloudTables?.length)
+    console.log('[login] Login complete. Has cloud data:', hasCloudData)
     res.json({ ...tokens, user, cloudSynced: hasCloudData })
   } catch (err) {
     console.error('[auth] Login error:', err)
@@ -1617,8 +1724,16 @@ export function createLocalApiServer() {
   const port = Number(process.env.LOCAL_API_PORT) || 3001
   server.listen(port, '0.0.0.0', () => {
     console.log(`Local POS API running on http://0.0.0.0:${port}`)
-    startupCloudSync().catch(() => {})
-  })
+  startupCloudSync().catch(() => {})
+
+  // Periodic background re-sync using stored cloud token
+  setInterval(() => {
+    const token = getCloudAccessToken()
+    if (token) {
+      syncFromCloudWithToken(token).catch(() => {})
+    }
+  }, 30_000)
+})
 
   return server
 }

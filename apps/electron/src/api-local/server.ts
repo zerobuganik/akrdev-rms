@@ -87,24 +87,7 @@ let cachedSettings: Record<string, unknown> | null = null
 let cachedTaxSlabs: unknown[] | null = null
 let cachedCloudEmployees: unknown[] | null = null
 
-// Local seed data for offline-first operation
-const LOCAL_SEED_TABLES = [
-  { id: 'local-t1', name: 'T1', capacity: 2, status: 'Available', area: { id: 'local-area1', name: 'Main Hall' } },
-  { id: 'local-t2', name: 'T2', capacity: 4, status: 'Available', area: { id: 'local-area1', name: 'Main Hall' } },
-  { id: 'local-t3', name: 'T3', capacity: 4, status: 'Available', area: { id: 'local-area1', name: 'Main Hall' } },
-  { id: 'local-t4', name: 'T4', capacity: 6, status: 'Available', area: { id: 'local-area2', name: 'Private' } },
-  { id: 'local-t5', name: 'T5', capacity: 2, status: 'Available', area: { id: 'local-area2', name: 'Private' } },
-]
-
-const LOCAL_SEED_ITEMS = [
-  { id: 'local-i1', name: 'Butter Naan', basePrice: 40, inStock: true, variations: [], categoryId: 'local-c1', category: { id: 'local-c1', name: 'Breads' } },
-  { id: 'local-i2', name: 'Tandoori Roti', basePrice: 15, inStock: true, variations: [], categoryId: 'local-c1', category: { id: 'local-c1', name: 'Breads' } },
-  { id: 'local-i3', name: 'Paneer Butter Masala', basePrice: 220, inStock: true, variations: [], categoryId: 'local-c2', category: { id: 'local-c2', name: 'Main Course' } },
-  { id: 'local-i4', name: 'Dal Makhani', basePrice: 180, inStock: true, variations: [], categoryId: 'local-c2', category: { id: 'local-c2', name: 'Main Course' } },
-  { id: 'local-i5', name: 'Chicken Tikka', basePrice: 250, inStock: true, variations: [], categoryId: 'local-c3', category: { id: 'local-c3', name: 'Starters' } },
-  { id: 'local-i6', name: 'Gulab Jamun', basePrice: 80, inStock: true, variations: [], categoryId: 'local-c4', category: { id: 'local-c4', name: 'Desserts' } },
-  { id: 'local-i7', name: 'Cold Drink', basePrice: 40, inStock: true, variations: [], categoryId: 'local-c5', category: { id: 'local-c5', name: 'Beverages' } },
-]
+// Seed data removed — all data must come from cloud sync
 
 // Restore in-memory cache from local SQLite on startup (survives app restarts)
 async function restoreLocalCache() {
@@ -1155,22 +1138,8 @@ app.get('/api/v1/tables', async (req, res) => {
       return
     }
 
-    // 3. Seed fallback as last resort
-    const orders = await localPrisma.localOrder.findMany({
-      where: { status: { not: 'Settled' } },
-      select: { tableId: true, tableName: true, status: true, subtotal: true, grandTotal: true },
-    })
-    res.json(LOCAL_SEED_TABLES.map((t) => {
-      const localOrder = orders.find((o) => o.tableName === t.name)
-      return {
-        id: t.id,
-        name: t.name,
-        capacity: t.capacity,
-        status: localOrder?.status ?? t.status,
-        area: t.area,
-        activeOrder: localOrder ? { grandTotal: localOrder.grandTotal, status: localOrder.status } : null,
-      }
-    }))
+    // 3. No data available — return empty
+    res.json([])
   } catch (err) {
     console.error('Error fetching tables:', err)
     res.status(500).json({ error: 'Failed to fetch tables' })
@@ -1195,8 +1164,8 @@ app.get('/api/v1/items', async (_req, res) => {
     res.json(cachedCloudItems)
     return
   }
-  // 3. Seed data as last resort
-  res.json(LOCAL_SEED_ITEMS)
+  // 3. No data — return empty
+  res.json([])
 })
 
 app.get('/api/v1/categories', async (_req, res) => {
@@ -1211,18 +1180,7 @@ app.get('/api/v1/categories', async (_req, res) => {
     res.json(cachedCategories)
     return
   }
-  // 3. Seed data derived from items
-  if (LOCAL_SEED_ITEMS.length > 0) {
-    const cats = new Map<string, { id: string; name: string; _count: { items: number } }>()
-    for (const item of LOCAL_SEED_ITEMS) {
-      if (item.category && !cats.has(item.category.id)) {
-        const count = LOCAL_SEED_ITEMS.filter((i) => i.categoryId === item.categoryId).length
-        cats.set(item.category.id, { ...item.category, _count: { items: count } })
-      }
-    }
-    res.json(Array.from(cats.values()))
-    return
-  }
+  // 3. No data — return empty
   res.json([])
 })
 
@@ -1239,21 +1197,7 @@ app.get('/api/v1/settings', (_req, res) => {
     res.json(s)
     return
   }
-  res.json({
-    id: 'default',
-    companyName: 'AKRDev Restaurant',
-    address: 'Your Restaurant Address',
-    phone: '7001181474',
-    email: 'info@akrdev-rms.example.com',
-    website: null,
-    fssai: '',
-    gstin: '',
-    logoUrl: null,
-    printLogoUrl: null,
-    headerText: null,
-    footerText: null,
-    taxType: 'Exclusive',
-  })
+  res.json(null)
 })
 
 app.get('/api/v1/tax-slabs', (_req, res) => {
@@ -1277,14 +1221,8 @@ app.get('/api/v1/areas', async (_req, res) => {
     res.json(cachedAreas)
     return
   }
-  // 3. Seed fallback
-  const areaMap = new Map<string, { id: string; name: string }>()
-  for (const t of LOCAL_SEED_TABLES) {
-    if (t.area && !areaMap.has(t.area.id)) {
-      areaMap.set(t.area.id, t.area)
-    }
-  }
-  res.json(Array.from(areaMap.values()))
+  // 3. No data — return empty
+  res.json([])
 })
 
 // Orders list — serve from local DB

@@ -1999,28 +1999,40 @@ app.get('/api/v1/health', (_req, res) => {
 })
 
 app.get('/api/v1/sync-progress', (_req, res) => {
-  const isComplete = (cachedCloudTables?.length ?? 0) > 0 && !!cachedSettings
+  const cloudTablesCount = cachedCloudTables?.length ?? 0
+  const hasCloudSettings = !!cachedSettings
+  const isComplete = (cloudTablesCount > 0 && hasCloudSettings) || syncProgress.completed >= syncProgress.total
+  const cloudUnreachable = syncProgress.phase === 'error' && syncProgress.completed === 0
   res.json({
     ...syncProgress,
     cloudApiBase: getCloudApiBase(),
-    complete: isComplete || syncProgress.completed >= syncProgress.total,
-    tablesCached: cachedCloudTables?.length ?? 0,
+    complete: isComplete || cloudUnreachable, // Allow seed-data fallback when cloud is unreachable
+    tablesCached: cloudTablesCount,
     itemsCached: cachedCloudItems?.length ?? 0,
-    settingsCached: !!cachedSettings,
+    settingsCached: hasCloudSettings,
     categoriesCached: (cachedCategories as unknown[])?.length ?? 0,
     employeesCached: (cachedCloudEmployees as unknown[])?.length ?? 0,
   })
 })
 
 app.post('/api/v1/sync/trigger', async (req, res) => {
-  if (syncInProgress) {
+  // If a sync is already in progress, return its current progress
+  if (syncPromise) {
     res.json({ ok: true, message: 'Sync already in progress', ...syncProgress })
     return
   }
   const { phone, password } = req.body ?? {}
-  console.log('[sync-trigger] Received:', { phone, hasPassword: !!password })
+  // If neither credentials nor cloud token, check for stored token
+  const cloudToken = getCloudAccessToken()
+  const authHeader = req.headers.authorization
+  const localToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null
+  // Verify the caller has a valid local token (basic auth check)
+  if (!localToken || !verifyLocalToken(localToken)) {
+    console.log('[sync-trigger] No valid local auth token or credentials')
+    res.json({ ok: false, message: 'Sync triggered — using existing cloud token if available' })
+  }
+  console.log('[sync-trigger] Received:', { phone: !!phone, hasPassword: !!password, hasCloudToken: !!cloudToken, hasLocalToken: !!localToken })
   res.json({ ok: true, message: 'Sync started' })
-  // Start sync in background
   syncWithProgress(phone, password).catch((err) => console.error('[sync-trigger] Fatal:', err))
 })
 

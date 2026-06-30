@@ -34,9 +34,11 @@ export function SyncScreen({ onComplete, authToken }: SyncScreenProps) {
 
     let triggerAttempts = 0
     let pollTimer: ReturnType<typeof setInterval> | null = null
+    let startTime = Date.now()
+    const MAX_POLL_MS = 45_000
 
     const triggerSync = () => {
-      if (triggerAttempts >= 3) return
+      if (triggerAttempts >= 5) return
       triggerAttempts++
       fetch(`${base}/sync/trigger`, {
         method: 'POST',
@@ -51,16 +53,18 @@ export function SyncScreen({ onComplete, authToken }: SyncScreenProps) {
         const data = await res.json() as SyncState
         setState(data)
         const done = data.complete || data.phase === 'complete' || (data.tablesCached > 0 && data.settingsCached && data.completed >= data.total)
-        if (done) {
+        const timedOut = Date.now() - startTime > MAX_POLL_MS
+        if (done || timedOut) {
           if (pollTimer) { clearInterval(pollTimer); pollTimer = null }
           onCompleteRef.current()
           return
         }
-        if (data.error && data.completed === 0 && data.phase === 'error') {
+        // Retry trigger only if sync seems stuck (error + no progress + no cached data yet)
+        if (data.error && data.completed === 0 && data.tablesCached === 0) {
           triggerSync()
         }
       } catch {
-        // Poling will continue
+        // Polling will continue
       }
     }
 

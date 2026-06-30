@@ -81,7 +81,7 @@ const CMD = {
   CUT_FULL: `${ESC}i`,
   LINE_FEED: '\n',
   DIVIDER: '-'.repeat(PAPER_80MM),
-  SPACER: '\n\n\n\n',
+  SPACER: '\n\n',
 }
 
 export class PrintService {
@@ -431,11 +431,9 @@ export class PrintService {
         const qtyStr = this.centerIn(String(item.quantity), qtyColW)
         const nameStr = this.pad(item.name, itemColW)
         lines.push(
-          CMD.DOUBLE_HEIGHT,
           CMD.BOLD_ON,
           qtyStr + '  ' + nameStr,
           CMD.BOLD_OFF,
-          CMD.NORMAL,
         )
         if (item.note) {
           lines.push(' '.repeat(qtyColW + 2) + `> ${item.note}`)
@@ -683,8 +681,9 @@ export class PrintService {
       lines.push(this.lineLeftRight(' Subtotal', `Rs. ${data.subtotal.toFixed(2)}`, w))
     }
     if (data.taxTotal != null && data.taxTotal > 0) {
-      const taxLabel = data.taxName ? ` ${data.taxName}` : ' Tax'
-      lines.push(this.lineLeftRight(taxLabel, `Rs. ${data.taxTotal.toFixed(2)}`, w))
+      const halfTax = data.taxTotal / 2
+      lines.push(this.lineLeftRight(' CGST', `Rs. ${halfTax.toFixed(2)}`, w))
+      lines.push(this.lineLeftRight(' SGST', `Rs. ${halfTax.toFixed(2)}`, w))
     }
     if (data.discountTotal != null && data.discountTotal > 0) {
       const discLabel = data.discountName ? ` ${data.discountName}` : ' Discount'

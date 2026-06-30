@@ -325,7 +325,7 @@ export function TableGrid() {
   }
 
   const handleBill = (tableId: string) => {
-    if (billPrintPending) return
+    if (billPrintPending || generateBillMut.isPending) return
     setBillPrintPending(tableId)
     generateBillMut.mutate({ tableId })
   }

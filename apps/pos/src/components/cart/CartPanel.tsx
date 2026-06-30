@@ -244,13 +244,14 @@ export function CartPanel({ tableId }: CartPanelProps) {
       queryClient.invalidateQueries({ queryKey: ['tables'] })
       queryClient.invalidateQueries({ queryKey: ['takeaway-orders'] })
 
-      if (!order) return
-      const newItems = order.items.filter((i) => i.status === 'New')
+      const currentOrder = queryClient.getQueryData<Order>(['order', tableId]) ?? order
+      if (!currentOrder) return
+      const newItems = currentOrder.items.filter((i) => i.status === 'New')
       const mergedNew = mergedItems(newItems)
       printerApi.printKOT({
         printType: 'kot',
-        orderId: order.id,
-        tableName: order.table?.name ?? 'Takeaway',
+        orderId: currentOrder.id,
+        tableName: currentOrder.table?.name ?? (currentOrder.orderType === 'Takeaway' ? 'Takeaway' : `Table`),
         guestCount: guestCount,
         serverName: user?.name,
         kotNumber: result.kotNumber,
@@ -262,7 +263,7 @@ export function CartPanel({ tableId }: CartPanelProps) {
           note: m.note,
         })),
         date: formatPrintDate(),
-          orderType: order.orderType === 'Takeaway' ? 'Takeaway' : 'Dine In',
+          orderType: currentOrder.orderType === 'Takeaway' ? 'Takeaway' : 'Dine In',
       }).catch(() => {})
     },
     onError: () => {
@@ -279,14 +280,15 @@ export function CartPanel({ tableId }: CartPanelProps) {
       queryClient.invalidateQueries({ queryKey: ['order', tableId] })
       queryClient.invalidateQueries({ queryKey: ['takeaway-orders'] })
 
-      if (!order) return
+      const currentOrder = queryClient.getQueryData<Order>(['order', tableId]) ?? order
+      if (!currentOrder) return
       apiClient.get('/settings').then(({ data: settings }) => {
-        const billItems = order.items.filter((i) => i.status !== 'Cancelled')
+        const billItems = currentOrder.items.filter((i) => i.status !== 'Cancelled')
         const mergedBill = mergedItems(billItems)
         printerApi.printBill({
           printType: 'bill',
-          orderId: order.id,
-          tableName: order.table?.name ?? 'Takeaway',
+          orderId: currentOrder.id,
+          tableName: currentOrder.table?.name ?? (currentOrder.orderType === 'Takeaway' ? 'Takeaway' : `Table`),
           restaurantName: settings?.companyName,
           restaurantAddress: settings?.address,
           phone: settings?.phone ?? undefined,
@@ -296,7 +298,7 @@ export function CartPanel({ tableId }: CartPanelProps) {
           gstin: settings?.gstin ?? undefined,
           headerText: settings?.headerText,
           footerText: settings?.footerText,
-          orderNumber: order.id.slice(0, 8).toUpperCase(),
+          orderNumber: currentOrder.id.slice(0, 8).toUpperCase(),
           guestCount: guestCount,
           serverName: user?.name,
         items: mergedBill.map((m) => ({
@@ -306,14 +308,14 @@ export function CartPanel({ tableId }: CartPanelProps) {
             lineTotal: m.lineTotal,
             note: m.note,
           })),
-          subtotal: order.subtotal,
-          taxTotal: order.taxTotal,
-          discountTotal: order.discountTotal,
-          grandTotal: order.grandTotal,
-          roundingAdjustment: order.roundingAdjustment ?? 0,
+          subtotal: currentOrder.subtotal,
+          taxTotal: currentOrder.taxTotal,
+          discountTotal: currentOrder.discountTotal,
+          grandTotal: currentOrder.grandTotal,
+          roundingAdjustment: currentOrder.roundingAdjustment ?? 0,
           taxName: 'GST',
           date: formatPrintDate(),
-          orderType: order.orderType === 'Takeaway' ? 'Takeaway' : 'Dine In',
+          orderType: currentOrder.orderType === 'Takeaway' ? 'Takeaway' : 'Dine In',
           logoUrl: resolveImageUrl(settings?.printLogoUrl) ?? undefined,
         }).catch(() => {})
       }).catch(() => {})

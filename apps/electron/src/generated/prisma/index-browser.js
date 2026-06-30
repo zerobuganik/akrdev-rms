@@ -259,6 +259,12 @@ exports.Prisma.CachedCategoryScalarFieldEnum = {
   updatedAt: 'updatedAt'
 };
 
+exports.Prisma.CachedAreaScalarFieldEnum = {
+  id: 'id',
+  name: 'name',
+  createdAt: 'createdAt'
+};
+
 exports.Prisma.CachedItemScalarFieldEnum = {
   id: 'id',
   name: 'name',
@@ -298,6 +304,7 @@ exports.Prisma.ModelName = {
   LocalCredential: 'LocalCredential',
   CachedTable: 'CachedTable',
   CachedCategory: 'CachedCategory',
+  CachedArea: 'CachedArea',
   CachedItem: 'CachedItem',
   CachedSetting: 'CachedSetting'
 };

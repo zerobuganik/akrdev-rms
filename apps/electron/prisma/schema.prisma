@@ -187,6 +187,14 @@ model CachedCategory {
   @@map("cached_categories")
 }
 
+model CachedArea {
+  id   String @id
+  name String
+  createdAt DateTime @default(now())
+
+  @@map("cached_areas")
+}
+
 model CachedItem {
   id          String @id
   name        String

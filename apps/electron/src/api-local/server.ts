@@ -135,7 +135,11 @@ async function restoreLocalCache() {
         _count: { items: 0 },
       })) as unknown[]
     }
-    console.log(`[cache] Restored from local DB: tables=${cachedCloudTables?.length ?? 0}, items=${cachedCloudItems?.length ?? 0}, settings=${!!cachedSettings}, cats=${(cachedCategories as unknown[])?.length ?? 0}`)
+    const localAreas = await localPrisma.cachedArea.findMany()
+    if (localAreas.length > 0) {
+      cachedAreas = localAreas.map(a => ({ id: a.id, name: a.name }))
+    }
+    console.log(`[cache] Restored from local DB: tables=${cachedCloudTables?.length ?? 0}, items=${cachedCloudItems?.length ?? 0}, settings=${!!cachedSettings}, cats=${(cachedCategories as unknown[])?.length ?? 0}, areas=${cachedAreas?.length ?? 0}`)
   } catch (err) {
     console.warn('[cache] Could not restore from local DB:', (err as Error).message)
   }
@@ -238,7 +242,18 @@ async function syncFromCloud(phone: string, password: string) {
         }
       }
     }
-    if (areasRes.ok) cachedAreas = await areasRes.json()
+    if (areasRes.ok) {
+      cachedAreas = await areasRes.json()
+      if (Array.isArray(cachedAreas)) {
+        for (const a of cachedAreas as Array<{ id: string; name: string }>) {
+          await localPrisma.cachedArea.upsert({
+            where: { id: a.id },
+            create: { id: a.id, name: a.name },
+            update: { name: a.name },
+          }).catch(() => {})
+        }
+      }
+    }
     if (itemsRes.ok) {
       const raw = await itemsRes.json()
       cachedCloudItems = Array.isArray(raw) ? raw : null
@@ -415,7 +430,18 @@ async function syncWithProgress(phone?: string, password?: string) {
       }},
       { key: 'employees', url: `${getCloudApiBase()}/employees`, handler: async (r: Response) => { cachedCloudEmployees = await r.json() }},
       { key: 'tax-slabs', url: `${getCloudApiBase()}/tax-slabs`, handler: async (r: Response) => { cachedTaxSlabs = await r.json() }},
-      { key: 'areas', url: `${getCloudApiBase()}/areas`, handler: async (r: Response) => { cachedAreas = await r.json() }},
+      { key: 'areas', url: `${getCloudApiBase()}/areas`, handler: async (r: Response) => {
+        cachedAreas = await r.json()
+        if (Array.isArray(cachedAreas)) {
+          for (const a of cachedAreas as Array<{ id: string; name: string }>) {
+            await localPrisma.cachedArea.upsert({
+              where: { id: a.id },
+              create: { id: a.id, name: a.name },
+              update: { name: a.name },
+            }).catch(() => {})
+          }
+        }
+      }},
       { key: 'orders', url: `${getCloudApiBase()}/orders`, handler: async (r: Response) => {
         const raw = await r.json()
         if (Array.isArray(raw)) {
@@ -518,7 +544,18 @@ async function startupCloudSync() {
         }
       }
     }
-    if (areasRes.ok) cachedAreas = await areasRes.json()
+    if (areasRes.ok) {
+      cachedAreas = await areasRes.json()
+      if (Array.isArray(cachedAreas)) {
+        for (const a of cachedAreas as Array<{ id: string; name: string }>) {
+          await localPrisma.cachedArea.upsert({
+            where: { id: a.id },
+            create: { id: a.id, name: a.name },
+            update: { name: a.name },
+          }).catch(() => {})
+        }
+      }
+    }
     if (itemsRes.ok) {
       const raw = await itemsRes.json()
       cachedCloudItems = Array.isArray(raw) ? raw : null
@@ -1221,11 +1258,19 @@ app.get('/api/v1/tax-slabs', (_req, res) => {
 })
 
 // Areas — serve from cloud cache, seed data, or empty
-app.get('/api/v1/areas', (_req, res) => {
+app.get('/api/v1/areas', async (_req, res) => {
+  // 1. Local SQLite
+  const localAreas = await localPrisma.cachedArea.findMany()
+  if (localAreas.length > 0) {
+    res.json(localAreas.map(a => ({ id: a.id, name: a.name })))
+    return
+  }
+  // 2. In-memory cloud cache
   if (cachedAreas && cachedAreas.length > 0) {
     res.json(cachedAreas)
     return
   }
+  // 3. Seed fallback
   const areaMap = new Map<string, { id: string; name: string }>()
   for (const t of LOCAL_SEED_TABLES) {
     if (t.area && !areaMap.has(t.area.id)) {

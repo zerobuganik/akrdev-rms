@@ -69,6 +69,11 @@ export type CachedTable = $Result.DefaultSelection<Prisma.$CachedTablePayload>
  */
 export type CachedCategory = $Result.DefaultSelection<Prisma.$CachedCategoryPayload>
 /**
+ * Model CachedArea
+ * 
+ */
+export type CachedArea = $Result.DefaultSelection<Prisma.$CachedAreaPayload>
+/**
  * Model CachedItem
  * 
  */
@@ -309,6 +314,16 @@ export class PrismaClient<
     * ```
     */
   get cachedCategory(): Prisma.CachedCategoryDelegate<ExtArgs, ClientOptions>;
+
+  /**
+   * `prisma.cachedArea`: Exposes CRUD operations for the **CachedArea** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more CachedAreas
+    * const cachedAreas = await prisma.cachedArea.findMany()
+    * ```
+    */
+  get cachedArea(): Prisma.CachedAreaDelegate<ExtArgs, ClientOptions>;
 
   /**
    * `prisma.cachedItem`: Exposes CRUD operations for the **CachedItem** model.
@@ -774,6 +789,7 @@ export namespace Prisma {
     LocalCredential: 'LocalCredential',
     CachedTable: 'CachedTable',
     CachedCategory: 'CachedCategory',
+    CachedArea: 'CachedArea',
     CachedItem: 'CachedItem',
     CachedSetting: 'CachedSetting'
   };
@@ -791,7 +807,7 @@ export namespace Prisma {
       omit: GlobalOmitOptions
     }
     meta: {
-      modelProps: "localOrder" | "localOrderItem" | "localKOT" | "localSettlement" | "syncQueue" | "syncState" | "printerConfig" | "printHistory" | "localCredential" | "cachedTable" | "cachedCategory" | "cachedItem" | "cachedSetting"
+      modelProps: "localOrder" | "localOrderItem" | "localKOT" | "localSettlement" | "syncQueue" | "syncState" | "printerConfig" | "printHistory" | "localCredential" | "cachedTable" | "cachedCategory" | "cachedArea" | "cachedItem" | "cachedSetting"
       txIsolationLevel: Prisma.TransactionIsolationLevel
     }
     model: {
@@ -1609,6 +1625,80 @@ export namespace Prisma {
           }
         }
       }
+      CachedArea: {
+        payload: Prisma.$CachedAreaPayload<ExtArgs>
+        fields: Prisma.CachedAreaFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.CachedAreaFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CachedAreaPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.CachedAreaFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CachedAreaPayload>
+          }
+          findFirst: {
+            args: Prisma.CachedAreaFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CachedAreaPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.CachedAreaFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CachedAreaPayload>
+          }
+          findMany: {
+            args: Prisma.CachedAreaFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CachedAreaPayload>[]
+          }
+          create: {
+            args: Prisma.CachedAreaCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CachedAreaPayload>
+          }
+          createMany: {
+            args: Prisma.CachedAreaCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.CachedAreaCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CachedAreaPayload>[]
+          }
+          delete: {
+            args: Prisma.CachedAreaDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CachedAreaPayload>
+          }
+          update: {
+            args: Prisma.CachedAreaUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CachedAreaPayload>
+          }
+          deleteMany: {
+            args: Prisma.CachedAreaDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.CachedAreaUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateManyAndReturn: {
+            args: Prisma.CachedAreaUpdateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CachedAreaPayload>[]
+          }
+          upsert: {
+            args: Prisma.CachedAreaUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CachedAreaPayload>
+          }
+          aggregate: {
+            args: Prisma.CachedAreaAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateCachedArea>
+          }
+          groupBy: {
+            args: Prisma.CachedAreaGroupByArgs<ExtArgs>
+            result: $Utils.Optional<CachedAreaGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.CachedAreaCountArgs<ExtArgs>
+            result: $Utils.Optional<CachedAreaCountAggregateOutputType> | number
+          }
+        }
+      }
       CachedItem: {
         payload: Prisma.$CachedItemPayload<ExtArgs>
         fields: Prisma.CachedItemFieldRefs
@@ -1876,6 +1966,7 @@ export namespace Prisma {
     localCredential?: LocalCredentialOmit
     cachedTable?: CachedTableOmit
     cachedCategory?: CachedCategoryOmit
+    cachedArea?: CachedAreaOmit
     cachedItem?: CachedItemOmit
     cachedSetting?: CachedSettingOmit
   }
@@ -14658,6 +14749,978 @@ export namespace Prisma {
 
 
   /**
+   * Model CachedArea
+   */
+
+  export type AggregateCachedArea = {
+    _count: CachedAreaCountAggregateOutputType | null
+    _min: CachedAreaMinAggregateOutputType | null
+    _max: CachedAreaMaxAggregateOutputType | null
+  }
+
+  export type CachedAreaMinAggregateOutputType = {
+    id: string | null
+    name: string | null
+    createdAt: Date | null
+  }
+
+  export type CachedAreaMaxAggregateOutputType = {
+    id: string | null
+    name: string | null
+    createdAt: Date | null
+  }
+
+  export type CachedAreaCountAggregateOutputType = {
+    id: number
+    name: number
+    createdAt: number
+    _all: number
+  }
+
+
+  export type CachedAreaMinAggregateInputType = {
+    id?: true
+    name?: true
+    createdAt?: true
+  }
+
+  export type CachedAreaMaxAggregateInputType = {
+    id?: true
+    name?: true
+    createdAt?: true
+  }
+
+  export type CachedAreaCountAggregateInputType = {
+    id?: true
+    name?: true
+    createdAt?: true
+    _all?: true
+  }
+
+  export type CachedAreaAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which CachedArea to aggregate.
+     */
+    where?: CachedAreaWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of CachedAreas to fetch.
+     */
+    orderBy?: CachedAreaOrderByWithRelationInput | CachedAreaOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: CachedAreaWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` CachedAreas from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` CachedAreas.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned CachedAreas
+    **/
+    _count?: true | CachedAreaCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: CachedAreaMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: CachedAreaMaxAggregateInputType
+  }
+
+  export type GetCachedAreaAggregateType<T extends CachedAreaAggregateArgs> = {
+        [P in keyof T & keyof AggregateCachedArea]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateCachedArea[P]>
+      : GetScalarType<T[P], AggregateCachedArea[P]>
+  }
+
+
+
+
+  export type CachedAreaGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: CachedAreaWhereInput
+    orderBy?: CachedAreaOrderByWithAggregationInput | CachedAreaOrderByWithAggregationInput[]
+    by: CachedAreaScalarFieldEnum[] | CachedAreaScalarFieldEnum
+    having?: CachedAreaScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: CachedAreaCountAggregateInputType | true
+    _min?: CachedAreaMinAggregateInputType
+    _max?: CachedAreaMaxAggregateInputType
+  }
+
+  export type CachedAreaGroupByOutputType = {
+    id: string
+    name: string
+    createdAt: Date
+    _count: CachedAreaCountAggregateOutputType | null
+    _min: CachedAreaMinAggregateOutputType | null
+    _max: CachedAreaMaxAggregateOutputType | null
+  }
+
+  type GetCachedAreaGroupByPayload<T extends CachedAreaGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<CachedAreaGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof CachedAreaGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], CachedAreaGroupByOutputType[P]>
+            : GetScalarType<T[P], CachedAreaGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type CachedAreaSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    name?: boolean
+    createdAt?: boolean
+  }, ExtArgs["result"]["cachedArea"]>
+
+  export type CachedAreaSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    name?: boolean
+    createdAt?: boolean
+  }, ExtArgs["result"]["cachedArea"]>
+
+  export type CachedAreaSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    name?: boolean
+    createdAt?: boolean
+  }, ExtArgs["result"]["cachedArea"]>
+
+  export type CachedAreaSelectScalar = {
+    id?: boolean
+    name?: boolean
+    createdAt?: boolean
+  }
+
+  export type CachedAreaOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "name" | "createdAt", ExtArgs["result"]["cachedArea"]>
+
+  export type $CachedAreaPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "CachedArea"
+    objects: {}
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      name: string
+      createdAt: Date
+    }, ExtArgs["result"]["cachedArea"]>
+    composites: {}
+  }
+
+  type CachedAreaGetPayload<S extends boolean | null | undefined | CachedAreaDefaultArgs> = $Result.GetResult<Prisma.$CachedAreaPayload, S>
+
+  type CachedAreaCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
+    Omit<CachedAreaFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+      select?: CachedAreaCountAggregateInputType | true
+    }
+
+  export interface CachedAreaDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['CachedArea'], meta: { name: 'CachedArea' } }
+    /**
+     * Find zero or one CachedArea that matches the filter.
+     * @param {CachedAreaFindUniqueArgs} args - Arguments to find a CachedArea
+     * @example
+     * // Get one CachedArea
+     * const cachedArea = await prisma.cachedArea.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends CachedAreaFindUniqueArgs>(args: SelectSubset<T, CachedAreaFindUniqueArgs<ExtArgs>>): Prisma__CachedAreaClient<$Result.GetResult<Prisma.$CachedAreaPayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find one CachedArea that matches the filter or throw an error with `error.code='P2025'`
+     * if no matches were found.
+     * @param {CachedAreaFindUniqueOrThrowArgs} args - Arguments to find a CachedArea
+     * @example
+     * // Get one CachedArea
+     * const cachedArea = await prisma.cachedArea.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends CachedAreaFindUniqueOrThrowArgs>(args: SelectSubset<T, CachedAreaFindUniqueOrThrowArgs<ExtArgs>>): Prisma__CachedAreaClient<$Result.GetResult<Prisma.$CachedAreaPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first CachedArea that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CachedAreaFindFirstArgs} args - Arguments to find a CachedArea
+     * @example
+     * // Get one CachedArea
+     * const cachedArea = await prisma.cachedArea.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends CachedAreaFindFirstArgs>(args?: SelectSubset<T, CachedAreaFindFirstArgs<ExtArgs>>): Prisma__CachedAreaClient<$Result.GetResult<Prisma.$CachedAreaPayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first CachedArea that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CachedAreaFindFirstOrThrowArgs} args - Arguments to find a CachedArea
+     * @example
+     * // Get one CachedArea
+     * const cachedArea = await prisma.cachedArea.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends CachedAreaFindFirstOrThrowArgs>(args?: SelectSubset<T, CachedAreaFindFirstOrThrowArgs<ExtArgs>>): Prisma__CachedAreaClient<$Result.GetResult<Prisma.$CachedAreaPayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find zero or more CachedAreas that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CachedAreaFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all CachedAreas
+     * const cachedAreas = await prisma.cachedArea.findMany()
+     * 
+     * // Get first 10 CachedAreas
+     * const cachedAreas = await prisma.cachedArea.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const cachedAreaWithIdOnly = await prisma.cachedArea.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends CachedAreaFindManyArgs>(args?: SelectSubset<T, CachedAreaFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$CachedAreaPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+
+    /**
+     * Create a CachedArea.
+     * @param {CachedAreaCreateArgs} args - Arguments to create a CachedArea.
+     * @example
+     * // Create one CachedArea
+     * const CachedArea = await prisma.cachedArea.create({
+     *   data: {
+     *     // ... data to create a CachedArea
+     *   }
+     * })
+     * 
+     */
+    create<T extends CachedAreaCreateArgs>(args: SelectSubset<T, CachedAreaCreateArgs<ExtArgs>>): Prisma__CachedAreaClient<$Result.GetResult<Prisma.$CachedAreaPayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Create many CachedAreas.
+     * @param {CachedAreaCreateManyArgs} args - Arguments to create many CachedAreas.
+     * @example
+     * // Create many CachedAreas
+     * const cachedArea = await prisma.cachedArea.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends CachedAreaCreateManyArgs>(args?: SelectSubset<T, CachedAreaCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many CachedAreas and returns the data saved in the database.
+     * @param {CachedAreaCreateManyAndReturnArgs} args - Arguments to create many CachedAreas.
+     * @example
+     * // Create many CachedAreas
+     * const cachedArea = await prisma.cachedArea.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many CachedAreas and only return the `id`
+     * const cachedAreaWithIdOnly = await prisma.cachedArea.createManyAndReturn({
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends CachedAreaCreateManyAndReturnArgs>(args?: SelectSubset<T, CachedAreaCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$CachedAreaPayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Delete a CachedArea.
+     * @param {CachedAreaDeleteArgs} args - Arguments to delete one CachedArea.
+     * @example
+     * // Delete one CachedArea
+     * const CachedArea = await prisma.cachedArea.delete({
+     *   where: {
+     *     // ... filter to delete one CachedArea
+     *   }
+     * })
+     * 
+     */
+    delete<T extends CachedAreaDeleteArgs>(args: SelectSubset<T, CachedAreaDeleteArgs<ExtArgs>>): Prisma__CachedAreaClient<$Result.GetResult<Prisma.$CachedAreaPayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Update one CachedArea.
+     * @param {CachedAreaUpdateArgs} args - Arguments to update one CachedArea.
+     * @example
+     * // Update one CachedArea
+     * const cachedArea = await prisma.cachedArea.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends CachedAreaUpdateArgs>(args: SelectSubset<T, CachedAreaUpdateArgs<ExtArgs>>): Prisma__CachedAreaClient<$Result.GetResult<Prisma.$CachedAreaPayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Delete zero or more CachedAreas.
+     * @param {CachedAreaDeleteManyArgs} args - Arguments to filter CachedAreas to delete.
+     * @example
+     * // Delete a few CachedAreas
+     * const { count } = await prisma.cachedArea.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends CachedAreaDeleteManyArgs>(args?: SelectSubset<T, CachedAreaDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more CachedAreas.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CachedAreaUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many CachedAreas
+     * const cachedArea = await prisma.cachedArea.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends CachedAreaUpdateManyArgs>(args: SelectSubset<T, CachedAreaUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more CachedAreas and returns the data updated in the database.
+     * @param {CachedAreaUpdateManyAndReturnArgs} args - Arguments to update many CachedAreas.
+     * @example
+     * // Update many CachedAreas
+     * const cachedArea = await prisma.cachedArea.updateManyAndReturn({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Update zero or more CachedAreas and only return the `id`
+     * const cachedAreaWithIdOnly = await prisma.cachedArea.updateManyAndReturn({
+     *   select: { id: true },
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    updateManyAndReturn<T extends CachedAreaUpdateManyAndReturnArgs>(args: SelectSubset<T, CachedAreaUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$CachedAreaPayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Create or update one CachedArea.
+     * @param {CachedAreaUpsertArgs} args - Arguments to update or create a CachedArea.
+     * @example
+     * // Update or create a CachedArea
+     * const cachedArea = await prisma.cachedArea.upsert({
+     *   create: {
+     *     // ... data to create a CachedArea
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the CachedArea we want to update
+     *   }
+     * })
+     */
+    upsert<T extends CachedAreaUpsertArgs>(args: SelectSubset<T, CachedAreaUpsertArgs<ExtArgs>>): Prisma__CachedAreaClient<$Result.GetResult<Prisma.$CachedAreaPayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+
+    /**
+     * Count the number of CachedAreas.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CachedAreaCountArgs} args - Arguments to filter CachedAreas to count.
+     * @example
+     * // Count the number of CachedAreas
+     * const count = await prisma.cachedArea.count({
+     *   where: {
+     *     // ... the filter for the CachedAreas we want to count
+     *   }
+     * })
+    **/
+    count<T extends CachedAreaCountArgs>(
+      args?: Subset<T, CachedAreaCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], CachedAreaCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a CachedArea.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CachedAreaAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends CachedAreaAggregateArgs>(args: Subset<T, CachedAreaAggregateArgs>): Prisma.PrismaPromise<GetCachedAreaAggregateType<T>>
+
+    /**
+     * Group by CachedArea.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CachedAreaGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends CachedAreaGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: CachedAreaGroupByArgs['orderBy'] }
+        : { orderBy?: CachedAreaGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, CachedAreaGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetCachedAreaGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the CachedArea model
+   */
+  readonly fields: CachedAreaFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for CachedArea.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__CachedAreaClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the CachedArea model
+   */
+  interface CachedAreaFieldRefs {
+    readonly id: FieldRef<"CachedArea", 'String'>
+    readonly name: FieldRef<"CachedArea", 'String'>
+    readonly createdAt: FieldRef<"CachedArea", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * CachedArea findUnique
+   */
+  export type CachedAreaFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CachedArea
+     */
+    select?: CachedAreaSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CachedArea
+     */
+    omit?: CachedAreaOmit<ExtArgs> | null
+    /**
+     * Filter, which CachedArea to fetch.
+     */
+    where: CachedAreaWhereUniqueInput
+  }
+
+  /**
+   * CachedArea findUniqueOrThrow
+   */
+  export type CachedAreaFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CachedArea
+     */
+    select?: CachedAreaSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CachedArea
+     */
+    omit?: CachedAreaOmit<ExtArgs> | null
+    /**
+     * Filter, which CachedArea to fetch.
+     */
+    where: CachedAreaWhereUniqueInput
+  }
+
+  /**
+   * CachedArea findFirst
+   */
+  export type CachedAreaFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CachedArea
+     */
+    select?: CachedAreaSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CachedArea
+     */
+    omit?: CachedAreaOmit<ExtArgs> | null
+    /**
+     * Filter, which CachedArea to fetch.
+     */
+    where?: CachedAreaWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of CachedAreas to fetch.
+     */
+    orderBy?: CachedAreaOrderByWithRelationInput | CachedAreaOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for CachedAreas.
+     */
+    cursor?: CachedAreaWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` CachedAreas from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` CachedAreas.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of CachedAreas.
+     */
+    distinct?: CachedAreaScalarFieldEnum | CachedAreaScalarFieldEnum[]
+  }
+
+  /**
+   * CachedArea findFirstOrThrow
+   */
+  export type CachedAreaFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CachedArea
+     */
+    select?: CachedAreaSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CachedArea
+     */
+    omit?: CachedAreaOmit<ExtArgs> | null
+    /**
+     * Filter, which CachedArea to fetch.
+     */
+    where?: CachedAreaWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of CachedAreas to fetch.
+     */
+    orderBy?: CachedAreaOrderByWithRelationInput | CachedAreaOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for CachedAreas.
+     */
+    cursor?: CachedAreaWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` CachedAreas from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` CachedAreas.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of CachedAreas.
+     */
+    distinct?: CachedAreaScalarFieldEnum | CachedAreaScalarFieldEnum[]
+  }
+
+  /**
+   * CachedArea findMany
+   */
+  export type CachedAreaFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CachedArea
+     */
+    select?: CachedAreaSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CachedArea
+     */
+    omit?: CachedAreaOmit<ExtArgs> | null
+    /**
+     * Filter, which CachedAreas to fetch.
+     */
+    where?: CachedAreaWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of CachedAreas to fetch.
+     */
+    orderBy?: CachedAreaOrderByWithRelationInput | CachedAreaOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing CachedAreas.
+     */
+    cursor?: CachedAreaWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` CachedAreas from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` CachedAreas.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of CachedAreas.
+     */
+    distinct?: CachedAreaScalarFieldEnum | CachedAreaScalarFieldEnum[]
+  }
+
+  /**
+   * CachedArea create
+   */
+  export type CachedAreaCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CachedArea
+     */
+    select?: CachedAreaSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CachedArea
+     */
+    omit?: CachedAreaOmit<ExtArgs> | null
+    /**
+     * The data needed to create a CachedArea.
+     */
+    data: XOR<CachedAreaCreateInput, CachedAreaUncheckedCreateInput>
+  }
+
+  /**
+   * CachedArea createMany
+   */
+  export type CachedAreaCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many CachedAreas.
+     */
+    data: CachedAreaCreateManyInput | CachedAreaCreateManyInput[]
+  }
+
+  /**
+   * CachedArea createManyAndReturn
+   */
+  export type CachedAreaCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CachedArea
+     */
+    select?: CachedAreaSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the CachedArea
+     */
+    omit?: CachedAreaOmit<ExtArgs> | null
+    /**
+     * The data used to create many CachedAreas.
+     */
+    data: CachedAreaCreateManyInput | CachedAreaCreateManyInput[]
+  }
+
+  /**
+   * CachedArea update
+   */
+  export type CachedAreaUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CachedArea
+     */
+    select?: CachedAreaSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CachedArea
+     */
+    omit?: CachedAreaOmit<ExtArgs> | null
+    /**
+     * The data needed to update a CachedArea.
+     */
+    data: XOR<CachedAreaUpdateInput, CachedAreaUncheckedUpdateInput>
+    /**
+     * Choose, which CachedArea to update.
+     */
+    where: CachedAreaWhereUniqueInput
+  }
+
+  /**
+   * CachedArea updateMany
+   */
+  export type CachedAreaUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update CachedAreas.
+     */
+    data: XOR<CachedAreaUpdateManyMutationInput, CachedAreaUncheckedUpdateManyInput>
+    /**
+     * Filter which CachedAreas to update
+     */
+    where?: CachedAreaWhereInput
+    /**
+     * Limit how many CachedAreas to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * CachedArea updateManyAndReturn
+   */
+  export type CachedAreaUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CachedArea
+     */
+    select?: CachedAreaSelectUpdateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the CachedArea
+     */
+    omit?: CachedAreaOmit<ExtArgs> | null
+    /**
+     * The data used to update CachedAreas.
+     */
+    data: XOR<CachedAreaUpdateManyMutationInput, CachedAreaUncheckedUpdateManyInput>
+    /**
+     * Filter which CachedAreas to update
+     */
+    where?: CachedAreaWhereInput
+    /**
+     * Limit how many CachedAreas to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * CachedArea upsert
+   */
+  export type CachedAreaUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CachedArea
+     */
+    select?: CachedAreaSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CachedArea
+     */
+    omit?: CachedAreaOmit<ExtArgs> | null
+    /**
+     * The filter to search for the CachedArea to update in case it exists.
+     */
+    where: CachedAreaWhereUniqueInput
+    /**
+     * In case the CachedArea found by the `where` argument doesn't exist, create a new CachedArea with this data.
+     */
+    create: XOR<CachedAreaCreateInput, CachedAreaUncheckedCreateInput>
+    /**
+     * In case the CachedArea was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<CachedAreaUpdateInput, CachedAreaUncheckedUpdateInput>
+  }
+
+  /**
+   * CachedArea delete
+   */
+  export type CachedAreaDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CachedArea
+     */
+    select?: CachedAreaSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CachedArea
+     */
+    omit?: CachedAreaOmit<ExtArgs> | null
+    /**
+     * Filter which CachedArea to delete.
+     */
+    where: CachedAreaWhereUniqueInput
+  }
+
+  /**
+   * CachedArea deleteMany
+   */
+  export type CachedAreaDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which CachedAreas to delete
+     */
+    where?: CachedAreaWhereInput
+    /**
+     * Limit how many CachedAreas to delete.
+     */
+    limit?: number
+  }
+
+  /**
+   * CachedArea without action
+   */
+  export type CachedAreaDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CachedArea
+     */
+    select?: CachedAreaSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CachedArea
+     */
+    omit?: CachedAreaOmit<ExtArgs> | null
+  }
+
+
+  /**
    * Model CachedItem
    */
 
@@ -16873,6 +17936,15 @@ export namespace Prisma {
   export type CachedCategoryScalarFieldEnum = (typeof CachedCategoryScalarFieldEnum)[keyof typeof CachedCategoryScalarFieldEnum]
 
 
+  export const CachedAreaScalarFieldEnum: {
+    id: 'id',
+    name: 'name',
+    createdAt: 'createdAt'
+  };
+
+  export type CachedAreaScalarFieldEnum = (typeof CachedAreaScalarFieldEnum)[keyof typeof CachedAreaScalarFieldEnum]
+
+
   export const CachedItemScalarFieldEnum: {
     id: 'id',
     name: 'name',
@@ -17844,6 +18916,48 @@ export namespace Prisma {
     kitchenId?: StringNullableWithAggregatesFilter<"CachedCategory"> | string | null
     createdAt?: DateTimeWithAggregatesFilter<"CachedCategory"> | Date | string
     updatedAt?: DateTimeWithAggregatesFilter<"CachedCategory"> | Date | string
+  }
+
+  export type CachedAreaWhereInput = {
+    AND?: CachedAreaWhereInput | CachedAreaWhereInput[]
+    OR?: CachedAreaWhereInput[]
+    NOT?: CachedAreaWhereInput | CachedAreaWhereInput[]
+    id?: StringFilter<"CachedArea"> | string
+    name?: StringFilter<"CachedArea"> | string
+    createdAt?: DateTimeFilter<"CachedArea"> | Date | string
+  }
+
+  export type CachedAreaOrderByWithRelationInput = {
+    id?: SortOrder
+    name?: SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type CachedAreaWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    AND?: CachedAreaWhereInput | CachedAreaWhereInput[]
+    OR?: CachedAreaWhereInput[]
+    NOT?: CachedAreaWhereInput | CachedAreaWhereInput[]
+    name?: StringFilter<"CachedArea"> | string
+    createdAt?: DateTimeFilter<"CachedArea"> | Date | string
+  }, "id">
+
+  export type CachedAreaOrderByWithAggregationInput = {
+    id?: SortOrder
+    name?: SortOrder
+    createdAt?: SortOrder
+    _count?: CachedAreaCountOrderByAggregateInput
+    _max?: CachedAreaMaxOrderByAggregateInput
+    _min?: CachedAreaMinOrderByAggregateInput
+  }
+
+  export type CachedAreaScalarWhereWithAggregatesInput = {
+    AND?: CachedAreaScalarWhereWithAggregatesInput | CachedAreaScalarWhereWithAggregatesInput[]
+    OR?: CachedAreaScalarWhereWithAggregatesInput[]
+    NOT?: CachedAreaScalarWhereWithAggregatesInput | CachedAreaScalarWhereWithAggregatesInput[]
+    id?: StringWithAggregatesFilter<"CachedArea"> | string
+    name?: StringWithAggregatesFilter<"CachedArea"> | string
+    createdAt?: DateTimeWithAggregatesFilter<"CachedArea"> | Date | string
   }
 
   export type CachedItemWhereInput = {
@@ -18961,6 +20075,48 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
+  export type CachedAreaCreateInput = {
+    id: string
+    name: string
+    createdAt?: Date | string
+  }
+
+  export type CachedAreaUncheckedCreateInput = {
+    id: string
+    name: string
+    createdAt?: Date | string
+  }
+
+  export type CachedAreaUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type CachedAreaUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type CachedAreaCreateManyInput = {
+    id: string
+    name: string
+    createdAt?: Date | string
+  }
+
+  export type CachedAreaUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type CachedAreaUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
   export type CachedItemCreateInput = {
     id: string
     name: string
@@ -19899,6 +21055,24 @@ export namespace Prisma {
 
   export type CachedCategorySumOrderByAggregateInput = {
     displayOrder?: SortOrder
+  }
+
+  export type CachedAreaCountOrderByAggregateInput = {
+    id?: SortOrder
+    name?: SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type CachedAreaMaxOrderByAggregateInput = {
+    id?: SortOrder
+    name?: SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type CachedAreaMinOrderByAggregateInput = {
+    id?: SortOrder
+    name?: SortOrder
+    createdAt?: SortOrder
   }
 
   export type CachedItemCountOrderByAggregateInput = {

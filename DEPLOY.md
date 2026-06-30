@@ -6,27 +6,23 @@ A `AKRDev RMS Setup.exe` file. Install it on any Windows PC. The POS runs in **f
 
 ---
 
-## Accounts Needed (Both Free)
+## Accounts Needed (Both Free to Start)
 
 | Service | Sign Up Here |
 |---------|-------------|
 | **GitHub** | https://github.com (click Sign up) |
-| **Render** | https://render.com (click Sign In → Sign in with GitHub) |
+| **Railway** | https://railway.com (click Start a New Project) |
+
+Railway gives you $5 free credit each month. The API + PostgreSQL combo costs roughly $3–5/month depending on region.
 
 ---
 
-## Step 1: Create Database on Render
+## Step 1: Create Database on Railway
 
-1. Render dashboard → click **New +** → **PostgreSQL**
-2. Fill in:
-   - **Name:** `akrdev-db`
-   - **Region:** Singapore (closest to India)
-   - **Plan:** Free
-3. Click **Create Database**. Wait 2 minutes.
-4. Scroll to **Connections** → copy the **Internal Database URL**:
-   ```
-   postgresql://akrdev_db_user:abc123@dpg-xxxxx.singapore-postgres.render.com/akrdev_db
-   ```
+1. Railway dashboard → click **New Project** → **PostgreSQL**
+2. Wait 1–2 minutes for the database to provision
+3. Click on the PostgreSQL service → **Variables** tab
+4. Copy the `DATABASE_URL` (starts with `postgresql://`)
 5. **Save this URL in Notepad** — you'll paste it later.
 
 ---
@@ -76,35 +72,36 @@ git push -u origin main
 
 ---
 
-## Step 4: Deploy API on Render
+## Step 4: Deploy API on Railway
 
-1. Render dashboard → **New +** → **Web Service**
-2. Connect your `akrdev-rms` repo
-3. Fill in exactly:
+1. Railway dashboard → **New Project** → **Deploy from GitHub repo**
+2. Select your `akrdev-rms` repository
+3. Railway auto-detects the project. It will add a service. Click the service card.
+4. Go to **Settings** tab and configure:
 
 | Field | Value |
 |-------|-------|
-| **Name** | `akrdev-api` |
-| **Root Directory** | (leave empty — use repository root) |
-| **Build Command** | `pnpm install --frozen-lockfile --filter @akrdev/api... && pnpm --filter @akrdev/api build:full` |
+| **Root Directory** | `apps/api` |
+| **Build Command** | `npm install -g pnpm && pnpm install --frozen-lockfile --filter @akrdev/api... && pnpm --filter @akrdev/api build:full` |
 | **Start Command** | `pnpm --filter @akrdev/api start` |
-| **Plan** | Free |
 
-4. Click **Environment Variables** → **Add Environment Variable**. Add these 7:
+5. Click **Variables** tab and add these 8 variables:
 
 | Key | Value |
 |-----|-------|
-| `DATABASE_URL` | (paste Internal Database URL from Step 1) |
+| `DATABASE_URL` | (paste Database URL from Step 1) |
 | `JWT_ACCESS_SECRET` | (paste JWT Secret 1 from Step 2) |
 | `JWT_REFRESH_SECRET` | (paste JWT Secret 2 from Step 2) |
 | `JWT_ACCESS_EXPIRY` | `15m` |
 | `JWT_REFRESH_EXPIRY` | `7d` |
-| `CORS_ORIGINS` | (your domain, or `*` for testing — restrict in production) |
+| `CORS_ORIGINS` | `*` (restrict in production to your domain) |
 | `NODE_ENV` | `production` |
+| `PORT` | `3000` |
 
-5. Click **Create Web Service**. Wait ~5 minutes until "Deploy successful".
-6. Copy the URL at the top (e.g. `https://akrdev-api.onrender.com`). **Save it in Notepad.**
-7. Test: open browser → go to `https://akrdev-api.onrender.com/api/v1/health` → should show `{"status":"ok"}`
+6. Under **Settings** → **Networking**, the app is auto-assigned a domain (e.g. `akrdev-api.up.railway.app`). **Note:** Railway generates the public URL automatically — no manual domain setup needed.
+
+7. Click **Deploy**. Wait ~5 minutes until "Deploy successful".
+8. Test: open browser → go to `https://<your-service-name>.up.railway.app/api/v1/health` → should show `{"status":"ok"}`
 
 The admin user is created automatically during deployment.
 
@@ -123,12 +120,12 @@ On your PC, open this file in Notepad:
 apps\electron\.env
 ```
 
-Set the first line to your Render URL:
+Set the first line to your Railway URL:
 ```
-CLOUD_API_URL=https://akrdev-api.onrender.com/api/v1
+CLOUD_API_URL=https://<your-service-name>.up.railway.app/api/v1
 ```
 
-Replace with the actual URL from Step 4.
+Replace `<your-service-name>` with the actual service name from Step 4.
 
 ---
 
@@ -177,9 +174,9 @@ apps\electron\release\AKRDev RMS Setup.exe
 
 ## Step 9: Setup Thermal Printer
 
-1. Inside POS → **Settings** → **Printer Setup** tab
-2. Add printer (USB or Network)
-3. Mark as "Kitchen" (KOT) or "Billing" (bills)
+1. Inside POS → **Settings** → **Printers** section
+2. Add printer (USB or Network/Spooler)
+3. Configure kitchen (KOT) / billing routing
 4. Click **Test Print**
 
 Supported: Any ESC/POS thermal printer (80mm/58mm). Common: Epson TM-T82, Rongta, Xprinter.
@@ -192,12 +189,27 @@ Install the EXE on another PC. Login. **All data is there** — menu, tables, or
 
 ---
 
+## Railway vs VPS
+
+| | Railway | VPS (Linux) |
+|---|---|---|
+| Setup time | 10 minutes | 1–2 hours |
+| Cost/month | $3–5 | $5–10 |
+| Maintenance | Zero | Manual updates, SSL, Nginx |
+| Custom domain | Built-in | Manual certbot setup |
+| Who should use | Most restaurants | Enterprises needing full control |
+
+For VPS deployment, see `scripts/deploy-vps.sh`.
+
+---
+
 ## Troubleshooting
 
 | Problem | Fix |
 |---------|-----|
-| Render deploy fails | Check DATABASE_URL has no extra spaces. Ensure Root Directory is empty (repo root). |
-| `pnpm` not found | Run `npm install -g pnpm` first, then restart PowerShell |
-| EXE won't start | Check `apps\electron\.env` has correct `CLOUD_API_URL` |
+| Railway deploy fails | Check DATABASE_URL has no extra spaces. Verify Root Directory is `apps/api`. |
+| `pnpm` not found | Ensure `npm install -g pnpm` is in the Build Command. |
+| EXE won't start | Check `apps\electron\.env` has correct `CLOUD_API_URL` ending in `/api/v1`. |
 | Login fails | Check DATABASE_URL is correct. Re-deploy to run seed again. |
-| CORS errors in browser | Set `CORS_ORIGINS` to your frontend domain instead of `*` |
+| CORS errors in browser | Set `CORS_ORIGINS` to your frontend domain instead of `*`. |
+| Database offline | In Railway, go to PostgreSQL service → make sure it's active (green). |

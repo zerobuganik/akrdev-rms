@@ -11,6 +11,15 @@
     "lint": "turbo lint",
     "format": "prettier --write \"**/*.{ts,tsx,json,md}\""
   },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "argon2",
+      "@prisma/engines",
+      "@prisma/client",
+      "esbuild",
+      "typescript"
+    ]
+  },
   "devDependencies": {
     "@playwright/test": "^1.60.0",
     "@typescript-eslint/eslint-plugin": "^8.60.0",

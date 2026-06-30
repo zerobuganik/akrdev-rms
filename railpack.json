@@ -5,8 +5,7 @@
       "commands": [
         "corepack enable",
         "corepack prepare pnpm@11.5.0 --activate",
-        "pnpm install --frozen-lockfile --ignore-scripts",
-        "pnpm rebuild argon2 @prisma/engines @prisma/client"
+        "pnpm install --frozen-lockfile"
       ]
     },
     "build": {

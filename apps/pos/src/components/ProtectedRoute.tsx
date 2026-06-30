@@ -1,6 +1,7 @@
 import { Navigate } from 'react-router-dom'
 import type { ReactNode } from 'react'
 import { useAuthStore } from '@/stores/useAuthStore'
+import { SyncScreen } from '@/components/SyncScreen'
 
 interface ProtectedRouteProps {
   children: ReactNode
@@ -9,7 +10,7 @@ interface ProtectedRouteProps {
 
 export function ProtectedRoute({ children, requirePin = true }: ProtectedRouteProps) {
   const token = localStorage.getItem('accessToken')
-  const { needsPinSetup } = useAuthStore()
+  const { needsPinSetup, showSyncScreen, lastLoginPhone, lastLoginPassword, finishSync } = useAuthStore()
 
   if (!token) {
     return <Navigate to="/login" replace />
@@ -17,6 +18,10 @@ export function ProtectedRoute({ children, requirePin = true }: ProtectedRoutePr
 
   if (requirePin && needsPinSetup) {
     return <Navigate to="/set-pin" replace />
+  }
+
+  if (showSyncScreen) {
+    return <SyncScreen onComplete={finishSync} phone={lastLoginPhone ?? undefined} password={lastLoginPassword ?? undefined} />
   }
 
   return <>{children}</>

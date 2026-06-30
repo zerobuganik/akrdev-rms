@@ -17,12 +17,16 @@ interface AuthState {
   isLoading: boolean
   error: string | null
   needsPinSetup: boolean
+  showSyncScreen: boolean
+  lastLoginPhone: string | null
+  lastLoginPassword: string | null
   login: (phone: string, password: string) => Promise<void>
   loginWithPin: (phone: string, pin: string) => Promise<void>
   setPin: (pin: string) => Promise<void>
   updateUser: (user: User) => void
   logout: () => void
   clearError: () => void
+  finishSync: () => void
 }
 
 function safeParse<T>(key: string, fallback: T): T {
@@ -42,6 +46,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   isLoading: false,
   error: null,
   needsPinSetup: false,
+  showSyncScreen: false,
+  lastLoginPhone: null,
+  lastLoginPassword: null,
 
   login: async (phone: string, password: string) => {
     set({ isLoading: true, error: null, needsPinSetup: false })
@@ -58,6 +65,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         isAuthenticated: true,
         isLoading: false,
         needsPinSetup: data.needsPinSetup ?? false,
+        showSyncScreen: data.syncRequired !== false,
+        lastLoginPhone: phone,
+        lastLoginPassword: password,
       })
     } catch (err: unknown) {
       const apiMsg = (err as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error?.message
@@ -81,6 +91,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         user: data.user,
         isAuthenticated: true,
         isLoading: false,
+        showSyncScreen: false,
       })
     } catch (err: unknown) {
       const apiMsg = (err as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error?.message
@@ -112,6 +123,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   clearError: () => set({ error: null }),
+  finishSync: () => set({ showSyncScreen: false }),
 }))
 
 

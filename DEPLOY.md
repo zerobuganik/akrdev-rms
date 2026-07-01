@@ -101,7 +101,7 @@ git push -u origin main
 | `PORT` | `3000` |
 | `LOG_LEVEL` | `info` |
 
-6. Under **Settings** → **Networking**, the app is auto-assigned a domain (e.g. `akrdev-api.up.railway.app`). **Note:** Railway generates the public URL automatically — no manual domain setup needed.
+6. Under **Settings** → **Networking**, the app is auto-assigned a domain (e.g. `akrdev-rms-production.up.railway.app`). **Note:** Railway generates the public URL automatically — no manual domain setup needed.
 
 7. Click **Deploy**. Wait ~5 minutes until "Deploy successful".
 8. Test: open browser → go to `https://<your-service-name>.up.railway.app/api/v1/health` → should show `{"status":"ok"}`
@@ -125,10 +125,10 @@ apps\electron\.env
 
 Set the first line to your Railway URL:
 ```
-CLOUD_API_URL=https://<your-service-name>.up.railway.app/api/v1
+CLOUD_API_URL=https://akrdev-rms-production.up.railway.app/api/v1
 ```
 
-Replace `<your-service-name>` with the actual service name from Step 4.
+Replace with your actual service domain from Step 4.
 
 ---
 

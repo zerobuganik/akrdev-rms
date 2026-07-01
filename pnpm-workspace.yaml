@@ -3,12 +3,12 @@ packages:
   - "packages/*"
 allowBuilds:
   argon2: true
-  electron: true
-  electron-winstaller: true
+  electron: false
+  electron-winstaller: false
   esbuild: true
   msw: true
   prisma: true
-  usb: true
-  'node-hid': true
-  '@luckykiet/node-printer': true
+  usb: false
+  'node-hid': false
+  '@luckykiet/node-printer': false
   '@prisma/engines': true

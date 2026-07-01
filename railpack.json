@@ -3,17 +3,11 @@
   "steps": {
     "install": {
       "env": {
-        "COREPACK_ENABLE_STRICT": "0",
-        "PNPM_HOME": "/tmp/pnpm_home"
+        "COREPACK_ENABLE_STRICT": "0"
       },
       "commands": [
         "corepack enable",
         "corepack prepare pnpm@11.5.0 --activate",
-        "pnpm config set allow-builds.'@luckykiet/node-printer' false",
-        "pnpm config set allow-builds.electron false",
-        "pnpm config set allow-builds.electron-winstaller false",
-        "pnpm config set allow-builds.usb false",
-        "pnpm config set allow-builds.node-hid false",
         "pnpm install --frozen-lockfile"
       ]
     },

@@ -1584,7 +1584,7 @@ app.get('/api/v1/orders/takeaway/active', async (_req, res) => {
       include: { items: true, kots: true },
       orderBy: { createdAt: 'desc' },
     })
-    res.json(orders)
+    res.json(orders.map(reshapeOrderItems))
   } catch (err) {
     console.error('Error fetching takeaway orders:', err)
     res.status(500).json({ error: 'Failed to fetch takeaway orders' })

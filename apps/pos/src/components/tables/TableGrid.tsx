@@ -302,6 +302,7 @@ export function TableGrid() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tables', selectedAreas] })
+      queryClient.invalidateQueries({ queryKey: ['order'] })
       setMergeSourceTable(null)
       setMergeDestTableId('')
       toast('Tables merged successfully', 'success')

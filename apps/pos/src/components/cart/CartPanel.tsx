@@ -322,9 +322,28 @@ export function CartPanel({ tableId }: { tableId: string | null }) {
       const kotItems = sentItems.filter((i) => i.kotId === kot.id)
       const kotCancelled = cancelled.filter((i) => i.kotId === kot.id)
       if (kotItems.length > 0 || kotCancelled.length > 0) {
-        kotsWithItems.push({ kot, items: [...kotItems, ...kotCancelled] })
+        kotsWithItems.push({ kot, items: kotItems })
       }
     }
+  }
+
+  const mergeApiItemsForDisplay = (items: ApiOrderItem[]) => {
+    const map = new Map<string, { itemId: string; name: string; quantity: number; unitPrice: number; lineTotal: number; ids: string[]; note?: string }>()
+    for (const i of items) {
+      if (i.status === 'Cancelled') continue
+      const key = `${i.itemId}-${i.variationId ?? 'none'}`
+      const existing = map.get(key)
+      const itemName = getItemDisplayName(i)
+      const variationName = getVariationDisplayName(i)
+      const displayName = variationName ? `${itemName} (${variationName})` : itemName
+      if (existing) {
+        existing.quantity += i.quantity; existing.lineTotal += i.lineTotal; existing.ids.push(i.id)
+        if (i.note && !existing.note) existing.note = i.note
+      } else {
+        map.set(key, { itemId: i.itemId, name: displayName, quantity: i.quantity, unitPrice: i.unitPrice, lineTotal: i.lineTotal, ids: [i.id], note: i.note })
+      }
+    }
+    return Array.from(map.values())
   }
 
   if (!tableId) {
@@ -442,39 +461,36 @@ export function CartPanel({ tableId }: { tableId: string | null }) {
         )}
 
         {kotsWithItems.map(({ kot, items }) => {
-          const merged = mergeApiItems(items)
+          const merged = mergeApiItemsForDisplay(items)
+          const kotCancelledItems = cancelled.filter((i) => i.kotId === kot.id)
           return (
             <div key={kot.id} className="mb-3">
               <p className="mb-1 border-b pb-1 text-xs font-semibold text-muted-foreground">
                 KOT #{kot.kotNumber} — By {kot.sentBy} — {new Date(kot.sentAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
               </p>
-              {merged.map((m) => {
-                const isCancelled = m.ids.every((id) => {
-                  const item = items.find((i) => i.id === id)
-                  return item?.status === 'Cancelled'
-                })
-                const cancelInfo = isCancelled ? items.find((i) => i.id === m.ids[0] && i.status === 'Cancelled') : null
-                return (
-                <div key={m.ids[0]} className={`group flex items-center gap-1.5 rounded py-0.5 text-sm hover:bg-muted/50 ${isCancelled ? 'line-through opacity-60' : ''}`}>
-                  {order?.status !== 'Settled' && !isCancelled && (
+              {merged.map((m) => (
+                <div key={m.ids[0]} className="group flex items-center gap-1.5 rounded py-0.5 text-sm hover:bg-muted/50">
+                  {order?.status !== 'Settled' && (
                     <button onClick={() => m.ids.forEach((id) => cancelItemMut.mutate(id))} className="text-muted-foreground hover:text-red-500 shrink-0" title="Cancel item">
                       <Ban size={14} />
                     </button>
                   )}
-                  <span className={`flex-1 ${isCancelled ? '' : 'font-medium'}`}>{m.name}</span>
+                  <span className="flex-1 text-sm font-medium">{m.name}</span>
                   <span className="text-xs text-muted-foreground shrink-0">×{m.quantity}</span>
                   <span className="text-xs font-medium shrink-0">₹{m.lineTotal.toLocaleString()}</span>
-                  {isCancelled && cancelInfo?.cancelledByUser?.name && (
-                    <span className="text-xs text-muted-foreground">by {cancelInfo.cancelledByUser.name}</span>
-                  )}
-                  {isCancelled && cancelInfo?.cancelledAt && (
-                    <span className="text-xs text-muted-foreground">{new Date(cancelInfo.cancelledAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</span>
-                  )}
                 </div>
-              )})}
+              ))}
+              {kotCancelledItems.map((item) => (
+                <div key={item.id} className="flex items-center gap-1.5 rounded py-0.5 text-sm line-through opacity-60">
+                  <span className="flex-1">{getItemDisplayName(item)}</span>
+                  <span className="text-xs text-muted-foreground">×{item.quantity}</span>
+                  <span className="text-xs text-muted-foreground">₹{item.lineTotal.toLocaleString()}</span>
+                  {item.cancelledByUser?.name && <span className="text-xs text-muted-foreground">by {item.cancelledByUser.name}</span>}
+                </div>
+              ))}
             </div>
           )
-        }        )}
+        })}
 
         {!hasActiveOrder && !hasCartItems && (
           <div className="flex h-full items-center justify-center p-6 text-center text-sm text-muted-foreground">

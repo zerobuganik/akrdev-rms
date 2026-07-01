@@ -431,7 +431,7 @@ export class PrintService {
         const qtyStr = this.centerIn(String(item.quantity), qtyColW)
         const nameStr = this.pad(item.name, itemColW)
         lines.push(
-          CMD.DOUBLE_BOTH,
+          CMD.DOUBLE_HEIGHT,
           qtyStr + '  ' + nameStr,
           CMD.NORMAL,
         )

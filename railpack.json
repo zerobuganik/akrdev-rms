@@ -15,8 +15,7 @@
     "build": {
       "inputs": [{ "step": "install" }],
       "commands": [
-        "pnpm --filter @akrdev/types --filter @akrdev/shared --filter @akrdev/schemas build",
-        "cd apps/api && npx prisma generate && tsc"
+        "pnpm --filter @akrdev/api build:full"
       ]
     }
   },

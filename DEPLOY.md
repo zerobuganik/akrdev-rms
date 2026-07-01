@@ -82,8 +82,10 @@ git push -u origin main
 | Field | Value |
 |-------|-------|
 | **Root Directory** | (leave empty — use repository root for monorepo) |
-| **Build Command** | `corepack enable && corepack prepare pnpm@11.5.0 --activate && pnpm install --frozen-lockfile --filter @akrdev/api... && pnpm --filter @akrdev/api build:full` |
+| **Build Command** | `corepack enable && corepack prepare pnpm@11.5.0 --activate && pnpm install --frozen-lockfile && pnpm --filter @akrdev/api build:full` |
 | **Start Command** | `cd apps/api && pnpm --filter @akrdev/api start` |
+
+> **Note:** The `railpack.json` file in the repo root already handles these commands automatically. If Railway's auto-detection picks it up, you don't need to set these manually. Only set them if Railway prompts for them.
 
 5. Click **Variables** tab and add these 8 variables:
 
@@ -97,6 +99,7 @@ git push -u origin main
 | `CORS_ORIGINS` | `*` (restrict in production to your domain) |
 | `NODE_ENV` | `production` |
 | `PORT` | `3000` |
+| `LOG_LEVEL` | `info` |
 
 6. Under **Settings** → **Networking**, the app is auto-assigned a domain (e.g. `akrdev-api.up.railway.app`). **Note:** Railway generates the public URL automatically — no manual domain setup needed.
 

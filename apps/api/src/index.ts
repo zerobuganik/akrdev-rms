@@ -37,7 +37,7 @@ app.use(
 app.use(
   cors({
     origin: process.env.NODE_ENV === 'production'
-      ? (process.env.CORS_ORIGINS?.split(',') ?? 'http://localhost:5173')
+      ? (process.env.CORS_ORIGINS?.split(',') ?? '*')
       : '*',
   }),
 )

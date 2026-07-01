@@ -1293,25 +1293,28 @@ app.get('/api/v1/tables', async (req, res) => {
 
     // 1. Load tables from local SQLite (persisted, updated on every create/edit, survives offline)
     const localTables = await localPrisma.cachedTable.findMany()
-    let activeOrders: Array<{ tableId: string | null; tableName: string | null; status: string; subtotal: number; grandTotal: number }> = []
+    let activeOrders: Array<{ id: string; tableId: string | null; tableName: string | null; status: string; subtotal: number; grandTotal: number; createdAt: Date; updatedAt: Date }> = []
     if (localTables.length > 0) {
       activeOrders = await localPrisma.localOrder.findMany({
         where: { status: { not: 'Settled' } },
-        select: { tableId: true, tableName: true, status: true, subtotal: true, grandTotal: true },
+        select: { id: true, tableId: true, tableName: true, status: true, subtotal: true, grandTotal: true, createdAt: true, updatedAt: true },
       })
+      const orderByTableId = new Map<string, (typeof activeOrders)[number]>()
       const orderByTableName = new Map<string, (typeof activeOrders)[number]>()
       for (const o of activeOrders) {
+        if (o.tableId) orderByTableId.set(o.tableId, o)
         if (o.tableName) orderByTableName.set(o.tableName, o)
       }
       let tables = localTables.map((t) => {
-        const local = orderByTableName.get(t.name)
+        const local = orderByTableId.get(t.id) ?? orderByTableName.get(t.name)
+        const tableStatus = local ? (local.status === 'KOT_Sent' ? 'Occupied' : local.status === 'Bill_Printed' ? 'Billed' : t.status) : t.status
         return {
           id: t.id,
           name: t.name,
           capacity: t.capacity,
-          status: local?.status ?? t.status,
+          status: tableStatus,
           area: t.areaId ? { id: t.areaId, name: t.areaName ?? '' } : null,
-          activeOrder: local ? { grandTotal: local.grandTotal, status: local.status } : null,
+          orders: local ? [{ id: local.id, createdAt: local.createdAt, updatedAt: local.updatedAt, subtotal: local.subtotal, grandTotal: local.grandTotal, status: local.status }] : [],
         }
       })
       if (tableName) tables = tables.filter((t) => t.name.toLowerCase().includes(tableName.toLowerCase()))
@@ -1324,21 +1327,24 @@ app.get('/api/v1/tables', async (req, res) => {
     if (sourceTables && (sourceTables as unknown[]).length > 0) {
       const localOrders = await localPrisma.localOrder.findMany({
         where: { status: { not: 'Settled' } },
-        select: { tableId: true, tableName: true, status: true, subtotal: true, grandTotal: true },
+        select: { id: true, tableId: true, tableName: true, status: true, subtotal: true, grandTotal: true, createdAt: true, updatedAt: true },
       })
-      const localStatusByTableName = new Map<string, (typeof localOrders)[number]>()
+      const localByTableId = new Map<string, (typeof localOrders)[number]>()
+      const localByTableName = new Map<string, (typeof localOrders)[number]>()
       for (const o of localOrders) {
-        if (o.tableName) localStatusByTableName.set(o.tableName, o)
+        if (o.tableId) localByTableId.set(o.tableId, o)
+        if (o.tableName) localByTableName.set(o.tableName, o)
       }
       let tables = (sourceTables as { id: string; name: string; capacity?: number; status?: string; area?: { id: string; name: string }; areaName?: string }[]).map((ct) => {
-        const local = localStatusByTableName.get(ct.name)
+        const local = localByTableId.get(ct.id) ?? localByTableName.get(ct.name)
+        const tableStatus = local ? (local.status === 'KOT_Sent' ? 'Occupied' : local.status === 'Bill_Printed' ? 'Billed' : ct.status ?? 'Available') : ct.status ?? 'Available'
         return {
           id: ct.id,
           name: ct.name,
           capacity: ct.capacity ?? 0,
-          status: local?.status ?? ct.status ?? 'Available',
+          status: tableStatus,
           area: ct.area ?? (ct.areaName ? { id: ct.areaName, name: ct.areaName } : null),
-          activeOrder: local ? { grandTotal: local.grandTotal, status: local.status } : null,
+          orders: local ? [{ id: local.id, createdAt: local.createdAt, updatedAt: local.updatedAt, subtotal: local.subtotal, grandTotal: local.grandTotal, status: local.status }] : [],
         }
       })
       if (tableName) tables = tables.filter((t) => t.name.toLowerCase().includes(tableName.toLowerCase()))
@@ -1885,11 +1891,17 @@ app.post('/api/v1/kot/send-with-items', async (req, res, next) => {
     const orderId = crypto.randomUUID()
     const kotId = crypto.randomUUID()
 
+    let resolvedTableName = tableName ?? null
+    if (tableId && !resolvedTableName) {
+      const tbl = await localPrisma.cachedTable.findUnique({ where: { id: tableId } }).catch(() => null)
+      if (tbl) resolvedTableName = tbl.name
+    }
+
     await localPrisma.localOrder.create({
       data: {
         id: orderId,
         tableId: tableId ?? null,
-        tableName: tableName ?? null,
+        tableName: resolvedTableName,
         guestCount: guestCount ?? 2,
         orderType: orderType ?? 'DineIn',
         status: 'KOT_Sent',

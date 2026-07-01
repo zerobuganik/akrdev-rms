@@ -21,6 +21,12 @@ export default function CartPage() {
     }
   }, [routeTableId, isTakeawayNew, setActiveTable])
 
+  useEffect(() => {
+    return () => {
+      useCartStore.getState().clearCart()
+    }
+  }, [])
+
   const handleAddItem = useCallback(
     (item: { id: string; name: string; basePrice: number; variations?: Array<{ id: string; name: string; priceAdjustment: number }> }, variationId?: string) => {
       if (!tableId && !isTakeawayNew) return

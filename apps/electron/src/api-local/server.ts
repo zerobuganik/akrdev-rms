@@ -788,15 +788,21 @@ app.post('/api/v1/tables', async (req, res) => {
   try {
     const body = req.body
     const id = body.id ?? crypto.randomUUID()
-    const areaObj = body.area as { id?: string; name?: string } | undefined
+    const areaId = (body.areaId as string) ?? (body.area as { id?: string })?.id ?? null
+    let areaName = (body.area as { name?: string })?.name ?? null
+    if (areaId && !areaName) {
+      const area = await localPrisma.cachedArea.findUnique({ where: { id: areaId } }).catch(() => null)
+      areaName = area?.name ?? ''
+    }
+    const areaObj = areaId ? { id: areaId, name: areaName ?? '' } : null
     await localPrisma.cachedTable.upsert({
       where: { id },
-      create: { id, name: body.name ?? 'New Table', capacity: body.capacity ?? 4, status: body.status ?? 'Available', areaId: areaObj?.id ?? null, areaName: areaObj?.name ?? null },
-      update: { name: body.name, capacity: body.capacity, status: body.status, areaId: areaObj?.id ?? null, areaName: areaObj?.name ?? null },
+      create: { id, name: body.name ?? 'New Table', capacity: body.capacity ?? 4, status: body.status ?? 'Available', areaId, areaName },
+      update: { name: body.name, capacity: body.capacity, status: body.status, areaId, areaName },
     })
     if (cachedCloudTables) {
       const idx = (cachedCloudTables as Array<{ id: string }>).findIndex(t => t.id === id)
-      const entry = { id, name: body.name, capacity: body.capacity ?? 4, status: body.status ?? 'Available', area: areaObj ?? null }
+      const entry = { id, name: body.name, capacity: body.capacity ?? 4, status: body.status ?? 'Available', area: areaObj }
       if (idx >= 0) Object.assign(cachedCloudTables[idx], entry)
       else cachedCloudTables.unshift(entry)
     }
@@ -2284,13 +2290,15 @@ export function createLocalApiServer() {
     console.log(`Local POS API running on http://0.0.0.0:${port}`)
   startupCloudSync().catch(() => {})
 
-  // Periodic background re-sync using stored cloud token
-  setInterval(() => {
+  const runBackgroundSync = () => {
     const token = getCloudAccessToken()
     if (token && !syncInProgress) {
       syncWithProgress().catch(() => {})
     }
-  }, 30_000)
+  }
+  // Run immediately, then every 15 seconds
+  runBackgroundSync()
+  setInterval(runBackgroundSync, 15_000)
 })
 
   return server

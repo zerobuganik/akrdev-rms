@@ -200,7 +200,12 @@ export function CartPanel({ tableId }: { tableId: string | null }) {
         orderType: tableId === 'takeaway-new' ? 'Takeaway' : 'Dine In',
       }).catch(() => {})
     },
-    onError: () => { toast('Failed to send KOT', 'error') },
+    onError: (err: unknown) => {
+      const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error
+        ?? (err as Error)?.message
+        ?? 'Failed to send KOT'
+      toast(msg, 'error')
+    },
   })
 
   const generateBill = useMutation({

@@ -13,4 +13,4 @@ data/
 *.db-journal
 release/
 api-local.bundle.js
-src/generated/
+apps/electron/src/generated/

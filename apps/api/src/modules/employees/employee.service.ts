@@ -13,11 +13,11 @@ export class EmployeeService {
     return user
   }
 
-  async create(data: { name: string; phone: string; pin: string; password: string; role: 'Admin' | 'Cashier' | 'Captain' }) {
+  async create(data: { id?: string; name: string; phone: string; pin: string; password: string; role: 'Admin' | 'Cashier' | 'Captain' }) {
     const pinHash = await argon2.hash(data.pin)
     const passwordHash = await argon2.hash(data.password)
     return prisma.user.create({
-      data: { name: data.name, phone: data.phone, pinHash, passwordHash, role: data.role },
+      data: { ...(data.id && { id: data.id }), name: data.name, phone: data.phone, pinHash, passwordHash, role: data.role },
       select: { id: true, name: true, phone: true, role: true, active: true, imageUrl: true },
     })
   }

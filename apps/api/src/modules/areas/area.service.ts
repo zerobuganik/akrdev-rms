@@ -13,8 +13,8 @@ export const areaService = {
     if (!area) throw new NotFoundError('Area')
     return area
   },
-  async create(data: { name: string; displayOrder?: number }) {
-    return prisma.area.create({ data })
+  async create(data: { id?: string; name: string; displayOrder?: number }) {
+    return prisma.area.create({ data: { ...(data.id && { id: data.id }), name: data.name, displayOrder: data.displayOrder ?? 0 } })
   },
   async update(id: string, data: { name?: string; displayOrder?: number }) {
     const existing = await prisma.area.findUnique({ where: { id } })

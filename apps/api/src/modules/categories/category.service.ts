@@ -9,11 +9,12 @@ export const categoryService = {
     return cat
   },
   async create(data: Record<string, unknown>) {
-    const { name, defaultTaxPercent, displayOrder, imageUrl, kitchenId } = data as {
-      name: string; defaultTaxPercent?: number; displayOrder?: number; imageUrl?: string; kitchenId?: string | null
+    const { id, name, defaultTaxPercent, displayOrder, imageUrl, kitchenId } = data as {
+      id?: string; name: string; defaultTaxPercent?: number; displayOrder?: number; imageUrl?: string; kitchenId?: string | null
     }
     return prisma.category.create({
       data: {
+        ...(id && { id }),
         name: name!,
         defaultTaxPercent: defaultTaxPercent ?? 0,
         displayOrder: displayOrder ?? 0,

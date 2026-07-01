@@ -15,13 +15,14 @@ export const itemService = {
     return item
   },
   async create(data: Record<string, unknown>) {
-    const { variations, categoryId, name, shortcode, basePrice, taxOverride, inStock, dietaryType, kitchenId, imageUrl } = data as {
-      categoryId: string; name: string; shortcode?: string; basePrice: number;
+    const { id, variations, categoryId, name, shortcode, basePrice, taxOverride, inStock, dietaryType, kitchenId, imageUrl } = data as {
+      id?: string; categoryId: string; name: string; shortcode?: string; basePrice: number;
       taxOverride?: number; inStock?: boolean; dietaryType?: string; kitchenId?: string; imageUrl?: string
       variations?: { name: string; priceAdjustment: number }[]
     }
     return prisma.item.create({
       data: {
+        ...(id && { id }),
         categoryId,
         name,
         basePrice: basePrice ?? 0,

@@ -1,6 +1,8 @@
 import express from 'express'
 import http from 'http'
 import crypto from 'crypto'
+import path from 'path'
+import fs from 'fs'
 import * as argon2 from 'argon2'
 import { Server as SocketIOServer } from 'socket.io'
 import { tableLockService, setSocketIO } from '../services/table-lock.service.js'
@@ -35,7 +37,7 @@ function cleanExpiredCodes() {
 }
 
 const app = express()
-app.use(express.json())
+app.use(express.json({ limit: '10mb' }))
 
 // CORS — allow POS dev server and Captain app to call local API
 app.use((_req, res, next) => {
@@ -48,6 +50,12 @@ app.use((_req, res, next) => {
   }
   next()
 })
+
+const uploadsDir = path.join(process.cwd(), 'public', 'uploads')
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true })
+}
+app.use('/uploads', express.static(uploadsDir))
 
 app.get('/api/v1/pair/generate', (_req, res) => {
   cleanExpiredCodes()
@@ -764,6 +772,18 @@ function computeOrderTotals(subtotal: number, discounts?: Array<{ type: string; 
   return { taxTotal, discountTotal, grandTotal }
 }
 
+function reshapeOrderItems(order: Record<string, unknown> & { items?: Array<Record<string, unknown>> }): Record<string, unknown> {
+  if (!order.items) return order
+  return {
+    ...order,
+    items: order.items.map((item) => ({
+      ...item,
+      item: { name: item.itemName || 'Item' },
+      variation: item.variationName ? { name: item.variationName } : undefined,
+    })),
+  }
+}
+
 app.post('/api/v1/tables', async (req, res) => {
   try {
     const body = req.body
@@ -962,13 +982,40 @@ app.delete('/api/v1/categories/:id', async (req, res) => {
   }
 })
 
-app.post('/api/v1/areas', (req, res) => {
-  syncQueueService.enqueue('admin-create', { path: '/areas', body: req.body }).catch(() => {})
-  adminQueued(res)
+app.post('/api/v1/areas', async (req, res) => {
+  try {
+    const id = req.body.id ?? crypto.randomUUID()
+    await localPrisma.cachedArea.upsert({
+      where: { id },
+      create: { id, name: req.body.name ?? 'New Area' },
+      update: { name: req.body.name },
+    })
+    if (cachedAreas && Array.isArray(cachedAreas)) {
+      const existing = (cachedAreas as Array<{ id: string }>).findIndex(a => a.id === id)
+      const entry = { id, name: req.body.name, _count: { tables: 0 } }
+      if (existing >= 0) (cachedAreas as Array<Record<string, unknown>>)[existing] = entry as unknown as Record<string, unknown>
+      else (cachedAreas as Array<unknown>).unshift(entry)
+    }
+    syncQueueService.enqueue('admin-create', { path: '/areas', body: { ...req.body, id } }).catch(() => {})
+    res.json({ ok: true, id })
+  } catch (err) {
+    console.error('[areas] Create error:', err)
+    res.status(500).json({ error: 'Failed to create area' })
+  }
 })
-app.delete('/api/v1/areas/:id', (req, res) => {
-  syncQueueService.enqueue('admin-delete', { path: `/areas/${req.params.id}` }).catch(() => {})
-  adminQueued(res)
+app.delete('/api/v1/areas/:id', async (req, res) => {
+  try {
+    const { id } = req.params
+    await localPrisma.cachedArea.delete({ where: { id } }).catch(() => {})
+    if (cachedAreas && Array.isArray(cachedAreas)) {
+      cachedAreas = (cachedAreas as Array<{ id: string }>).filter(a => a.id !== id)
+    }
+    syncQueueService.enqueue('admin-delete', { path: `/areas/${req.params.id}` }).catch(() => {})
+    res.json({ ok: true })
+  } catch (err) {
+    console.error('[areas] Delete error:', err)
+    res.status(500).json({ error: 'Failed to delete area' })
+  }
 })
 
 app.put('/api/v1/settings', (req, res) => {
@@ -1123,13 +1170,69 @@ app.post('/api/v1/auth/change-password', (req, res) => {
 })
 
 // Settings upload routes
-app.post('/api/v1/settings/upload-logo', (req, res) => {
-  syncQueueService.enqueue('admin-put', { path: '/settings/upload-logo' }).catch(() => {})
-  adminQueued(res)
+app.post('/api/v1/settings/upload-logo', async (req, res) => {
+  try {
+    const { image } = req.body
+    if (!image || typeof image !== 'string') {
+      res.status(400).json({ error: { message: 'No image provided' } })
+      return
+    }
+    const matches = image.match(/^data:(image\/\w+);base64,(.+)$/)
+    if (!matches) {
+      res.status(400).json({ error: { message: 'Invalid image format' } })
+      return
+    }
+    const ext = matches[1] === 'image/png' ? 'png' : 'jpg'
+    const filename = `logo-${crypto.randomUUID()}.${ext}`
+    const filepath = path.join(uploadsDir, filename)
+    fs.writeFileSync(filepath, Buffer.from(matches[2]!, 'base64'))
+    const logoUrl = `/uploads/${filename}`
+    if (cachedSettings) {
+      cachedSettings = { ...cachedSettings, logoUrl }
+      await localPrisma.cachedSetting.upsert({
+        where: { key: 'settings' },
+        create: { key: 'settings', value: JSON.stringify(cachedSettings) },
+        update: { value: JSON.stringify(cachedSettings) },
+      }).catch(() => {})
+    }
+    syncQueueService.enqueue('admin-put', { path: '/settings/upload-logo', body: { image } }).catch(() => {})
+    res.json({ logoUrl })
+  } catch (err) {
+    console.error('[upload-logo] Error:', err)
+    res.status(500).json({ error: { message: 'Failed to upload logo' } })
+  }
 })
-app.post('/api/v1/settings/upload-print-logo', (req, res) => {
-  syncQueueService.enqueue('admin-put', { path: '/settings/upload-print-logo' }).catch(() => {})
-  adminQueued(res)
+app.post('/api/v1/settings/upload-print-logo', async (req, res) => {
+  try {
+    const { image } = req.body
+    if (!image || typeof image !== 'string') {
+      res.status(400).json({ error: { message: 'No image provided' } })
+      return
+    }
+    const matches = image.match(/^data:(image\/\w+);base64,(.+)$/)
+    if (!matches) {
+      res.status(400).json({ error: { message: 'Invalid image format' } })
+      return
+    }
+    const ext = matches[1] === 'image/png' ? 'png' : 'jpg'
+    const filename = `print-logo-${crypto.randomUUID()}.${ext}`
+    const filepath = path.join(uploadsDir, filename)
+    fs.writeFileSync(filepath, Buffer.from(matches[2]!, 'base64'))
+    const printLogoUrl = `/uploads/${filename}`
+    if (cachedSettings) {
+      cachedSettings = { ...cachedSettings, printLogoUrl }
+      await localPrisma.cachedSetting.upsert({
+        where: { key: 'settings' },
+        create: { key: 'settings', value: JSON.stringify(cachedSettings) },
+        update: { value: JSON.stringify(cachedSettings) },
+      }).catch(() => {})
+    }
+    syncQueueService.enqueue('admin-put', { path: '/settings/upload-print-logo', body: { image } }).catch(() => {})
+    res.json({ printLogoUrl })
+  } catch (err) {
+    console.error('[upload-print-logo] Error:', err)
+    res.status(500).json({ error: { message: 'Failed to upload print logo' } })
+  }
 })
 app.delete('/api/v1/settings/delete-logo', (_req, res) => adminQueued(res))
 app.delete('/api/v1/settings/delete-print-logo', (_req, res) => adminQueued(res))
@@ -1243,11 +1346,23 @@ app.get('/api/v1/settings', (_req, res) => {
   if (cachedSettings) {
     const s = { ...cachedSettings }
     const cloudBase = getCloudApiBase().replace(/\/api\/v\d\/?$/, '')
-    if (typeof s.logoUrl === 'string' && s.logoUrl.startsWith('/')) {
-      s.logoUrl = `${cloudBase}${s.logoUrl}`
+    // Rewrite relative logo paths to point to local API if the file exists locally,
+    // otherwise use the cloud URL
+    if (typeof s.logoUrl === 'string' && s.logoUrl.startsWith('/') && !s.logoUrl.startsWith('/api')) {
+      const localFile = path.join(uploadsDir, path.basename(s.logoUrl))
+      if (fs.existsSync(localFile)) {
+        s.logoUrl = s.logoUrl
+      } else {
+        s.logoUrl = `${cloudBase}${s.logoUrl}`
+      }
     }
-    if (typeof s.printLogoUrl === 'string' && s.printLogoUrl.startsWith('/')) {
-      s.printLogoUrl = `${cloudBase}${s.printLogoUrl}`
+    if (typeof s.printLogoUrl === 'string' && s.printLogoUrl.startsWith('/') && !s.printLogoUrl.startsWith('/api')) {
+      const localFile = path.join(uploadsDir, path.basename(s.printLogoUrl))
+      if (fs.existsSync(localFile)) {
+        s.printLogoUrl = s.printLogoUrl
+      } else {
+        s.printLogoUrl = `${cloudBase}${s.printLogoUrl}`
+      }
     }
     res.json(s)
     return
@@ -1293,7 +1408,7 @@ app.get('/api/v1/orders', async (req, res) => {
       include: { items: true, kots: true, settlement: true },
       orderBy: { createdAt: 'desc' },
     })
-    res.json(orders)
+    res.json(orders.map(reshapeOrderItems))
   } catch (err) {
     console.error('[orders] List error:', err)
     res.status(500).json({ error: 'Failed to fetch orders' })
@@ -1323,11 +1438,11 @@ app.get('/api/v1/orders/:tableId/active', async (req, res) => {
         include: { items: true, kots: true, settlement: true },
       })
       if (directOrder && directOrder.status !== 'Settled' && directOrder.status !== 'Cancelled') {
-        res.json(directOrder)
+        res.json(reshapeOrderItems(directOrder))
         return
       }
     }
-    res.json(order)
+    res.json(order ? reshapeOrderItems(order) : null)
   } catch (err) {
     console.error('Error fetching order:', err)
     res.status(500).json({ error: 'Failed to fetch order' })
@@ -1421,26 +1536,45 @@ app.post('/api/v1/cart/add-item', async (req, res) => {
   try {
     const { orderId, itemId, itemName, quantity, unitPrice: reqUnitPrice, lineTotal: reqLineTotal, variationId, variationName } = req.body
 
-    // Resolve unitPrice from cache if not provided (captain app sends just itemId + variationId)
     let unitPrice = reqUnitPrice
     let itemDisplayName = itemName
     let variationDisplayName = variationName
 
-    if (unitPrice == null && cachedCloudItems) {
-      const cachedItem = (cachedCloudItems as Array<Record<string, unknown>>).find((i) => i.id === itemId)
-      if (cachedItem) {
-        itemDisplayName = itemDisplayName ?? (cachedItem.name as string)
-        unitPrice = (cachedItem.basePrice as number) ?? 0
-        if (variationId && Array.isArray((cachedItem as Record<string, unknown>).variations)) {
-          const variation = ((cachedItem as Record<string, unknown>).variations as Array<{ id: string; name: string; priceAdjustment: number }>).find((v: { id: string }) => v.id === variationId)
-          if (variation) {
-            unitPrice += variation.priceAdjustment
-            variationDisplayName = variationDisplayName ?? variation.name
+    if (unitPrice == null) {
+      if (cachedCloudItems) {
+        const cachedItem = (cachedCloudItems as Array<Record<string, unknown>>).find((i) => i.id === itemId)
+        if (cachedItem) {
+          itemDisplayName = itemDisplayName ?? (cachedItem.name as string)
+          unitPrice = (cachedItem.basePrice as number) ?? 0
+          if (variationId && Array.isArray((cachedItem as Record<string, unknown>).variations)) {
+            const variation = ((cachedItem as Record<string, unknown>).variations as Array<{ id: string; name: string; priceAdjustment: number }>).find((v: { id: string }) => v.id === variationId)
+            if (variation) {
+              unitPrice += variation.priceAdjustment
+              variationDisplayName = variationDisplayName ?? variation.name
+            }
+          }
+        }
+      }
+      if (unitPrice == null) {
+        const dbItem = await localPrisma.cachedItem.findUnique({ where: { id: itemId } }).catch(() => null)
+        if (dbItem) {
+          itemDisplayName = itemDisplayName ?? dbItem.name
+          unitPrice = dbItem.basePrice
+          if (variationId && dbItem.variations) {
+            try {
+              const variations = JSON.parse(dbItem.variations as string) as Array<{ id: string; name: string; priceAdjustment: number }>
+              const variation = variations.find((v) => v.id === variationId)
+              if (variation) {
+                unitPrice += variation.priceAdjustment
+                variationDisplayName = variationDisplayName ?? variation.name
+              }
+            } catch { }
           }
         }
       }
     }
     if (unitPrice == null) unitPrice = 0
+    itemDisplayName = itemDisplayName ?? 'Item'
 
     const qty = quantity ?? 1
     const lineTotal = reqLineTotal ?? unitPrice * qty
@@ -1449,7 +1583,7 @@ app.post('/api/v1/cart/add-item', async (req, res) => {
       data: {
         orderId,
         itemId,
-        itemName: itemDisplayName ?? 'Item',
+        itemName: itemDisplayName,
         quantity: qty,
         unitPrice,
         lineTotal,
@@ -1676,6 +1810,89 @@ app.post('/api/v1/kot/send', async (req, res) => {
   } catch (err) {
     console.error('Error sending KOT:', err)
     res.status(500).json({ error: 'Failed to send KOT' })
+  }
+})
+
+app.post('/api/v1/kot/send-with-items', async (req, res) => {
+  try {
+    const { tableId, tableName, guestCount, orderType, sentBy, note, items } = req.body
+
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      res.status(400).json({ error: 'No items provided' })
+      return
+    }
+
+    const orderId = crypto.randomUUID()
+    const kotId = crypto.randomUUID()
+
+    const order = await localPrisma.localOrder.create({
+      data: {
+        id: orderId,
+        tableId: tableId ?? null,
+        tableName: tableName ?? null,
+        guestCount: guestCount ?? 2,
+        orderType: orderType ?? 'DineIn',
+        status: 'KOT_Sent',
+        note: note ?? null,
+        subtotal: 0,
+        taxTotal: 0,
+        discountTotal: 0,
+        grandTotal: 0,
+      },
+    })
+
+    for (const item of items) {
+      await localPrisma.localOrderItem.create({
+        data: {
+          id: crypto.randomUUID(),
+          orderId,
+          itemId: item.itemId,
+          itemName: item.itemName ?? 'Item',
+          quantity: item.quantity ?? 1,
+          unitPrice: item.unitPrice ?? 0,
+          lineTotal: (item.unitPrice ?? 0) * (item.quantity ?? 1),
+          variationId: item.variationId ?? null,
+          variationName: item.variationName ?? null,
+          status: 'Sent',
+          kotId,
+          note: item.note ?? null,
+        },
+      })
+    }
+
+    await localPrisma.localKOT.create({
+      data: { id: kotId, orderId, kotNumber: 1, sentBy: sentBy ?? 'User' },
+    })
+
+    const allItems = await localPrisma.localOrderItem.findMany({
+      where: { orderId, status: { not: 'Cancelled' } },
+    })
+    const subtotal = allItems.reduce((s, i) => s + i.lineTotal, 0)
+    const { taxTotal, discountTotal, grandTotal } = computeOrderTotals(subtotal)
+    await localPrisma.localOrder.update({
+      where: { id: orderId },
+      data: { subtotal, taxTotal, discountTotal, grandTotal },
+    })
+
+    if (io && tableId) {
+      io.to(`table:${tableId}`).emit('order:updated', {
+        orderId,
+        tableId,
+        action: 'kot-sent-with-items',
+      })
+    }
+
+    syncQueueService.enqueue('send-kot-with-items', {
+      tableId, tableName, guestCount, orderType, sentBy, note,
+      items: items.map((i: { itemId: string; itemName: string; variationId?: string; variationName?: string; quantity: number; unitPrice: number; note?: string }) => ({
+        itemId: i.itemId, itemName: i.itemName, variationId: i.variationId, variationName: i.variationName, quantity: i.quantity, unitPrice: i.unitPrice, note: i.note,
+      })),
+    }).catch(() => {})
+
+    res.status(201).json({ orderId, kotNumber: 1 })
+  } catch (err) {
+    console.error('Error sending KOT with items:', err)
+    res.status(500).json({ error: 'Failed to send KOT with items' })
   }
 })
 

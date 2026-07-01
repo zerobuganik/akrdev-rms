@@ -6,11 +6,11 @@ export const taxSlabService = {
     return prisma.taxSlab.findMany({ orderBy: { createdAt: 'asc' } })
   },
 
-  async create(data: { name: string; percent: number; isDefault?: boolean }) {
+  async create(data: { id?: string; name: string; percent: number; isDefault?: boolean }) {
     if (data.isDefault) {
       await prisma.taxSlab.updateMany({ where: { isDefault: true }, data: { isDefault: false } })
     }
-    return prisma.taxSlab.create({ data })
+    return prisma.taxSlab.create({ data: { ...(data.id && { id: data.id }), name: data.name, percent: data.percent, isDefault: data.isDefault ?? false } })
   },
 
   async update(id: string, data: { name?: string; percent?: number; isDefault?: boolean; isActive?: boolean }) {

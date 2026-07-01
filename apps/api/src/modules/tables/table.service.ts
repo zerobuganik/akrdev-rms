@@ -21,8 +21,8 @@ export const tableService = {
     if (!table) throw new NotFoundError('Table')
     return table
   },
-  async create(data: { areaId: string; name: string; capacity?: number; position?: number }) {
-    return prisma.table.create({ data })
+  async create(data: { id?: string; areaId?: string; name: string; capacity?: number; position?: number }) {
+    return prisma.table.create({ data: { ...(data.id && { id: data.id }), name: data.name, areaId: data.areaId ?? null, capacity: data.capacity ?? 4, position: data.position ?? 0 } })
   },
   async update(id: string, data: { areaId?: string; name?: string; capacity?: number; position?: number; status?: 'Available' | 'Reserved' | 'Occupied' | 'KOT_Pending' | 'Billed' }) {
     const existing = await prisma.table.findUnique({ where: { id, deactivatedAt: null } })

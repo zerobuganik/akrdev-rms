@@ -4,120 +4,45 @@ import { TableSwitcher } from '@/components/cart/TableSwitcher'
 import { MenuPanel } from '@/components/cart/MenuPanel'
 import { CartPanel } from '@/components/cart/CartPanel'
 import { useCartStore } from '@/stores/useCartStore'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { apiClient } from '@/lib/apiClient'
-import { toast } from '@/stores/useToastStore'
-import type { AxiosError } from 'axios'
 
 export default function CartPage() {
   const { tableId: routeTableId } = useParams()
-  const { setActiveTable } = useCartStore()
+  const { setActiveTable, addItem } = useCartStore()
   const [tableId, setTableId] = useState<string | null>(null)
-  const [takeawayOrderId, setTakeawayOrderId] = useState<string | null>(null)
-  const queryClient = useQueryClient()
 
   const isTakeawayNew = routeTableId === 'takeaway-new'
-
-  const getOrCreateTakeawayOrder = useCallback(async (): Promise<string> => {
-    if (takeawayOrderId) return takeawayOrderId
-    const { data } = await apiClient.post('/orders/takeaway')
-    const id = data.id as string
-    setTakeawayOrderId(id)
-    setTableId(id)
-    queryClient.invalidateQueries({ queryKey: ['takeaway-orders'] })
-    return id
-  }, [takeawayOrderId, queryClient])
 
   useEffect(() => {
     if (routeTableId && routeTableId !== 'takeaway-new') {
       setTableId(routeTableId)
       setActiveTable(routeTableId)
+    } else if (isTakeawayNew) {
+      setTableId('takeaway-new')
     }
-  }, [routeTableId, setActiveTable])
-
-  const addItemMut = useMutation({
-    mutationFn: async (payload: { itemId: string; variationId?: string }) => {
-      let targetTableId: string | null = tableId
-      if (isTakeawayNew || !targetTableId) {
-        targetTableId = await getOrCreateTakeawayOrder()
-      }
-      let orderRes = await apiClient.get(`/orders/${targetTableId}/active`)
-      let orderId: string | undefined = orderRes.data?.id
-      if (!orderId) {
-        const createRes = await apiClient.post('/orders', { tableId: targetTableId })
-        orderId = createRes.data?.id
-      }
-      if (!orderId) throw new Error('Could not create order')
-      const { data } = await apiClient.post('/cart/add-item', {
-        orderId,
-        itemId: payload.itemId,
-        variationId: payload.variationId,
-      })
-      return data
-    },
-    onMutate: async (payload) => {
-      // Cancel outgoing refetches so they don't overwrite optimistic update
-      await queryClient.cancelQueries({ queryKey: ['order', tableId] })
-      const previous = queryClient.getQueryData(['order', tableId])
-      // Optimistically add a placeholder item to the order cache
-      queryClient.setQueryData(['order', tableId], (old: any) => {
-        const base = old || {
-          id: tableId,
-          tableId,
-          table: null,
-          guestCount: 2,
-          subtotal: 0,
-          taxTotal: 0,
-          discountTotal: 0,
-          grandTotal: 0,
-          status: 'New',
-          orderType: 'DineIn',
-          items: [],
-          kots: [],
-          discounts: [],
-        }
-        const newItem = {
-          id: `optimistic-${Date.now()}`,
-          itemId: payload.itemId,
-          item: { name: 'Adding...', id: payload.itemId },
-          variationId: payload.variationId || null,
-          variation: null,
-          quantity: 1,
-          unitPrice: 0,
-          lineTotal: 0,
-          status: 'New',
-          note: null,
-          kotId: null,
-          cancelledAt: null,
-          cancelledBy: null,
-          cancelledByUser: null,
-        }
-        return { ...base, items: [...base.items, newItem] }
-      })
-      return { previous }
-    },
-    onError: (err, _payload, context) => {
-      // Roll back optimistic update on error
-      if (context?.previous !== undefined) {
-        queryClient.setQueryData(['order', tableId], context.previous)
-      }
-      const msg = (err as AxiosError<{ error?: { message?: string } }>)?.response?.data?.error?.message
-        ?? (err as Error)?.message
-      toast(`Failed to add item${msg ? `: ${msg}` : ''}`, 'error')
-    },
-    onSettled: () => {
-      // Always refetch to get real data from server
-      queryClient.invalidateQueries({ queryKey: ['order', tableId] })
-      queryClient.invalidateQueries({ queryKey: ['tables'] })
-    },
-  })
+  }, [routeTableId, isTakeawayNew, setActiveTable])
 
   const handleAddItem = useCallback(
-    (item: { id: string }, variationId?: string) => {
+    (item: { id: string; name: string; basePrice: number; variations?: Array<{ id: string; name: string; priceAdjustment: number }> }, variationId?: string) => {
       if (!tableId && !isTakeawayNew) return
-      addItemMut.mutate({ itemId: item.id, variationId })
+      let unitPrice = item.basePrice
+      let itemName = item.name
+      let variationName: string | undefined
+      if (variationId && item.variations) {
+        const v = item.variations.find((v) => v.id === variationId)
+        if (v) {
+          unitPrice += v.priceAdjustment
+          variationName = v.name
+        }
+      }
+      addItem({
+        itemId: item.id,
+        itemName,
+        unitPrice,
+        variationId,
+        variationName,
+      })
     },
-    [tableId, isTakeawayNew, addItemMut],
+    [tableId, isTakeawayNew, addItem],
   )
 
   const handleSelectTable = useCallback(

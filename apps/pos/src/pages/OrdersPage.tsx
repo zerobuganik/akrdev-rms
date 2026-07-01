@@ -9,6 +9,7 @@ interface Order {
   id: string
   displayId: string | null
   table?: { id: string; name: string; area: { name: string } } | null
+  tableName?: string | null
   status: string
   syncStatus: string
   orderType: string
@@ -173,7 +174,7 @@ export default function OrdersPage() {
                   onClick={() => setSelectedOrder(order)}
                 >
                   <td className="p-4 font-mono text-xs font-semibold">{(order.displayId || order.id.slice(0, 8)).toUpperCase()}</td>
-                  <td className="p-4 font-medium">{order.table?.name ?? (order.orderType === 'Takeaway' ? 'Takeaway' : '—')}</td>
+                  <td className="p-4 font-medium">{order.table?.name ?? order.tableName ?? (order.orderType === 'Takeaway' ? 'Takeaway' : '—')}</td>
                   <td className="p-4">
                     <span className="text-muted-foreground">
                       {new Date(order.createdAt).toLocaleDateString('en-IN')}{' '}

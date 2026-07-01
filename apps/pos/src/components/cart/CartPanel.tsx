@@ -125,22 +125,11 @@ export function CartPanel({ tableId }: { tableId: string | null }) {
   })
 
   const cancelItemMut = useMutation({
-    mutationFn: async (orderItemId: string) => { await apiClient.post('/cart/remove-item', { orderItemId }) },
+    mutationFn: async (orderItemId: string) => { await apiClient.post('/cart/cancel-item', { orderItemId }) },
     onSuccess: (_data, orderItemId) => {
-      let hasItemsLeft = true
-      queryClient.setQueryData<Order | null>(['order', tableId], (old) => {
-        if (!old) return old
-        const newItems = old.items.filter((i) => i.id !== orderItemId)
-        hasItemsLeft = newItems.some((i) => i.status !== 'Cancelled')
-        const subtotal = newItems.reduce((sum, i) => sum + i.lineTotal, 0)
-        return { ...old, items: newItems, subtotal, grandTotal: subtotal + (old.taxTotal ?? 0) - (old.discountTotal ?? 0) }
-      })
-      if (!hasItemsLeft) {
-        queryClient.setQueryData(['order', tableId], null)
-        queryClient.removeQueries({ queryKey: ['order', tableId] })
-      }
+      toast('Item cancelled', 'success')
+      queryClient.invalidateQueries({ queryKey: ['order', tableId] })
       queryClient.invalidateQueries({ queryKey: ['tables'] })
-      toast('Item cancelled from order', 'success')
     },
   })
 

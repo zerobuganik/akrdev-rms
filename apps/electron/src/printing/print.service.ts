@@ -431,9 +431,9 @@ export class PrintService {
         const qtyStr = this.centerIn(String(item.quantity), qtyColW)
         const nameStr = this.pad(item.name, itemColW)
         lines.push(
-          CMD.DOUBLE_BOTH + CMD.BOLD_ON,
+          CMD.DOUBLE_BOTH,
           qtyStr + '  ' + nameStr,
-          CMD.BOLD_OFF + CMD.NORMAL,
+          CMD.NORMAL,
         )
         if (item.note) {
           lines.push(' '.repeat(qtyColW + 2) + `> ${item.note}`)

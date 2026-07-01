@@ -1167,7 +1167,7 @@ app.post('/api/v1/orders/:id/void', async (req, res) => {
     const { id } = req.params
     await localPrisma.localOrder.update({
       where: { id },
-      data: { status: 'Cancelled' },
+      data: { status: 'Cancelled', subtotal: 0, taxTotal: 0, discountTotal: 0, grandTotal: 0 },
     }).catch(() => {})
     if (io) {
       io.emit('order:updated', { orderId: id, action: 'voided' })
@@ -1317,7 +1317,7 @@ app.get('/api/v1/tables', async (req, res) => {
     let activeOrders: Array<{ id: string; tableId: string | null; tableName: string | null; status: string; subtotal: number; grandTotal: number; createdAt: Date; updatedAt: Date }> = []
     if (localTables.length > 0) {
       activeOrders = await localPrisma.localOrder.findMany({
-        where: { status: { not: 'Settled' } },
+        where: { status: { notIn: ['Settled', 'Cancelled'] } },
         select: { id: true, tableId: true, tableName: true, status: true, subtotal: true, grandTotal: true, createdAt: true, updatedAt: true },
       })
       const orderByTableId = new Map<string, (typeof activeOrders)[number]>()
@@ -1347,7 +1347,7 @@ app.get('/api/v1/tables', async (req, res) => {
     const sourceTables = cachedCloudTables
     if (sourceTables && (sourceTables as unknown[]).length > 0) {
       const localOrders = await localPrisma.localOrder.findMany({
-        where: { status: { not: 'Settled' } },
+        where: { status: { notIn: ['Settled', 'Cancelled'] } },
         select: { id: true, tableId: true, tableName: true, status: true, subtotal: true, grandTotal: true, createdAt: true, updatedAt: true },
       })
       const localByTableId = new Map<string, (typeof localOrders)[number]>()
@@ -1881,21 +1881,22 @@ app.post('/api/v1/cart/merge-tables', async (req, res) => {
       where: { tableId: destTableId, status: { notIn: ['Settled', 'Cancelled'] } },
     })
     if (!destOrder) {
+      const destTbl = await localPrisma.cachedTable.findUnique({ where: { id: destTableId } }).catch(() => null)
       await localPrisma.localOrder.update({
         where: { id: sourceOrder.id },
-        data: { tableId: destTableId, tableName: null },
+        data: { tableId: destTableId, tableName: destTbl?.name ?? null },
       })
-      const tbl = await localPrisma.cachedTable.findUnique({ where: { id: destTableId } }).catch(() => null)
-      if (tbl) {
-        await localPrisma.localOrder.update({ where: { id: sourceOrder.id }, data: { tableName: tbl.name } })
-      }
     } else {
       for (const item of sourceOrder.items) {
         await localPrisma.localOrderItem.update({
           where: { id: item.id },
-          data: { orderId: destOrder.id },
+          data: { orderId: destOrder.id, kotId: null },
         })
       }
+      await localPrisma.localOrder.update({
+        where: { id: sourceOrder.id },
+        data: { status: 'Cancelled', subtotal: 0, taxTotal: 0, discountTotal: 0, grandTotal: 0 },
+      })
       const allItems = await localPrisma.localOrderItem.findMany({
         where: { orderId: destOrder.id, status: { not: 'Cancelled' } },
       })

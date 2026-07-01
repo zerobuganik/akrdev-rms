@@ -12,3 +12,5 @@ data/
 *.db
 *.db-journal
 release/
+api-local.bundle.js
+src/generated/

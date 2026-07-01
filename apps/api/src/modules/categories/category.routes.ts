@@ -17,7 +17,7 @@ router.get('/:id', async (req, res, next) => { try { res.json(await categoryServ
 router.put('/:id', requireRole('Admin'), async (req, res, next) => { try { res.json(await categoryService.update(req.params.id as string, req.body)) } catch (err) { next(err) } })
 router.delete('/:id', requireRole('Admin'), async (req, res, next) => { try { await categoryService.delete(req.params.id as string); res.status(204).send() } catch (err) { next(err) } })
 
-router.post('/:id/upload-image', requireRole('Admin'), async (req, res) => {
+router.post('/:id/upload-image', requireRole('Admin'), async (req, res, next) => {
   try {
     const { image } = req.body as { image: string }
     if (!image) {

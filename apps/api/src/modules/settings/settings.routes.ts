@@ -15,7 +15,7 @@ router.use(activityLogger)
 router.get('/', settingsController.get)
 router.put('/', requireRole('Admin'), settingsController.update)
 
-router.post('/upload-logo', requireRole('Admin'), async (req, res) => {
+router.post('/upload-logo', requireRole('Admin'), async (req, res, next) => {
   try {
     const { image } = req.body as { image: string }
     if (!image) {
@@ -54,7 +54,7 @@ router.post('/upload-logo', requireRole('Admin'), async (req, res) => {
   }
 })
 
-router.post('/upload-print-logo', requireRole('Admin'), async (req, res) => {
+router.post('/upload-print-logo', requireRole('Admin'), async (req, res, next) => {
   try {
     const { image } = req.body as { image: string }
     if (!image) {

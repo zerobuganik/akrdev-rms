@@ -8,7 +8,8 @@
       "commands": [
         "corepack enable",
         "corepack prepare pnpm@11.5.0 --activate",
-        "export SKIP_ELECTRON_REBUILD=1 && pnpm install --frozen-lockfile"
+        "touch /tmp/.skip-electron-rebuild",
+        "pnpm install --frozen-lockfile"
       ]
     },
     "build": {

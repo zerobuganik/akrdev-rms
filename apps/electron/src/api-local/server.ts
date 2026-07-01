@@ -1888,8 +1888,27 @@ app.post('/api/v1/kot/send-with-items', async (req, res, next) => {
       return
     }
 
-    const orderId = crypto.randomUUID()
-    const kotId = crypto.randomUUID()
+    let orderId: string
+    let kotId = crypto.randomUUID()
+    let kotNumber = 1
+    let isNewOrder = false
+
+    if (tableId) {
+      const existing = await localPrisma.localOrder.findFirst({
+        where: { tableId, status: { notIn: ['Settled', 'Cancelled'] } },
+        include: { kots: true },
+      })
+      if (existing) {
+        orderId = existing.id
+        kotNumber = existing.kots.length > 0 ? Math.max(...existing.kots.map((k) => k.kotNumber)) + 1 : 1
+      } else {
+        orderId = crypto.randomUUID()
+        isNewOrder = true
+      }
+    } else {
+      orderId = crypto.randomUUID()
+      isNewOrder = true
+    }
 
     let resolvedTableName = tableName ?? null
     if (tableId && !resolvedTableName) {
@@ -1897,24 +1916,26 @@ app.post('/api/v1/kot/send-with-items', async (req, res, next) => {
       if (tbl) resolvedTableName = tbl.name
     }
 
-    await localPrisma.localOrder.create({
-      data: {
-        id: orderId,
-        tableId: tableId ?? null,
-        tableName: resolvedTableName,
-        guestCount: guestCount ?? 2,
-        orderType: orderType ?? 'DineIn',
-        status: 'KOT_Sent',
-        note: note ?? null,
-        subtotal: 0,
-        taxTotal: 0,
-        discountTotal: 0,
-        grandTotal: 0,
-      },
-    })
+    if (isNewOrder) {
+      await localPrisma.localOrder.create({
+        data: {
+          id: orderId,
+          tableId: tableId ?? null,
+          tableName: resolvedTableName,
+          guestCount: guestCount ?? 2,
+          orderType: orderType ?? 'DineIn',
+          status: 'KOT_Sent',
+          note: note ?? null,
+          subtotal: 0,
+          taxTotal: 0,
+          discountTotal: 0,
+          grandTotal: 0,
+        },
+      })
+    }
 
     await localPrisma.localKOT.create({
-      data: { id: kotId, orderId, kotNumber: 1, sentBy: sentBy ?? 'User' },
+      data: { id: kotId, orderId, kotNumber, sentBy: sentBy ?? 'User' },
     })
 
     for (const item of items) {
@@ -1965,7 +1986,7 @@ app.post('/api/v1/kot/send-with-items', async (req, res, next) => {
       })),
     }).catch((err) => console.warn('[kot] Sync queue enqueue failed:', (err as Error).message))
 
-    res.status(201).json({ orderId, kotNumber: 1 })
+    res.status(201).json({ orderId, kotNumber })
   } catch (err) {
     console.error('[kot] Error sending KOT with items:', err)
     next(err)

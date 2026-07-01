@@ -182,10 +182,12 @@ export function CartPanel({ tableId }: { tableId: string | null }) {
       queryClient.invalidateQueries({ queryKey: ['order', tableId] })
       queryClient.invalidateQueries({ queryKey: ['tables'] })
       queryClient.invalidateQueries({ queryKey: ['takeaway-orders'] })
+      const tables = queryClient.getQueryData<Array<{ id: string; name: string }>>(['tables'])
+      const tableName = tables?.find((t) => t.id === tableId)?.name ?? (tableId === 'takeaway-new' ? 'Takeaway' : 'Table')
       printerApi.printKOT({
         printType: 'kot',
         orderId: result.orderId,
-        tableName: 'Table',
+        tableName,
         guestCount,
         serverName: user?.name,
         kotNumber: result.kotNumber,
@@ -222,7 +224,7 @@ export function CartPanel({ tableId }: { tableId: string | null }) {
         printerApi.printBill({
           printType: 'bill',
           orderId: currentOrder.id,
-          tableName: currentOrder.table?.name ?? 'Table',
+          tableName: (currentOrder as any).tableName ?? currentOrder.table?.name ?? 'Table',
           restaurantName: s?.companyName, restaurantAddress: s?.address,
           phone: s?.phone, email: s?.email, website: s?.website,
           fssai: s?.fssai, gstin: s?.gstin,
@@ -255,7 +257,7 @@ export function CartPanel({ tableId }: { tableId: string | null }) {
       const mergedBill = mergeApiItems(billItems)
       await printerApi.reprintBill({
         printType: 'reprint-bill', orderId: orderData.id,
-        tableName: orderData.table?.name ?? 'Table',
+        tableName: (orderData as any).tableName ?? orderData.table?.name ?? 'Table',
         restaurantName: s?.companyName, restaurantAddress: s?.address,
         phone: s?.phone, email: s?.email, website: s?.website,
         fssai: s?.fssai, gstin: s?.gstin,
@@ -314,6 +316,11 @@ export function CartPanel({ tableId }: { tableId: string | null }) {
   const sentItems = order?.items.filter((i) => i.status === 'Sent' || i.status === 'Ready') ?? []
   const cancelled = order?.items.filter((i) => i.status === 'Cancelled' && i.kotId) ?? []
 
+  const serverSubtotal = sentItems.reduce((sum, i) => sum + i.lineTotal, 0)
+  const allSubtotal = serverSubtotal + cartItems.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0)
+  const totalSubtotal = order ? order.subtotal + cartItems.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0) : cartItems.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0)
+  const hasCartItems = cartItems.length > 0
+
   const kotsWithItems: { kot: KOT; items: ApiOrderItem[] }[] = []
   if (order?.kots?.length) {
     for (const kot of order.kots) {
@@ -321,9 +328,6 @@ export function CartPanel({ tableId }: { tableId: string | null }) {
       if (kotItems.length > 0) kotsWithItems.push({ kot, items: kotItems })
     }
   }
-
-  const subtotal = cartItems.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0)
-  const hasCartItems = cartItems.length > 0
 
   if (!tableId) {
     return (
@@ -442,19 +446,20 @@ export function CartPanel({ tableId }: { tableId: string | null }) {
         {kotsWithItems.map(({ kot, items }) => {
           const merged = mergeApiItems(items)
           return (
-            <div key={kot.id} className="mb-4">
+            <div key={kot.id} className="mb-3">
               <p className="mb-1 border-b pb-1 text-xs font-semibold text-muted-foreground">
                 KOT #{kot.kotNumber} — {new Date(kot.sentAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
               </p>
               {merged.map((m) => (
-                <div key={m.ids[0]} className="group flex items-center gap-2 rounded py-1 text-sm hover:bg-muted/50">
+                <div key={m.ids[0]} className="group flex items-center gap-1.5 rounded py-0.5 text-sm hover:bg-muted/50">
                   {order?.status !== 'Settled' && (
-                    <button onClick={() => m.ids.forEach((id) => cancelItemMut.mutate(id))} className="text-muted-foreground hover:text-red-500" title="Cancel item">
+                    <button onClick={() => m.ids.forEach((id) => cancelItemMut.mutate(id))} className="text-muted-foreground hover:text-red-500 shrink-0" title="Cancel item">
                       <Ban size={14} />
                     </button>
                   )}
-                  <span className="flex-1">{m.name} ×{m.quantity}</span>
-                  <span className="text-xs font-medium">₹{m.lineTotal.toLocaleString()}</span>
+                  <span className="flex-1 text-sm font-medium">{m.name}</span>
+                  <span className="text-xs text-muted-foreground shrink-0">×{m.quantity}</span>
+                  <span className="text-xs font-medium shrink-0">₹{m.lineTotal.toLocaleString()}</span>
                 </div>
               ))}
             </div>
@@ -485,7 +490,32 @@ export function CartPanel({ tableId }: { tableId: string | null }) {
           <div className="mb-3">
             <div className="flex justify-between text-sm">
               <span>Subtotal</span>
-              <span className="font-medium">₹{subtotal.toLocaleString()}</span>
+              <span className="font-medium">₹{allSubtotal.toLocaleString()}</span>
+            </div>
+          </div>
+        )}
+
+        {hasActiveOrder && (
+          <div className="mb-3 space-y-1 text-sm">
+            <div className="flex justify-between">
+              <span>Subtotal</span>
+              <span className="font-medium">₹{order!.subtotal.toLocaleString()}</span>
+            </div>
+            {(order!.taxTotal ?? 0) > 0 && (
+              <div className="flex justify-between text-muted-foreground">
+                <span>Tax</span>
+                <span>₹{order!.taxTotal.toLocaleString()}</span>
+              </div>
+            )}
+            {(order!.discountTotal ?? 0) > 0 && (
+              <div className="flex justify-between text-muted-foreground">
+                <span>Discount</span>
+                <span>-₹{order!.discountTotal.toLocaleString()}</span>
+              </div>
+            )}
+            <div className="flex justify-between font-bold">
+              <span>Grand Total</span>
+              <span>₹{order!.grandTotal.toLocaleString()}</span>
             </div>
           </div>
         )}
@@ -520,7 +550,7 @@ export function CartPanel({ tableId }: { tableId: string | null }) {
         {order?.status === 'Bill_Printed' && (
           <div className="space-y-2 mt-2">
             <button onClick={() => setShowSettlement(true)} className="w-full rounded-lg bg-green-500 py-2 text-sm font-bold text-white hover:bg-green-400">
-              Settle & Print Bill
+              Settle
             </button>
             <div className="flex gap-2">
               <button onClick={() => reopenBillMut.mutate()} className="flex-1 rounded-lg bg-amber-500 py-2 text-sm font-bold text-black hover:bg-amber-400">

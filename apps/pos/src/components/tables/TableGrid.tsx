@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '@/lib/apiClient'
 import { printerApi } from '@/lib/printerApi'
+import { resolveImageUrl } from '@/lib/imageBaseUrl'
 import { AreaFilter } from './AreaFilter'
 import { TableStats } from './TableStats'
 import { TableCard } from './TableCard'
@@ -64,6 +65,7 @@ export function TableGrid() {
       const { data } = await apiClient.get('/areas')
       return data
     },
+    staleTime: 0,
   })
 
   const { data: tables = [] } = useQuery<Table[]>({
@@ -280,6 +282,7 @@ export function TableGrid() {
           taxName: 'GST',
           date: new Date().toLocaleString('en-IN', { hour12: false }),
           orderType: 'Dine In',
+          logoUrl: resolveImageUrl(settings?.printLogoUrl) ?? undefined,
         }).catch(() => {})
       }).catch(() => {})
       setBillPrintPending(null)

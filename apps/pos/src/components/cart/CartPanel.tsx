@@ -374,7 +374,7 @@ export function CartPanel({ tableId }: { tableId: string | null }) {
                   <button onClick={() => removeCartItem(item.id)} className="text-muted-foreground hover:text-destructive">
                     <Trash2 size={14} />
                   </button>
-                  <span className="flex-1">
+                  <span className="flex-1 text-sm">
                     {item.itemName}
                     {item.variationName && <span className="text-xs text-muted-foreground"> — {item.variationName}</span>}
                   </span>
@@ -458,7 +458,7 @@ export function CartPanel({ tableId }: { tableId: string | null }) {
                       <Ban size={14} />
                     </button>
                   )}
-                  <span className="flex-1 text-base font-medium">{m.name}</span>
+                  <span className="flex-1 text-sm font-medium">{m.name}</span>
                   <span className="text-xs text-muted-foreground shrink-0">×{m.quantity}</span>
                   <span className="text-xs font-medium shrink-0">₹{m.lineTotal.toLocaleString()}</span>
                 </div>

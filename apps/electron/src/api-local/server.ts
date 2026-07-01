@@ -1089,16 +1089,24 @@ app.delete('/api/v1/tax-slabs/:id', (req, res) => {
 app.post('/api/v1/employees', async (req, res) => {
   try {
     const { name, phone, pin, password, role } = req.body
+    const id = crypto.randomUUID()
     // Also save locally so the employee can log in immediately
     const passwordHash = await argon2.hash(password ?? 'admin123')
     const pinHash = pin ? await argon2.hash(pin) : null
     await localPrisma.localCredential.upsert({
       where: { phone },
-      create: { phone, passwordHash, pinHash, name: name ?? '', role: role ?? 'Cashier' },
+      create: { id, phone, passwordHash, pinHash, name: name ?? '', role: role ?? 'Cashier' },
       update: { passwordHash, pinHash, name: name ?? '', role: role ?? 'Cashier' },
     })
-    syncQueueService.enqueue('admin-create', { path: '/employees', body: req.body }).catch(() => {})
-    adminQueued(res)
+    // Push into local in-memory cache so it shows in the employee list immediately
+    const entry = { id, name: name ?? '', phone, role: role ?? 'Cashier', active: true }
+    if (cachedCloudEmployees) {
+      cachedCloudEmployees.unshift(entry)
+    } else {
+      cachedCloudEmployees = [entry]
+    }
+    syncQueueService.enqueue('admin-create', { path: '/employees', body: { ...req.body, id } }).catch(() => {})
+    res.json({ ok: true, id })
   } catch (err) {
     console.error('[employees] Create error:', err)
     res.status(500).json({ error: { message: 'Failed to create employee' } })
@@ -1154,9 +1162,22 @@ app.put('/api/v1/employees/:id/change-password', async (req, res) => {
   }
 })
 
-app.post('/api/v1/orders/:id/void', (req, res) => {
-  syncQueueService.enqueue('admin-put', { path: `/orders/${req.params.id}/void` }).catch(() => {})
-  adminQueued(res)
+app.post('/api/v1/orders/:id/void', async (req, res) => {
+  try {
+    const { id } = req.params
+    await localPrisma.localOrder.update({
+      where: { id },
+      data: { status: 'Cancelled' },
+    }).catch(() => {})
+    if (io) {
+      io.emit('order:updated', { orderId: id, action: 'voided' })
+    }
+    syncQueueService.enqueue('admin-put', { path: `/orders/${id}/void` }).catch(() => {})
+    res.json({ ok: true })
+  } catch (err) {
+    console.error('[void] Error:', err)
+    res.status(500).json({ error: 'Failed to cancel order' })
+  }
 })
 app.post('/api/v1/orders/:id/refund', (req, res) => {
   syncQueueService.enqueue('admin-put', { path: `/orders/${req.params.id}/refund`, body: req.body }).catch(() => {})
@@ -1841,6 +1862,58 @@ app.post('/api/v1/cart/cancel-item', async (req, res) => {
   }
 })
 
+app.post('/api/v1/cart/merge-tables', async (req, res) => {
+  try {
+    const { sourceTableId, destTableId } = req.body
+    if (!sourceTableId || !destTableId) {
+      res.status(400).json({ error: 'sourceTableId and destTableId required' })
+      return
+    }
+    const sourceOrder = await localPrisma.localOrder.findFirst({
+      where: { tableId: sourceTableId, status: { notIn: ['Settled', 'Cancelled'] } },
+      include: { items: true },
+    })
+    if (!sourceOrder) {
+      res.status(404).json({ error: 'No active order on source table' })
+      return
+    }
+    let destOrder = await localPrisma.localOrder.findFirst({
+      where: { tableId: destTableId, status: { notIn: ['Settled', 'Cancelled'] } },
+    })
+    if (!destOrder) {
+      await localPrisma.localOrder.update({
+        where: { id: sourceOrder.id },
+        data: { tableId: destTableId, tableName: null },
+      })
+      const tbl = await localPrisma.cachedTable.findUnique({ where: { id: destTableId } }).catch(() => null)
+      if (tbl) {
+        await localPrisma.localOrder.update({ where: { id: sourceOrder.id }, data: { tableName: tbl.name } })
+      }
+    } else {
+      for (const item of sourceOrder.items) {
+        await localPrisma.localOrderItem.update({
+          where: { id: item.id },
+          data: { orderId: destOrder.id },
+        })
+      }
+      const allItems = await localPrisma.localOrderItem.findMany({
+        where: { orderId: destOrder.id, status: { not: 'Cancelled' } },
+      })
+      const subtotal = allItems.reduce((s, i) => s + i.lineTotal, 0)
+      const { taxTotal, discountTotal, grandTotal } = computeOrderTotals(subtotal)
+      await localPrisma.localOrder.update({
+        where: { id: destOrder.id },
+        data: { subtotal, taxTotal, discountTotal, grandTotal },
+      })
+    }
+    syncQueueService.enqueue('admin-put', { path: '/cart/merge-tables', body: { sourceTableId, destTableId } }).catch(() => {})
+    res.json({ ok: true })
+  } catch (err) {
+    console.error('[merge-tables] Error:', err)
+    res.status(500).json({ error: 'Failed to merge tables' })
+  }
+})
+
 app.post('/api/v1/kot/send', async (req, res) => {
   try {
     const { orderId, sentBy } = req.body
@@ -2381,9 +2454,11 @@ export function createLocalApiServer() {
   initLocalDb()
     .then(() => {
       console.log('[server] Local DB init complete')
+      return startupCloudSync()
+    })
+    .then(() => {
       server.listen(port, '0.0.0.0', () => {
         console.log(`Local POS API running on http://0.0.0.0:${port}`)
-      startupCloudSync().catch(() => {})
 
       const runBackgroundSync = () => {
         const token = getCloudAccessToken()

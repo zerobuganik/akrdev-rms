@@ -2346,18 +2346,19 @@ export function createLocalApiServer() {
       console.log('[server] Local DB init complete')
       server.listen(port, '0.0.0.0', () => {
         console.log(`Local POS API running on http://0.0.0.0:${port}`)
-  startupCloudSync().catch(() => {})
+      startupCloudSync().catch(() => {})
 
-  const runBackgroundSync = () => {
-    const token = getCloudAccessToken()
-    if (token && !syncInProgress) {
-      syncWithProgress().catch(() => {})
-    }
-  }
-  // Run immediately, then every 15 seconds
-  runBackgroundSync()
-  setInterval(runBackgroundSync, 15_000)
-})
+      const runBackgroundSync = () => {
+        const token = getCloudAccessToken()
+        if (token && !syncInProgress) {
+          syncWithProgress().catch(() => {})
+        }
+      }
+      // Run immediately, then every 15 seconds
+      runBackgroundSync()
+      setInterval(runBackgroundSync, 15_000)
+    })
+  })
   .catch((err) => console.error('[server] DB init failed, starting server anyway:', err))
 
   return server

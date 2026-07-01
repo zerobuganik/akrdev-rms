@@ -3,12 +3,14 @@
   "steps": {
     "install": {
       "env": {
-        "COREPACK_ENABLE_STRICT": "0"
+        "COREPACK_ENABLE_STRICT": "0",
+        "ELECTRON_REBUILD_SKIP": "1"
       },
       "commands": [
         "corepack enable",
         "corepack prepare pnpm@11.5.0 --activate",
-        "pnpm install --frozen-lockfile"
+        "pnpm install --frozen-lockfile --ignore-scripts",
+        "cd apps/api && pnpm rebuild argon2 @prisma/engines @prisma/client esbuild msw"
       ]
     },
     "build": {

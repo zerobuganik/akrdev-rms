@@ -707,11 +707,6 @@ async function initLocalDb() {
   await ensureTables()
   await ensureLocalAdmin()
 }
-// Await DB init before accepting requests
-let dbReady = false
-initLocalDb()
-  .then(() => { dbReady = true; console.log('[server] Local DB init complete') })
-  .catch((err) => console.error('[server] DB init failed:', err))
 
 // ==================== AUTH ====================
 
@@ -1385,7 +1380,12 @@ app.get('/api/v1/categories', async (_req, res) => {
   // 1. Local SQLite (persisted, updated on every create/edit)
   const localCats = await localPrisma.cachedCategory.findMany({ orderBy: { displayOrder: 'asc' } })
   if (localCats.length > 0) {
-    res.json(localCats.map(c => ({ id: c.id, name: c.name, displayOrder: c.displayOrder, imageUrl: c.imageUrl, _count: { items: 0 } })))
+    const localItems = await localPrisma.cachedItem.findMany({ select: { categoryId: true } })
+    const countByCategory = new Map<string, number>()
+    for (const item of localItems) {
+      if (item.categoryId) countByCategory.set(item.categoryId, (countByCategory.get(item.categoryId) ?? 0) + 1)
+    }
+    res.json(localCats.map(c => ({ id: c.id, name: c.name, displayOrder: c.displayOrder, imageUrl: c.imageUrl, _count: { items: countByCategory.get(c.id) ?? 0 } })))
     return
   }
   // 2. In-memory cloud cache
@@ -1425,9 +1425,14 @@ app.get('/api/v1/settings', (_req, res) => {
   res.json(null)
 })
 
-app.get('/api/v1/tax-slabs', (_req, res) => {
+app.get('/api/v1/tax-slabs', async (_req, res) => {
   if (cachedTaxSlabs && (cachedTaxSlabs as unknown[]).length > 0) {
     res.json(cachedTaxSlabs)
+    return
+  }
+  const localSlabs = await localPrisma.cachedTaxSlab.findMany()
+  if (localSlabs.length > 0) {
+    res.json(localSlabs)
     return
   }
   res.json([])
@@ -2335,8 +2340,12 @@ export function createLocalApiServer() {
   setSocketIO(io)
 
   const port = Number(process.env.LOCAL_API_PORT) || 3001
-  server.listen(port, '0.0.0.0', () => {
-    console.log(`Local POS API running on http://0.0.0.0:${port}`)
+
+  initLocalDb()
+    .then(() => {
+      console.log('[server] Local DB init complete')
+      server.listen(port, '0.0.0.0', () => {
+        console.log(`Local POS API running on http://0.0.0.0:${port}`)
   startupCloudSync().catch(() => {})
 
   const runBackgroundSync = () => {
@@ -2349,6 +2358,7 @@ export function createLocalApiServer() {
   runBackgroundSync()
   setInterval(runBackgroundSync, 15_000)
 })
+  .catch((err) => console.error('[server] DB init failed, starting server anyway:', err))
 
   return server
 }

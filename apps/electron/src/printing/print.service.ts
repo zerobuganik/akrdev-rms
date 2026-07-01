@@ -571,8 +571,10 @@ export class PrintService {
       lines.push(CMD.DOUBLE_BOTH + data.restaurantName.slice(0, w) + CMD.NORMAL)
     }
     if (data.restaurantAddress) {
-      lines.push('')
-      lines.push(data.restaurantAddress.slice(0, w))
+      const addrLines = this.wrapText(data.restaurantAddress, w)
+      for (const line of addrLines) {
+        lines.push(line)
+      }
     }
     if (data.phone) lines.push(`Ph: ${data.phone}`)
     if (data.gstin) lines.push(`GST: ${data.gstin}`)

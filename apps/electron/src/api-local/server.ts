@@ -130,7 +130,11 @@ async function restoreLocalCache() {
     if (localAreas.length > 0) {
       cachedAreas = localAreas.map(a => ({ id: a.id, name: a.name }))
     }
-    console.log(`[cache] Restored from local DB: tables=${cachedCloudTables?.length ?? 0}, items=${cachedCloudItems?.length ?? 0}, settings=${!!cachedSettings}, cats=${(cachedCategories as unknown[])?.length ?? 0}, areas=${cachedAreas?.length ?? 0}`)
+    const localTaxSlabs = await localPrisma.cachedTaxSlab.findMany()
+    if (localTaxSlabs.length > 0) {
+      cachedTaxSlabs = localTaxSlabs as unknown[]
+    }
+    console.log(`[cache] Restored from local DB: tables=${cachedCloudTables?.length ?? 0}, items=${cachedCloudItems?.length ?? 0}, settings=${!!cachedSettings}, cats=${(cachedCategories as unknown[])?.length ?? 0}, areas=${cachedAreas?.length ?? 0}, taxSlabs=${(cachedTaxSlabs as unknown[])?.length ?? 0}`)
   } catch (err) {
     console.warn('[cache] Could not restore from local DB:', (err as Error).message)
   }
@@ -268,7 +272,18 @@ async function syncFromCloud(phone: string, password: string) {
       }).catch(() => {})
     }
     if (categoriesRes.ok) cachedCategories = await categoriesRes.json()
-    if (taxSlabsRes.ok) cachedTaxSlabs = await taxSlabsRes.json()
+    if (taxSlabsRes.ok) {
+      cachedTaxSlabs = await taxSlabsRes.json()
+      if (Array.isArray(cachedTaxSlabs)) {
+        for (const slab of cachedTaxSlabs as Array<{ id: string; name: string; percent: number; isDefault?: boolean; isActive?: boolean }>) {
+          await localPrisma.cachedTaxSlab.upsert({
+            where: { id: slab.id },
+            create: { id: slab.id, name: slab.name, percent: slab.percent, isDefault: slab.isDefault ?? false, isActive: slab.isActive ?? true },
+            update: { name: slab.name, percent: slab.percent, isDefault: slab.isDefault ?? false, isActive: slab.isActive ?? true },
+          }).catch(() => {})
+        }
+      }
+    }
     if (employeesRes.ok) cachedCloudEmployees = await employeesRes.json()
     if (ordersRes.ok) {
       const raw = await ordersRes.json()
@@ -386,7 +401,16 @@ async function syncWithProgress(phone?: string, password?: string): Promise<void
         }
       }},
       { key: 'settings', url: `${getCloudApiBase()}/settings`, handler: async (r: Response) => {
-        cachedSettings = await r.json()
+        const cloudSettings = await r.json()
+        const localLogoUrl = cachedSettings?.logoUrl
+        const localPrintLogoUrl = cachedSettings?.printLogoUrl
+        const isLocalLogoUrl = typeof localLogoUrl === 'string' && localLogoUrl.startsWith('/uploads/')
+        const isLocalPrintLogoUrl = typeof localPrintLogoUrl === 'string' && localPrintLogoUrl.startsWith('/uploads/')
+        cachedSettings = {
+          ...cloudSettings,
+          ...(isLocalLogoUrl && !(cloudSettings && (cloudSettings as Record<string,unknown>).logoUrl) ? { logoUrl: localLogoUrl } : {}),
+          ...(isLocalPrintLogoUrl && !(cloudSettings && (cloudSettings as Record<string,unknown>).printLogoUrl) ? { printLogoUrl: localPrintLogoUrl } : {}),
+        }
         await localPrisma.cachedSetting.upsert({
           where: { id: 'default' },
           create: { id: 'default', data: JSON.stringify(cachedSettings) },
@@ -419,7 +443,18 @@ async function syncWithProgress(phone?: string, password?: string): Promise<void
         }
       }},
       { key: 'employees', url: `${getCloudApiBase()}/employees`, handler: async (r: Response) => { cachedCloudEmployees = await r.json() }},
-      { key: 'tax-slabs', url: `${getCloudApiBase()}/tax-slabs`, handler: async (r: Response) => { cachedTaxSlabs = await r.json() }},
+      { key: 'tax-slabs', url: `${getCloudApiBase()}/tax-slabs`, handler: async (r: Response) => {
+        cachedTaxSlabs = await r.json()
+        if (Array.isArray(cachedTaxSlabs)) {
+          for (const slab of cachedTaxSlabs as Array<{ id: string; name: string; percent: number; isDefault?: boolean; isActive?: boolean }>) {
+            await localPrisma.cachedTaxSlab.upsert({
+              where: { id: slab.id },
+              create: { id: slab.id, name: slab.name, percent: slab.percent, isDefault: slab.isDefault ?? false, isActive: slab.isActive ?? true },
+              update: { name: slab.name, percent: slab.percent, isDefault: slab.isDefault ?? false, isActive: slab.isActive ?? true },
+            }).catch(() => {})
+          }
+        }
+      }},
       { key: 'areas', url: `${getCloudApiBase()}/areas`, handler: async (r: Response) => {
         cachedAreas = await r.json()
         if (Array.isArray(cachedAreas)) {
@@ -564,15 +599,46 @@ async function startupCloudSync() {
       }
     }
     if (settingsRes.ok) {
-      cachedSettings = await settingsRes.json()
+      const cloudSettings = await settingsRes.json()
+      const localLogoUrl = cachedSettings?.logoUrl
+      const localPrintLogoUrl = cachedSettings?.printLogoUrl
+      const isLocalLogoUrl = typeof localLogoUrl === 'string' && localLogoUrl.startsWith('/uploads/')
+      const isLocalPrintLogoUrl = typeof localPrintLogoUrl === 'string' && localPrintLogoUrl.startsWith('/uploads/')
+      cachedSettings = {
+        ...cloudSettings,
+        ...(isLocalLogoUrl && !(cloudSettings && (cloudSettings as Record<string,unknown>).logoUrl) ? { logoUrl: localLogoUrl } : {}),
+        ...(isLocalPrintLogoUrl && !(cloudSettings && (cloudSettings as Record<string,unknown>).printLogoUrl) ? { printLogoUrl: localPrintLogoUrl } : {}),
+      }
       await localPrisma.cachedSetting.upsert({
         where: { id: 'default' },
         create: { id: 'default', data: JSON.stringify(cachedSettings) },
         update: { data: JSON.stringify(cachedSettings) },
       }).catch(() => {})
     }
-    if (categoriesRes.ok) cachedCategories = await categoriesRes.json()
-    if (taxSlabsRes.ok) cachedTaxSlabs = await taxSlabsRes.json()
+    if (categoriesRes.ok) {
+      cachedCategories = await categoriesRes.json()
+      if (Array.isArray(cachedCategories)) {
+        for (const c of cachedCategories as Array<{ id: string; name: string; displayOrder?: number; imageUrl?: string | null; kitchenId?: string | null }>) {
+          await localPrisma.cachedCategory.upsert({
+            where: { id: c.id },
+            create: { id: c.id, name: c.name, displayOrder: c.displayOrder ?? 0, imageUrl: c.imageUrl ?? null, kitchenId: c.kitchenId ?? null },
+            update: { name: c.name, displayOrder: c.displayOrder ?? 0, imageUrl: c.imageUrl ?? null },
+          }).catch(() => {})
+        }
+      }
+    }
+    if (taxSlabsRes.ok) {
+      cachedTaxSlabs = await taxSlabsRes.json()
+      if (Array.isArray(cachedTaxSlabs)) {
+        for (const slab of cachedTaxSlabs as Array<{ id: string; name: string; percent: number; isDefault?: boolean; isActive?: boolean }>) {
+          await localPrisma.cachedTaxSlab.upsert({
+            where: { id: slab.id },
+            create: { id: slab.id, name: slab.name, percent: slab.percent, isDefault: slab.isDefault ?? false, isActive: slab.isActive ?? true },
+            update: { name: slab.name, percent: slab.percent, isDefault: slab.isDefault ?? false, isActive: slab.isActive ?? true },
+          }).catch(() => {})
+        }
+      }
+    }
     if (employeesRes.ok) cachedCloudEmployees = await employeesRes.json()
     if (ordersRes.ok) {
       const raw = await ordersRes.json()
@@ -589,38 +655,21 @@ async function startupCloudSync() {
             },
             update: { status: o.status as string, subtotal: o.subtotal as number, taxTotal: o.taxTotal as number, discountTotal: o.discountTotal as number, grandTotal: o.grandTotal as number },
           }).catch(() => {})
-
           const items = o.items as Array<Record<string, unknown>> | undefined
           if (items?.length) {
             for (const item of items) {
-              const oi = item.item as Record<string, unknown> | undefined
               await localPrisma.localOrderItem.upsert({
                 where: { id: item.id as string },
-                create: {
-                  id: item.id as string, orderId: o.id as string, itemId: item.itemId as string ?? '',
-                  itemName: oi?.name as string ?? item.itemName as string ?? '',
-                  quantity: item.quantity as number ?? 1, unitPrice: item.unitPrice as number ?? 0,
-                  lineTotal: item.lineTotal as number ?? 0, status: item.status as string ?? 'New',
-                  variationId: item.variationId as string ?? null,
-                  variationName: item.variationName as string ?? null,
-                },
+                create: { id: item.id as string, orderId: o.id as string, itemId: item.itemId as string ?? '', itemName: (item.item as Record<string,string>|null)?.name ?? item.itemName as string ?? '', quantity: item.quantity as number ?? 1, unitPrice: item.unitPrice as number ?? 0, lineTotal: item.lineTotal as number ?? 0, status: item.status as string ?? 'New' },
                 update: { quantity: item.quantity as number, unitPrice: item.unitPrice as number, lineTotal: item.lineTotal as number, status: item.status as string },
               }).catch(() => {})
             }
           }
-
           const settlement = o.settlement as Record<string, unknown> | undefined
           if (settlement?.id) {
             await localPrisma.localSettlement.upsert({
               where: { orderId: o.id as string },
-              create: {
-                id: settlement.id as string, orderId: o.id as string,
-                subtotal: settlement.subtotal as number ?? 0, taxTotal: settlement.taxTotal as number ?? 0,
-                discountTotal: settlement.discountTotal as number ?? 0, grandTotal: settlement.grandTotal as number ?? 0,
-                cashPaid: settlement.cashPaid as number ?? 0, cardPaid: settlement.cardPaid as number ?? 0,
-                upiPaid: settlement.upiPaid as number ?? 0, changeGiven: settlement.changeGiven as number ?? 0,
-                settledAt: settlement.settledAt as string ?? new Date().toISOString(),
-              },
+              create: { id: settlement.id as string, orderId: o.id as string, subtotal: settlement.subtotal as number ?? 0, taxTotal: settlement.taxTotal as number ?? 0, discountTotal: settlement.discountTotal as number ?? 0, grandTotal: settlement.grandTotal as number ?? 0, cashPaid: settlement.cashPaid as number ?? 0, cardPaid: settlement.cardPaid as number ?? 0, upiPaid: settlement.upiPaid as number ?? 0, changeGiven: settlement.changeGiven as number ?? 0, settledAt: settlement.settledAt as string ?? new Date().toISOString() },
               update: { cashPaid: settlement.cashPaid as number, cardPaid: settlement.cardPaid as number, upiPaid: settlement.upiPaid as number },
             }).catch(() => {})
           }
@@ -1196,7 +1245,7 @@ app.post('/api/v1/settings/upload-logo', async (req, res) => {
     if (cachedSettings) {
       cachedSettings = { ...cachedSettings, logoUrl }
       await localPrisma.cachedSetting.upsert({
-        where: { key: 'settings' },
+        where: { id: 'default' },
         create: { key: 'settings', value: JSON.stringify(cachedSettings) },
         update: { value: JSON.stringify(cachedSettings) },
       }).catch(() => {})
@@ -1228,7 +1277,7 @@ app.post('/api/v1/settings/upload-print-logo', async (req, res) => {
     if (cachedSettings) {
       cachedSettings = { ...cachedSettings, printLogoUrl }
       await localPrisma.cachedSetting.upsert({
-        where: { key: 'settings' },
+        where: { id: 'default' },
         create: { key: 'settings', value: JSON.stringify(cachedSettings) },
         update: { value: JSON.stringify(cachedSettings) },
       }).catch(() => {})

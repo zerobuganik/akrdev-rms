@@ -490,38 +490,46 @@ export function CartPanel({ tableId }: { tableId: string | null }) {
           </div>
         )}
 
-        {hasCartItems && (
-          <button
-            disabled={sendKOT.isPending || cartItems.length === 0}
-            onClick={() => sendKOT.mutate()}
-            className="w-full rounded-lg bg-yellow-500 py-2 text-sm font-bold text-black hover:bg-yellow-400 disabled:opacity-50"
-          >
-            {sendKOT.isPending ? 'Sending KOT...' : 'Send KOT'}
-          </button>
-        )}
+        <div className="flex gap-2">
+          {hasCartItems && (
+            <button
+              disabled={sendKOT.isPending || cartItems.length === 0}
+              onClick={() => sendKOT.mutate()}
+              className="flex-1 rounded-lg bg-yellow-500 py-2 text-sm font-bold text-black hover:bg-yellow-400 disabled:opacity-50"
+            >
+              {sendKOT.isPending ? 'Sending KOT...' : 'Send KOT'}
+            </button>
+          )}
 
-        {order && !order?.status?.includes('Settled') && (
-          <div className="space-y-2">
-            {order.status !== 'Bill_Printed' && (
-              <button disabled={generateBill.isPending} onClick={() => generateBill.mutate()} className="w-full rounded-lg bg-blue-500 py-2 text-sm font-bold text-white hover:bg-blue-400 disabled:opacity-50">
-                {generateBill.isPending ? 'Generating...' : 'Generate Bill'}
+          {order && !order?.status?.includes('Settled') && (
+            <>
+              {order.status !== 'Bill_Printed' && !hasCartItems && (
+                <button disabled={generateBill.isPending} onClick={() => generateBill.mutate()} className="flex-1 rounded-lg bg-blue-500 py-2 text-sm font-bold text-white hover:bg-blue-400 disabled:opacity-50">
+                  {generateBill.isPending ? 'Generating...' : 'Generate Bill'}
+                </button>
+              )}
+              {order.status !== 'Bill_Printed' && hasCartItems && (
+                <button disabled={generateBill.isPending} onClick={() => generateBill.mutate()} className="flex-1 rounded-lg bg-blue-500 py-2 text-sm font-bold text-white hover:bg-blue-400 disabled:opacity-50">
+                  {generateBill.isPending ? 'Generating...' : 'Generate Bill'}
+                </button>
+              )}
+            </>
+          )}
+        </div>
+
+        {order?.status === 'Bill_Printed' && (
+          <div className="space-y-2 mt-2">
+            <button onClick={() => setShowSettlement(true)} className="w-full rounded-lg bg-green-500 py-2 text-sm font-bold text-white hover:bg-green-400">
+              Settle & Print Bill
+            </button>
+            <div className="flex gap-2">
+              <button onClick={() => reopenBillMut.mutate()} className="flex-1 rounded-lg bg-amber-500 py-2 text-sm font-bold text-black hover:bg-amber-400">
+                Re-open for Modification
               </button>
-            )}
-            {order.status === 'Bill_Printed' && (
-              <>
-                <button onClick={() => setShowSettlement(true)} className="w-full rounded-lg bg-green-500 py-2 text-sm font-bold text-white hover:bg-green-400">
-                  Settle & Print Bill
-                </button>
-                <button onClick={() => reopenBillMut.mutate()} className="w-full rounded-lg bg-amber-500 py-2 text-sm font-bold text-black hover:bg-amber-400">
-                  Re-open for Modification
-                </button>
-              </>
-            )}
-            {order.status === 'Bill_Printed' && (
-              <button onClick={() => reprintBillMut.mutate()} className="w-full rounded-lg border py-2 text-sm font-medium flex items-center justify-center gap-1 hover:bg-muted">
+              <button onClick={() => reprintBillMut.mutate()} className="flex-1 rounded-lg border py-2 text-sm font-medium flex items-center justify-center gap-1 hover:bg-muted">
                 <Printer size={14} /> Reprint Bill
               </button>
-            )}
+            </div>
           </div>
         )}
 

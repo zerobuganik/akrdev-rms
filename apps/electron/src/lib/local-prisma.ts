@@ -71,6 +71,11 @@ export async function ensureTables() {
     `CREATE TABLE IF NOT EXISTS "cached_settings" (
       "id" TEXT NOT NULL PRIMARY KEY DEFAULT 'default', "data" TEXT
     )`,
+    `CREATE TABLE IF NOT EXISTS "cached_tax_slabs" (
+      "id" TEXT NOT NULL PRIMARY KEY, "name" TEXT NOT NULL,
+      "percent" REAL NOT NULL, "isDefault" BOOLEAN NOT NULL DEFAULT false,
+      "isActive" BOOLEAN NOT NULL DEFAULT true
+    )`,
     `CREATE TABLE IF NOT EXISTS "printer_configs" (
       "id" TEXT NOT NULL PRIMARY KEY, "name" TEXT NOT NULL,
       "displayName" TEXT NOT NULL, "type" TEXT NOT NULL,

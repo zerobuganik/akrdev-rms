@@ -214,3 +214,13 @@ model CachedSetting {
 
   @@map("cached_settings")
 }
+
+model CachedTaxSlab {
+  id        String  @id
+  name      String
+  percent   Float
+  isDefault Boolean @default(false)
+  isActive  Boolean @default(true)
+
+  @@map("cached_tax_slabs")
+}

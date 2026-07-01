@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useNavigate } from 'react-router-dom'
 import { apiClient } from '@/lib/apiClient'
 import type { AxiosError } from 'axios'
 import { Minus, Plus, Trash2, Users, FilePen, Ban, Printer, RefreshCw } from 'lucide-react'
@@ -78,6 +79,7 @@ export function CartPanel({ tableId }: { tableId: string | null }) {
   } = useCartStore()
   const { user } = useAuthStore()
   const queryClient = useQueryClient()
+  const navigate = useNavigate()
 
   const { data: order, isLoading } = useQuery<Order | null>({
     queryKey: ['order', tableId],
@@ -202,6 +204,9 @@ export function CartPanel({ tableId }: { tableId: string | null }) {
         date: formatPrintDate(),
         orderType: tableId === 'takeaway-new' ? 'Takeaway' : 'Dine In',
       }).catch(() => {})
+      if (tableId === 'takeaway-new') {
+        navigate(`/cart/${result.orderId}`, { replace: true })
+      }
     },
     onError: (err: unknown) => {
       const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error
@@ -326,7 +331,10 @@ export function CartPanel({ tableId }: { tableId: string | null }) {
   if (order?.kots?.length) {
     for (const kot of order.kots) {
       const kotItems = sentItems.filter((i) => i.kotId === kot.id)
-      if (kotItems.length > 0) kotsWithItems.push({ kot, items: kotItems })
+      const kotCancelled = cancelled.filter((i) => i.kotId === kot.id)
+      if (kotItems.length > 0 || kotCancelled.length > 0) {
+        kotsWithItems.push({ kot, items: [...kotItems, ...kotCancelled] })
+      }
     }
   }
 
@@ -449,35 +457,35 @@ export function CartPanel({ tableId }: { tableId: string | null }) {
           return (
             <div key={kot.id} className="mb-3">
               <p className="mb-1 border-b pb-1 text-xs font-semibold text-muted-foreground">
-                KOT #{kot.kotNumber} — {new Date(kot.sentAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                KOT #{kot.kotNumber} — By {kot.sentBy} — {new Date(kot.sentAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
               </p>
-              {merged.map((m) => (
-                <div key={m.ids[0]} className="group flex items-center gap-1.5 rounded py-0.5 text-sm hover:bg-muted/50">
-                  {order?.status !== 'Settled' && (
+              {merged.map((m) => {
+                const isCancelled = m.ids.every((id) => {
+                  const item = items.find((i) => i.id === id)
+                  return item?.status === 'Cancelled'
+                })
+                const cancelInfo = isCancelled ? items.find((i) => i.id === m.ids[0] && i.status === 'Cancelled') : null
+                return (
+                <div key={m.ids[0]} className={`group flex items-center gap-1.5 rounded py-0.5 text-sm hover:bg-muted/50 ${isCancelled ? 'line-through opacity-60' : ''}`}>
+                  {order?.status !== 'Settled' && !isCancelled && (
                     <button onClick={() => m.ids.forEach((id) => cancelItemMut.mutate(id))} className="text-muted-foreground hover:text-red-500 shrink-0" title="Cancel item">
                       <Ban size={14} />
                     </button>
                   )}
-                  <span className="flex-1 text-sm font-medium">{m.name}</span>
+                  <span className={`flex-1 ${isCancelled ? '' : 'font-medium'}`}>{m.name}</span>
                   <span className="text-xs text-muted-foreground shrink-0">×{m.quantity}</span>
                   <span className="text-xs font-medium shrink-0">₹{m.lineTotal.toLocaleString()}</span>
+                  {isCancelled && cancelInfo?.cancelledByUser?.name && (
+                    <span className="text-xs text-muted-foreground">by {cancelInfo.cancelledByUser.name}</span>
+                  )}
+                  {isCancelled && cancelInfo?.cancelledAt && (
+                    <span className="text-xs text-muted-foreground">{new Date(cancelInfo.cancelledAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</span>
+                  )}
                 </div>
-              ))}
+              )})}
             </div>
           )
-        })}
-
-        {cancelled.length > 0 && (
-          <div className="mb-4">
-            <p className="mb-1 text-xs font-semibold uppercase text-muted-foreground">Cancelled</p>
-            {cancelled.map((item) => (
-              <div key={item.id} className="flex items-center gap-2 rounded py-1 text-sm line-through opacity-60">
-                <span className="flex-1">{getItemDisplayName(item)} ×{item.quantity}</span>
-                <span className="text-xs">₹{item.lineTotal.toLocaleString()}</span>
-              </div>
-            ))}
-          </div>
-        )}
+        }        )}
 
         {!hasActiveOrder && !hasCartItems && (
           <div className="flex h-full items-center justify-center p-6 text-center text-sm text-muted-foreground">

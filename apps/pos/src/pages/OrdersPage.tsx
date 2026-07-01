@@ -172,8 +172,8 @@ export default function OrdersPage() {
                   className="cursor-pointer hover:bg-muted/20"
                   onClick={() => setSelectedOrder(order)}
                 >
-                  <td className="p-4 font-mono text-xs font-semibold">{order.displayId || order.id.slice(0, 8)}</td>
-                  <td className="p-4 font-medium">{order.table?.name ?? order.orderType}</td>
+                  <td className="p-4 font-mono text-xs font-semibold">{(order.displayId || order.id.slice(0, 8)).toUpperCase()}</td>
+                  <td className="p-4 font-medium">{order.table?.name ?? (order.orderType === 'Takeaway' ? 'Takeaway' : '—')}</td>
                   <td className="p-4">
                     <span className="text-muted-foreground">
                       {new Date(order.createdAt).toLocaleDateString('en-IN')}{' '}
@@ -182,7 +182,7 @@ export default function OrdersPage() {
                       {new Date(order.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
                     </span>
                   </td>
-                  <td className="p-4 text-muted-foreground">{order.orderType}</td>
+                  <td className="p-4 text-muted-foreground">{order.orderType === 'DineIn' ? 'Dine In' : order.orderType}</td>
                   <td className="p-4 text-xs text-muted-foreground">{paymentMode(order.settlement)}</td>
                   <td className="p-4">
                     <span className={`rounded px-2 py-0.5 text-xs font-medium ${statusClasses[order.status] ?? ''}`}>
@@ -259,10 +259,10 @@ export default function OrdersPage() {
           </div>
           <div className="space-y-3 text-sm">
             <p>
-              <span className="text-muted-foreground">Order ID:</span> {selectedOrder.displayId || selectedOrder.id.slice(0, 8)}
+              <span className="text-muted-foreground">Order ID:</span> {(selectedOrder.displayId || selectedOrder.id.slice(0, 8)).toUpperCase()}
             </p>
             <p>
-              <span className="text-muted-foreground">Table:</span> {selectedOrder.table?.name ?? 'Takeaway'} {selectedOrder.table?.area?.name ? `(${selectedOrder.table.area.name})` : ''}
+              <span className="text-muted-foreground">Table:</span> {selectedOrder.table?.name ?? (selectedOrder.orderType === 'Takeaway' ? 'Takeaway' : '—')} {selectedOrder.table?.area?.name ? `(${selectedOrder.table.area.name})` : ''}
             </p>
             <p>
               <span className="text-muted-foreground">Guests:</span> {selectedOrder.guestCount}

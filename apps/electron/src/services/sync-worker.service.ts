@@ -114,6 +114,12 @@ export class SyncWorkerService {
         })
         break
       }
+      case 'send-kot-with-items': {
+        await this.fetchWithRetry(`${getCloudApiBase()}/kot/send-with-items`, {
+          method: 'POST', headers, body: JSON.stringify(payload),
+        })
+        break
+      }
       case 'settle': {
         await this.fetchWithRetry(`${getCloudApiBase()}/settlement`, {
           method: 'POST', headers, body: JSON.stringify(payload),

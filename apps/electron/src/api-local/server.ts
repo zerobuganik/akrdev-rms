@@ -1873,7 +1873,7 @@ app.post('/api/v1/kot/send', async (req, res) => {
   }
 })
 
-app.post('/api/v1/kot/send-with-items', async (req, res) => {
+app.post('/api/v1/kot/send-with-items', async (req, res, next) => {
   try {
     const { tableId, tableName, guestCount, orderType, sentBy, note, items } = req.body
 
@@ -1885,7 +1885,7 @@ app.post('/api/v1/kot/send-with-items', async (req, res) => {
     const orderId = crypto.randomUUID()
     const kotId = crypto.randomUUID()
 
-    const order = await localPrisma.localOrder.create({
+    await localPrisma.localOrder.create({
       data: {
         id: orderId,
         tableId: tableId ?? null,
@@ -1899,6 +1899,10 @@ app.post('/api/v1/kot/send-with-items', async (req, res) => {
         discountTotal: 0,
         grandTotal: 0,
       },
+    })
+
+    await localPrisma.localKOT.create({
+      data: { id: kotId, orderId, kotNumber: 1, sentBy: sentBy ?? 'User' },
     })
 
     for (const item of items) {
@@ -1920,10 +1924,6 @@ app.post('/api/v1/kot/send-with-items', async (req, res) => {
       })
     }
 
-    await localPrisma.localKOT.create({
-      data: { id: kotId, orderId, kotNumber: 1, sentBy: sentBy ?? 'User' },
-    })
-
     const allItems = await localPrisma.localOrderItem.findMany({
       where: { orderId, status: { not: 'Cancelled' } },
     })
@@ -1934,12 +1934,16 @@ app.post('/api/v1/kot/send-with-items', async (req, res) => {
       data: { subtotal, taxTotal, discountTotal, grandTotal },
     })
 
-    if (io && tableId) {
-      io.to(`table:${tableId}`).emit('order:updated', {
-        orderId,
-        tableId,
-        action: 'kot-sent-with-items',
-      })
+    try {
+      if (io && tableId) {
+        io.to(`table:${tableId}`).emit('order:updated', {
+          orderId,
+          tableId,
+          action: 'kot-sent-with-items',
+        })
+      }
+    } catch (err) {
+      console.warn('[kot] Socket emit failed:', (err as Error).message)
     }
 
     syncQueueService.enqueue('send-kot-with-items', {
@@ -1947,12 +1951,12 @@ app.post('/api/v1/kot/send-with-items', async (req, res) => {
       items: items.map((i: { itemId: string; itemName: string; variationId?: string; variationName?: string; quantity: number; unitPrice: number; note?: string }) => ({
         itemId: i.itemId, itemName: i.itemName, variationId: i.variationId, variationName: i.variationName, quantity: i.quantity, unitPrice: i.unitPrice, note: i.note,
       })),
-    }).catch(() => {})
+    }).catch((err) => console.warn('[kot] Sync queue enqueue failed:', (err as Error).message))
 
     res.status(201).json({ orderId, kotNumber: 1 })
   } catch (err) {
-    console.error('Error sending KOT with items:', err)
-    res.status(500).json({ error: 'Failed to send KOT with items' })
+    console.error('[kot] Error sending KOT with items:', err)
+    next(err)
   }
 })
 

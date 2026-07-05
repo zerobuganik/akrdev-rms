@@ -21,15 +21,10 @@ export class SyncWorkerService {
 
   async start() {
     this.cloudToken = getCloudAccessToken()
-    // Recover items stuck in Syncing status from a previous crash
     await syncQueueService.resetStaleSyncing()
-    await this.checkHealth()
+    this.cloudAvailable = true
     this.running = true
-    this.healthTimer = setInterval(() => this.checkHealth(), HEALTH_CHECK_INTERVAL)
     this.syncTimer = setInterval(() => this.processQueue(), SYNC_INTERVAL)
-
-    const state = await syncQueueService.getState()
-    this.cloudAvailable = state.cloudAvailable ?? false
   }
 
   async stop() {
@@ -57,8 +52,6 @@ export class SyncWorkerService {
   }
 
   async processQueue() {
-    if (!this.cloudAvailable) return
-
     if (await syncQueueService.isSyncInProgress()) return
 
     await syncQueueService.setSyncInProgress(true)

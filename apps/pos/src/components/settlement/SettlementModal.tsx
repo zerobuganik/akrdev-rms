@@ -16,11 +16,12 @@ interface SettlementModalProps {
   }
   tableName?: string
   taxType?: 'Inclusive' | 'Exclusive'
+  taxPercentage?: number
   onClose: () => void
   onSettled: () => void
 }
 
-export function SettlementModal({ order, tableName, taxType, onClose, onSettled }: SettlementModalProps) {
+export function SettlementModal({ order, tableName, taxType, taxPercentage, onClose, onSettled }: SettlementModalProps) {
   const [discountType, setDiscountType] = useState<'Percentage' | 'Flat' | null>(null)
   const [discountValue, setDiscountValue] = useState(0)
   const [discountReason, setDiscountReason] = useState('')
@@ -40,7 +41,7 @@ export function SettlementModal({ order, tableName, taxType, onClose, onSettled 
     ? (order.subtotal * discountValue) / 100
     : discountValue
 
-  const { taxTotal } = calculateTax(order.subtotal ?? 0, 0, taxType as 'Inclusive' | 'Exclusive')
+  const { taxTotal } = calculateTax(order.subtotal ?? 0, taxPercentage ?? 0, taxType as 'Inclusive' | 'Exclusive')
   const exactGrandTotal = taxType === 'Inclusive'
     ? order.subtotal - discountAmount
     : order.subtotal + taxTotal - discountAmount

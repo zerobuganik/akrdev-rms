@@ -79,6 +79,7 @@ const CMD = {
   DOUBLE_BOTH: `${ESC}!\x30`,
   NORMAL: `${ESC}!\x00`,
   LINE_SPACING_0: `${ESC}3\x00`,
+  LINE_SPACING_2: `${ESC}3\x02`,
   LINE_SPACING_24: `${ESC}3\x18`,
   CUT_PARTIAL: `${ESC}m`,
   CUT_FULL: `${ESC}i`,
@@ -428,7 +429,7 @@ export class PrintService {
       CMD.DIVIDER.slice(0, w),
     )
 
-    lines.push(CMD.LINE_SPACING_0)
+    lines.push(CMD.LINE_SPACING_2)
 
     if (data.items) {
       for (const item of data.items) {

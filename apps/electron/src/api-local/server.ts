@@ -1852,7 +1852,8 @@ app.post('/api/v1/cart/cancel-item', async (req, res) => {
     })
     if (order) {
       const subtotal = order.items.reduce((s, i) => s + i.lineTotal, 0)
-      await localPrisma.localOrder.update({ where: { id: item.orderId }, data: { subtotal, grandTotal: subtotal } })
+      const { grandTotal } = computeOrderTotals(subtotal)
+      await localPrisma.localOrder.update({ where: { id: item.orderId }, data: { subtotal, grandTotal } })
     }
 
     res.json({ cancelled: true })
@@ -2138,7 +2139,7 @@ app.post('/api/v1/settlement', async (req, res) => {
       }),
     ])
 
-    syncQueueService.enqueue('settle', { orderId, discountType, discountValue, discountReason, payments }).catch(() => {})
+    syncQueueService.enqueue('settle', { orderId, subtotal, taxTotal, discountTotal, grandTotal, discountType, discountValue, discountReason, payments, changeGiven: changeAmt }).catch(() => {})
 
     res.json({ orderId, subtotal, grandTotal, totalPaid, change: changeAmt })
   } catch (err) {

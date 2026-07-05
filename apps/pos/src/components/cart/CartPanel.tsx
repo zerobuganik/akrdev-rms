@@ -105,6 +105,12 @@ export function CartPanel({ tableId }: { tableId: string | null }) {
     staleTime: 300_000,
   })
 
+  const { data: taxSlabs = [] } = useQuery<Array<{ percent: number; isDefault: boolean }>>({
+    queryKey: ['taxSlabs'],
+    queryFn: async () => { const { data } = await apiClient.get('/tax-slabs'); return data ?? [] },
+    staleTime: 300_000,
+  })
+
   const removeItemMut = useMutation({
     mutationFn: async (orderItemId: string) => { await apiClient.post('/cart/remove-item', { orderItemId }) },
     onSuccess: () => {
@@ -343,6 +349,7 @@ export function CartPanel({ tableId }: { tableId: string | null }) {
   const allSubtotal = serverSubtotal + cartItems.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0)
   const totalSubtotal = order ? order.subtotal + cartItems.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0) : cartItems.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0)
   const hasCartItems = cartItems.length > 0
+  const defaultTaxPercent = taxSlabs.find((t) => t.isDefault)?.percent ?? taxSlabs[0]?.percent ?? 0
 
   const kotsWithItems: { kot: KOT; items: ApiOrderItem[] }[] = []
   if (order?.kots?.length) {
@@ -633,6 +640,7 @@ export function CartPanel({ tableId }: { tableId: string | null }) {
             discountTotal: order!.discountTotal,
           }}
           taxType={(settings?.taxType as 'Inclusive' | 'Exclusive') ?? 'Exclusive'}
+          taxPercentage={defaultTaxPercent}
           tableName={order?.table?.name ?? 'Table'}
           onClose={() => setShowSettlement(false)}
           onSettled={() => {

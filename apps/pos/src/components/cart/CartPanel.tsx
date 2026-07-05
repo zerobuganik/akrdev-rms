@@ -630,18 +630,18 @@ export function CartPanel({ tableId }: { tableId: string | null }) {
         )}
       </div>
 
-      {showSettlement && (
+      {showSettlement && order && (
         <SettlementModal
           order={{
-            id: order!.id,
-            subtotal: order!.subtotal,
-            grandTotal: order!.grandTotal,
-            taxTotal: order!.taxTotal,
-            discountTotal: order!.discountTotal,
+            id: order.id,
+            subtotal: order.subtotal,
+            grandTotal: order.grandTotal,
+            taxTotal: order.taxTotal,
+            discountTotal: order.discountTotal,
           }}
           taxType={(settings?.taxType as 'Inclusive' | 'Exclusive') ?? 'Exclusive'}
           taxPercentage={defaultTaxPercent}
-          tableName={order?.table?.name ?? 'Table'}
+          tableName={order.table?.name ?? 'Table'}
           onClose={() => setShowSettlement(false)}
           onSettled={() => {
             setShowSettlement(false)
@@ -651,10 +651,10 @@ export function CartPanel({ tableId }: { tableId: string | null }) {
           }}
         />
       )}
-      {showPaymentChange && (
+      {showPaymentChange && order && (
         <PaymentChangeModal
-          orderId={order!.id}
-          grandTotal={order!.grandTotal}
+          orderId={order.id}
+          grandTotal={order.grandTotal}
           onClose={() => setShowPaymentChange(false)}
           onUpdated={() => {
             setShowPaymentChange(false)

@@ -2489,6 +2489,7 @@ export function createLocalApiServer() {
       return startupCloudSync()
     })
     .then(() => {
+      syncWorkerService.start()
       server.listen(port, '0.0.0.0', () => {
         console.log(`Local POS API running on http://0.0.0.0:${port}`)
 

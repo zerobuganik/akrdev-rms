@@ -1852,8 +1852,8 @@ app.post('/api/v1/cart/cancel-item', async (req, res) => {
     })
     if (order) {
       const subtotal = order.items.reduce((s, i) => s + i.lineTotal, 0)
-      const { grandTotal } = computeOrderTotals(subtotal)
-      await localPrisma.localOrder.update({ where: { id: item.orderId }, data: { subtotal, grandTotal } })
+      const { taxTotal, discountTotal, grandTotal } = computeOrderTotals(subtotal)
+      await localPrisma.localOrder.update({ where: { id: item.orderId }, data: { subtotal, taxTotal, discountTotal, grandTotal } })
     }
 
     res.json({ cancelled: true })

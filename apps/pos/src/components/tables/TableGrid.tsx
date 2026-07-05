@@ -91,6 +91,13 @@ export function TableGrid() {
     staleTime: 300_000,
   })
 
+  const { data: taxSlabs = [] } = useQuery<Array<{ percent: number; isDefault: boolean }>>({
+    queryKey: ['taxSlabs'],
+    queryFn: async () => { const { data } = await apiClient.get('/tax-slabs'); return data ?? [] },
+    staleTime: 300_000,
+  })
+  const defaultTaxPercent = taxSlabs.find((t) => t.isDefault)?.percent ?? taxSlabs[0]?.percent ?? 0
+
   const { data: takeawayOrders = [] } = useQuery<TakeawayOrder[]>({
     queryKey: ['takeaway-orders'],
     queryFn: async () => {
@@ -250,12 +257,27 @@ export function TableGrid() {
     onSuccess: (order) => {
       toast('Bill generated', 'success')
       queryClient.invalidateQueries({ queryKey: ['tables', selectedAreas] })
-      const sentItems = (order.items ?? []).filter((i: { status: string }) => i.status === 'Sent' || i.status === 'Ready')
+      queryClient.invalidateQueries({ queryKey: ['takeaway-orders'] })
+      const billItems = (order.items ?? []).filter((i: { status: string }) => i.status !== 'Cancelled')
       apiClient.get('/settings').then(({ data: settings }) => {
+        // Merge items by same name+variation for clean bill
+        const mergedMap = new Map<string, { name: string; quantity: number; unitPrice: number; lineTotal: number; note?: string }>()
+        for (const i of billItems) {
+          const key = `${i.item?.name ?? i.name ?? 'Item'}-${i.variationId ?? 'none'}`
+          const displayName = i.variation ? `${i.item?.name ?? i.name} (${i.variation.name})` : (i.item?.name ?? i.name ?? 'Item')
+          const existing = mergedMap.get(key)
+          if (existing) {
+            existing.quantity += i.quantity
+            existing.lineTotal += i.lineTotal ?? 0
+          } else {
+            mergedMap.set(key, { name: displayName, quantity: i.quantity, unitPrice: i.unitPrice ?? 0, lineTotal: i.lineTotal ?? 0, note: i.note })
+          }
+        }
+        const mergedItems = Array.from(mergedMap.values())
         printerApi.printBill({
           printType: 'bill',
           orderId: order.id,
-          tableName: order.table?.name ?? '',
+          tableName: order.tableName ?? order.table?.name ?? '',
           restaurantName: settings?.companyName,
           restaurantAddress: settings?.address,
           phone: settings?.phone ?? undefined,
@@ -267,21 +289,14 @@ export function TableGrid() {
           footerText: settings?.footerText,
           orderNumber: order.id.slice(0, 8).toUpperCase(),
           guestCount: order.guestCount ?? 2,
-          serverName: undefined,
-          items: sentItems.map((i: { item?: { name: string }; variation?: { name: string }; name?: string; quantity: number; unitPrice?: number; lineTotal?: number; note?: string }) => ({
-            name: (i.variation ? `${i.item?.name ?? i.name} (${i.variation.name})` : i.item?.name ?? i.name) ?? 'Item',
-            quantity: i.quantity,
-            unitPrice: i.unitPrice,
-            lineTotal: i.lineTotal,
-            note: i.note,
-          })),
+          items: mergedItems,
           subtotal: order.subtotal ?? 0,
           taxTotal: order.taxTotal ?? 0,
           discountTotal: order.discountTotal ?? 0,
           grandTotal: order.grandTotal ?? 0,
           taxName: 'GST',
           date: new Date().toLocaleString('en-IN', { hour12: false }),
-          orderType: 'Dine In',
+          orderType: order.orderType === 'Takeaway' ? 'Takeaway' : 'Dine In',
           logoUrl: resolveImageUrl(settings?.printLogoUrl) ?? undefined,
         }).catch(() => {})
       }).catch(() => {})
@@ -630,7 +645,8 @@ export function TableGrid() {
         <SettlementModal
           order={settleOrder}
           tableName={settleOrder.tableName}
-          taxType={(settings?.taxType as 'Inclusive' | 'Exclusive') ?? 'Inclusive'}
+          taxType={(settings?.taxType as 'Inclusive' | 'Exclusive') ?? 'Exclusive'}
+          taxPercentage={defaultTaxPercent}
           onClose={() => setSettleOrder(null)}
           onSettled={() => {
             const settledTableId = settleOrder?.id

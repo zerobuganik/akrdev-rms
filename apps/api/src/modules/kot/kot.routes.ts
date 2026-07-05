@@ -11,4 +11,8 @@ router.post('/send', async (req, res, next) => {
   try { res.json(await kotService.send(req.body.orderId, req.user!.userId)) } catch (err) { next(err) }
 })
 
+router.post('/send-with-items', async (req, res, next) => {
+  try { res.json(await kotService.sendWithItems(req.body, req.user!.userId)) } catch (err) { next(err) }
+})
+
 export default router

@@ -365,6 +365,35 @@ export function TableGrid() {
     })
   }
 
+  const moveTableMut = useMutation({
+    mutationFn: async ({ orderId, destTableId }: { orderId: string; destTableId: string }) => {
+      await apiClient.post('/cart/move-table', { orderId, destTableId })
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tables', selectedAreas] })
+      queryClient.invalidateQueries({ queryKey: ['order'] })
+      toast('Table moved successfully', 'success')
+    },
+    onError: () => toast('Failed to move table', 'error'),
+  })
+
+  const [moveSourceTable, setMoveSourceTable] = useState<TableData | null>(null)
+  const [moveDestTableId, setMoveDestTableId] = useState('')
+
+  const handleMoveTable = (table: TableData) => {
+    setMoveSourceTable(table)
+    setMoveDestTableId('')
+  }
+
+  const executeMoveTable = () => {
+    if (!moveSourceTable || !moveDestTableId) return
+    const activeOrder = moveSourceTable.orders?.[0]
+    if (!activeOrder) { toast('No active order to move', 'error'); return }
+    moveTableMut.mutate({ orderId: activeOrder.id, destTableId: moveDestTableId })
+    setMoveSourceTable(null)
+    setMoveDestTableId('')
+  }
+
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
@@ -631,6 +660,7 @@ export function TableGrid() {
                 onDelete={handleDeleteTable}
                 onEdit={handleEditTable}
                 onMerge={handleMergeTable}
+                onMove={handleMoveTable}
               />
             ))}
           </div>
@@ -708,6 +738,58 @@ export function TableGrid() {
                 className="min-w-[84px] rounded-lg h-11 px-6 bg-gray-900 text-white text-sm font-medium hover:bg-gray-800"
               >
                 {mergeTableMut.isPending ? 'Merging...' : 'Merge'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {moveSourceTable && (
+        <div
+          className="fixed inset-0 z-50 flex items-start justify-center p-4 sm:p-6 lg:p-8 overflow-auto"
+          onClick={(e) => { if (e.target === e.currentTarget) { setMoveSourceTable(null); setMoveDestTableId('') } }}
+        >
+          <div className="absolute inset-0 bg-black/50" />
+          <div className="relative z-10 w-full max-w-md bg-background rounded-xl shadow-2xl overflow-hidden">
+            <div className="flex items-center justify-between gap-4 p-4 border-b">
+              <p className="text-2xl font-bold tracking-tight">Move Table</p>
+              <button onClick={() => { setMoveSourceTable(null); setMoveDestTableId('') }} className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-muted hover:bg-muted/80">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Move order from <strong>{moveSourceTable.name}</strong> to:
+              </p>
+              <select
+                value={moveDestTableId}
+                onChange={(e) => setMoveDestTableId(e.target.value)}
+                className="w-full rounded-lg border px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/50"
+                autoFocus
+              >
+                <option value="">Select destination table</option>
+                {tables
+                  .filter((t) => t.id !== moveSourceTable.id && (t.status === 'Available' || (t.status === 'Occupied' && t.orders?.some((o) => o.status !== 'Settled'))))
+                  .map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name} ({t.status}) {t.area ? `— ${t.area.name}` : ''}
+                    </option>
+                  ))}
+              </select>
+            </div>
+            <div className="flex items-center justify-end gap-3 p-4 bg-muted/50 border-t">
+              <button onClick={() => { setMoveSourceTable(null); setMoveDestTableId('') }} className="min-w-[84px] rounded-lg h-11 px-6 bg-muted text-sm font-medium hover:bg-muted/80">
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  if (!moveDestTableId) { toast('Select a destination table', 'error'); return }
+                  executeMoveTable()
+                }}
+                disabled={moveTableMut.isPending}
+                className="min-w-[84px] rounded-lg h-11 px-6 bg-gray-900 text-white text-sm font-medium hover:bg-gray-800"
+              >
+                {moveTableMut.isPending ? 'Moving...' : 'Move'}
               </button>
             </div>
           </div>

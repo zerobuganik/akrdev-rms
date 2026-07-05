@@ -824,6 +824,7 @@ function reshapeOrderItems(order: Record<string, unknown> & { items?: Array<Reco
       ...item,
       item: { name: item.itemName || 'Item' },
       variation: item.variationName ? { name: item.variationName } : undefined,
+      cancelledByUser: item.cancelledBy ? { name: item.cancelledBy } : undefined,
     })),
   }
 }
@@ -1836,13 +1837,13 @@ app.put('/api/v1/cart/item-qty', async (req, res) => {
 
 app.post('/api/v1/cart/cancel-item', async (req, res) => {
   try {
-    const { orderItemId } = req.body
+    const { orderItemId, cancelledBy } = req.body
     const item = await localPrisma.localOrderItem.findUnique({ where: { id: orderItemId } })
     if (!item) { res.status(404).json({ error: 'Item not found' }); return }
 
     await localPrisma.localOrderItem.update({
       where: { id: orderItemId },
-      data: { status: 'Cancelled' },
+      data: { status: 'Cancelled', cancelledAt: new Date().toISOString(), cancelledBy: cancelledBy ?? null, lineTotal: 0 },
     })
 
     // Recalculate order totals (exclude cancelled items)
@@ -1860,6 +1861,26 @@ app.post('/api/v1/cart/cancel-item', async (req, res) => {
   } catch (err) {
     console.error('Error cancelling item:', err)
     res.status(500).json({ error: 'Failed to cancel item' })
+  }
+})
+
+app.post('/api/v1/cart/move-table', async (req, res) => {
+  try {
+    const { orderId, destTableId } = req.body
+    if (!orderId || !destTableId) {
+      res.status(400).json({ error: 'orderId and destTableId required' })
+      return
+    }
+    const tbl = await localPrisma.cachedTable.findUnique({ where: { id: destTableId } }).catch(() => null)
+    await localPrisma.localOrder.update({
+      where: { id: orderId },
+      data: { tableId: destTableId, tableName: tbl?.name ?? null },
+    })
+    syncQueueService.enqueue('admin-put', { path: '/cart/move-table', body: { orderId, destTableId } }).catch(() => {})
+    res.json({ ok: true })
+  } catch (err) {
+    console.error('[move-table] Error:', err)
+    res.status(500).json({ error: 'Failed to move table' })
   }
 })
 
@@ -1888,10 +1909,19 @@ app.post('/api/v1/cart/merge-tables', async (req, res) => {
         data: { tableId: destTableId, tableName: destTbl?.name ?? null },
       })
     } else {
+      const sourceKOTs = await localPrisma.localKOT.findMany({
+        where: { orderId: sourceOrder.id },
+      })
+      for (const kot of sourceKOTs) {
+        await localPrisma.localKOT.update({
+          where: { id: kot.id },
+          data: { orderId: destOrder.id },
+        })
+      }
       for (const item of sourceOrder.items) {
         await localPrisma.localOrderItem.update({
           where: { id: item.id },
-          data: { orderId: destOrder.id, kotId: null },
+          data: { orderId: destOrder.id },
         })
       }
       await localPrisma.localOrder.update({

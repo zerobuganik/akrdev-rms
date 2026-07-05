@@ -45,4 +45,61 @@ export const kotService = {
 
     return { kotId: kot.id, kotNumber: nextKotNumber, itemsSent: newItems.length }
   },
+
+  async sendWithItems(data: Record<string, unknown>, sentBy: string) {
+    const { tableId, tableName, guestCount, orderType, note, items } = data as {
+      tableId?: string; tableName?: string; guestCount: number; orderType?: string; note?: string
+      items: Array<{ itemId: string; itemName: string; variationId?: string; variationName?: string; quantity: number; unitPrice: number; note?: string }>
+    }
+
+    // Create order
+    const order = await prisma.order.create({
+      data: {
+        tableId: (tableId as string) ?? null,
+        tableName: tableName ?? null,
+        guestCount: guestCount ?? 2,
+        orderType: orderType ?? 'DineIn',
+        status: 'KOT_Sent',
+        note: note ?? null,
+        subtotal: 0,
+        taxTotal: 0,
+        discountTotal: 0,
+        grandTotal: 0,
+      },
+    })
+
+    const kot = await prisma.kOT.create({
+      data: { orderId: order.id, kotNumber: 1, sentBy },
+    })
+
+    const createdItems: Array<{ lineTotal: number }> = []
+    for (const item of items) {
+      const oi = await prisma.orderItem.create({
+        data: {
+          orderId: order.id,
+          itemId: item.itemId,
+          quantity: item.quantity ?? 1,
+          unitPrice: item.unitPrice ?? 0,
+          lineTotal: (item.unitPrice ?? 0) * (item.quantity ?? 1),
+          variationId: item.variationId ?? null,
+          status: 'Sent',
+          kotId: kot.id,
+          note: item.note ?? null,
+        },
+      })
+      createdItems.push(oi)
+    }
+
+    const subtotal = createdItems.reduce((s, i) => s + i.lineTotal, 0)
+    await prisma.order.update({
+      where: { id: order.id },
+      data: { subtotal, grandTotal: subtotal },
+    })
+
+    if (tableId) {
+      await prisma.table.update({ where: { id: tableId as string }, data: { status: 'Occupied' } }).catch(() => {})
+    }
+
+    return { orderId: order.id, kotNumber: 1, itemsSent: createdItems.length }
+  },
 }

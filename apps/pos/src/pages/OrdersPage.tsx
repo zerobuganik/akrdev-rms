@@ -17,8 +17,8 @@ interface Order {
   guestCount: number
   createdAt: string
   customer?: { phone: string; name?: string }
-  items: Array<{ item: { name: string }; quantity: number; lineTotal: number; status: string }>
-  kots: Array<{ kotNumber: number; sentAt: string }>
+  items: Array<{ item: { name: string }; quantity: number; lineTotal: number; status: string; variation?: { name: string }; cancelledByUser?: { name: string }; cancelledAt?: string }>
+  kots: Array<{ kotNumber: number; sentAt: string; sentBy?: string }>
   settlement?: { cash?: number; card?: number; upi?: number; cashPaid?: number; cardPaid?: number; upiPaid?: number }
 }
 
@@ -276,10 +276,19 @@ export default function OrdersPage() {
 
             <div className="border-t pt-3">
               <h4 className="mb-2 font-medium">Items</h4>
-              {selectedOrder.items.map((item, i) => (
+              {selectedOrder.items.filter((i) => i.status !== 'Cancelled').map((item, i) => (
                 <div key={i} className="flex justify-between border-b py-1">
                   <span>
-                    {item.item.name} ×{item.quantity}
+                    {item.item.name} {item.variation?.name ? `(${item.variation.name})` : ''} ×{item.quantity}
+                  </span>
+                  <span>₹{item.lineTotal.toLocaleString()}</span>
+                </div>
+              ))}
+              {selectedOrder.items.filter((i) => i.status === 'Cancelled').map((item, i) => (
+                <div key={`c-${i}`} className="flex justify-between border-b py-1 line-through opacity-60">
+                  <span>
+                    {item.item.name} {item.variation?.name ? `(${item.variation.name})` : ''} ×{item.quantity}
+                    {item.cancelledByUser?.name && <span className="text-xs text-muted-foreground"> — by {item.cancelledByUser.name}</span>}
                   </span>
                   <span>₹{item.lineTotal.toLocaleString()}</span>
                 </div>
@@ -289,8 +298,8 @@ export default function OrdersPage() {
             <div className="border-t pt-3">
               <h4 className="mb-2 font-medium">KOTs</h4>
               {selectedOrder.kots.map((kot) => (
-                <div key={kot.kotNumber} className="text-xs text-muted-foreground">
-                  KOT #{kot.kotNumber} — {new Date(kot.sentAt).toLocaleTimeString('en-IN')}
+                <div key={kot.kotNumber} className="text-xs text-muted-foreground mb-1">
+                  KOT #{kot.kotNumber} {kot.sentBy ? `— By ${kot.sentBy}` : ''} — {new Date(kot.sentAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
                 </div>
               ))}
               {selectedOrder.kots.length === 0 && (

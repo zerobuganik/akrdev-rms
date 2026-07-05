@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
 import { cn } from '@/lib/utils'
-import { FileText, Trash2, MoreHorizontal, Users, Timer, CreditCard, Pencil, GitMerge } from 'lucide-react'
+import { FileText, Trash2, MoreHorizontal, Users, Timer, CreditCard, Pencil, GitMerge, ArrowRight } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
 export interface TableData {
@@ -20,6 +20,7 @@ interface TableCardProps {
   onDelete?: (tableId: string) => void
   onEdit?: (table: TableData) => void
   onMerge?: (table: TableData) => void
+  onMove?: (table: TableData) => void
 }
 
 const statusConfig = {
@@ -48,7 +49,7 @@ function DurationDisplay({ createdAt }: { createdAt: string }) {
   return <>{display}</>
 }
 
-export function TableCard({ table, onBill, onSettle, onDelete, onEdit, onMerge }: TableCardProps) {
+export function TableCard({ table, onBill, onSettle, onDelete, onEdit, onMerge, onMove }: TableCardProps) {
   const navigate = useNavigate()
   const [menuOpen, setMenuOpen] = useState(false)
   const cardRef = useRef<HTMLDivElement>(null)
@@ -181,6 +182,14 @@ export function TableCard({ table, onBill, onSettle, onDelete, onEdit, onMerge }
                 className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
               >
                 <GitMerge size={14} /> Merge Table
+              </button>
+            )}
+            {onMove && isOccupied && (
+              <button
+                onClick={() => { setMenuOpen(false); onMove(table) }}
+                className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+              >
+                <ArrowRight size={14} /> Move Table
               </button>
             )}
             {onDelete && (

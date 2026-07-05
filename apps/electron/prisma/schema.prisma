@@ -45,6 +45,8 @@ model LocalOrderItem {
   lineTotal     Float
   status        String  @default("New")
   note          String?
+  cancelledAt   String?
+  cancelledBy   String?
 
   order LocalOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
   kot   LocalKOT?  @relation(fields: [kotId], references: [id])

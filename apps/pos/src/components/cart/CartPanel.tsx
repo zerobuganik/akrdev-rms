@@ -131,7 +131,7 @@ export function CartPanel({ tableId }: { tableId: string | null }) {
   })
 
   const cancelItemMut = useMutation({
-    mutationFn: async (orderItemId: string) => { await apiClient.post('/cart/cancel-item', { orderItemId }) },
+    mutationFn: async (orderItemId: string) => { await apiClient.post('/cart/cancel-item', { orderItemId, cancelledBy: user?.name }) },
     onSuccess: (_data, orderItemId) => {
       toast('Item cancelled', 'success')
       queryClient.invalidateQueries({ queryKey: ['order', tableId] })

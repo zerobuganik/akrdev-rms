@@ -117,6 +117,7 @@ export async function ensureTables() {
       "kotId" TEXT, "quantity" INTEGER NOT NULL DEFAULT 1,
       "unitPrice" REAL NOT NULL, "lineTotal" REAL NOT NULL,
       "status" TEXT NOT NULL DEFAULT 'New', "note" TEXT,
+      "cancelledAt" TEXT, "cancelledBy" TEXT,
       FOREIGN KEY ("orderId") REFERENCES "local_orders"("id") ON DELETE CASCADE,
       FOREIGN KEY ("kotId") REFERENCES "local_kots"("id")
     )`,

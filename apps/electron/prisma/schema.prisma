@@ -176,13 +176,14 @@ model CachedTable {
 }
 
 model CachedCategory {
-  id          String @id
-  name        String
-  displayOrder Int   @default(0)
-  imageUrl    String?
-  kitchenId   String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id               String @id
+  name             String
+  defaultTaxPercent Float  @default(0)
+  displayOrder     Int    @default(0)
+  imageUrl         String?
+  kitchenId        String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   @@map("cached_categories")
 }

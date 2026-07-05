@@ -420,11 +420,11 @@ async function syncWithProgress(phone?: string, password?: string): Promise<void
       { key: 'categories', url: `${getCloudApiBase()}/categories`, handler: async (r: Response) => {
         cachedCategories = await r.json()
         if (Array.isArray(cachedCategories)) {
-          for (const c of cachedCategories as Array<{ id: string; name: string; displayOrder?: number; imageUrl?: string | null; kitchenId?: string | null }>) {
+          for (const c of cachedCategories as Array<{ id: string; name: string; defaultTaxPercent?: number; displayOrder?: number; imageUrl?: string | null; kitchenId?: string | null }>) {
             await localPrisma.cachedCategory.upsert({
               where: { id: c.id },
-              create: { id: c.id, name: c.name, displayOrder: c.displayOrder ?? 0, imageUrl: c.imageUrl ?? null, kitchenId: c.kitchenId ?? null },
-              update: { name: c.name, displayOrder: c.displayOrder ?? 0, imageUrl: c.imageUrl ?? null },
+              create: { id: c.id, name: c.name, defaultTaxPercent: c.defaultTaxPercent ?? 0, displayOrder: c.displayOrder ?? 0, imageUrl: c.imageUrl ?? null, kitchenId: c.kitchenId ?? null },
+              update: { name: c.name, defaultTaxPercent: c.defaultTaxPercent ?? 0, displayOrder: c.displayOrder ?? 0, imageUrl: c.imageUrl ?? null },
             }).catch(() => {})
           }
         }
@@ -977,14 +977,14 @@ app.post('/api/v1/categories', async (req, res) => {
     const id = body.id ?? crypto.randomUUID()
     await localPrisma.cachedCategory.upsert({
       where: { id },
-      create: { id, name: body.name ?? 'New Category', displayOrder: body.displayOrder ?? 0, imageUrl: body.imageUrl ?? null, kitchenId: body.kitchenId ?? null },
-      update: { name: body.name, displayOrder: body.displayOrder, imageUrl: body.imageUrl, kitchenId: body.kitchenId },
+      create: { id, name: body.name ?? 'New Category', defaultTaxPercent: body.defaultTaxPercent ?? 0, displayOrder: body.displayOrder ?? 0, imageUrl: body.imageUrl ?? null, kitchenId: body.kitchenId ?? null },
+      update: { name: body.name, defaultTaxPercent: body.defaultTaxPercent ?? 0, displayOrder: body.displayOrder, imageUrl: body.imageUrl, kitchenId: body.kitchenId },
     })
     if (cachedCategories) {
-      const arr = cachedCategories as Array<{ id: string; name: string; _count?: { items: number } }>
-      const idx = arr.findIndex(c => c.id === id)
-      const entry = { id, name: body.name ?? 'New Category', _count: { items: 0 } }
-      if (idx >= 0) arr[idx] = entry
+      const arr = cachedCategories as Array<Record<string, unknown>>
+      const existing = arr.findIndex(c => c.id === id)
+      const entry = { id, name: body.name ?? 'New Category', defaultTaxPercent: body.defaultTaxPercent ?? 0, _count: { items: 0 } }
+      if (existing >= 0) arr[existing] = entry
       else arr.unshift(entry)
     }
     syncQueueService.enqueue('admin-create', { path: '/categories', body: { ...body, id } }).catch(() => {})
@@ -1000,8 +1000,8 @@ app.put('/api/v1/categories/:id', async (req, res) => {
     const body = req.body
     await localPrisma.cachedCategory.upsert({
       where: { id },
-      create: { id, name: body.name ?? 'Category', displayOrder: body.displayOrder ?? 0, imageUrl: body.imageUrl ?? null, kitchenId: body.kitchenId ?? null },
-      update: { name: body.name, displayOrder: body.displayOrder, imageUrl: body.imageUrl, kitchenId: body.kitchenId },
+      create: { id, name: body.name ?? 'Category', defaultTaxPercent: body.defaultTaxPercent ?? 0, displayOrder: body.displayOrder ?? 0, imageUrl: body.imageUrl ?? null, kitchenId: body.kitchenId ?? null },
+      update: { name: body.name, defaultTaxPercent: body.defaultTaxPercent ?? 0, displayOrder: body.displayOrder, imageUrl: body.imageUrl, kitchenId: body.kitchenId },
     })
     if (cachedCategories) {
       const arr = cachedCategories as Array<{ id: string; name: string }>
@@ -1412,7 +1412,7 @@ app.get('/api/v1/categories', async (_req, res) => {
     for (const item of localItems) {
       if (item.categoryId) countByCategory.set(item.categoryId, (countByCategory.get(item.categoryId) ?? 0) + 1)
     }
-    res.json(localCats.map(c => ({ id: c.id, name: c.name, displayOrder: c.displayOrder, imageUrl: c.imageUrl, _count: { items: countByCategory.get(c.id) ?? 0 } })))
+    res.json(localCats.map(c => ({ id: c.id, name: c.name, defaultTaxPercent: c.defaultTaxPercent ?? 0, displayOrder: c.displayOrder, imageUrl: c.imageUrl, _count: { items: countByCategory.get(c.id) ?? 0 } })))
     return
   }
   // 2. In-memory cloud cache

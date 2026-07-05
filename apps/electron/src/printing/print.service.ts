@@ -394,7 +394,6 @@ export class PrintService {
   private formatKOT(data: PrintData, paperWidth: number): Buffer {
     const w = this.width(paperWidth)
     const lines: string[] = [
-      CMD.INIT,
       CMD.ALIGN_CENTER,
       CMD.DOUBLE_BOTH,
       `Table: ${data.tableName ?? '—'}`,
@@ -431,12 +430,12 @@ export class PrintService {
         const qtyStr = this.centerIn(String(item.quantity), qtyColW)
         const nameStr = this.pad(item.name, itemColW)
         lines.push(
-          CMD.DOUBLE_HEIGHT,
+          CMD.BOLD_ON,
           qtyStr + '  ' + nameStr,
-          CMD.NORMAL,
+          CMD.BOLD_OFF,
         )
         if (item.note) {
-          lines.push(' '.repeat(qtyColW + 2) + `> ${item.note}`)
+          lines.push(' '.repeat(qtyColW + 2) + `${item.note}`)
         }
       }
     }
@@ -561,8 +560,6 @@ export class PrintService {
     // Logo is printed first via logoBuf (GS v 0 raster), then restaurant name
     lines.push(CMD.ALIGN_CENTER)
     if (logoBuf) {
-      // Minimal space after logo — just 1 line feed
-      lines.push('')
     } else {
       lines.push('')
     }

@@ -63,6 +63,7 @@ export async function ensureTables() {
     )`,
     `CREATE TABLE IF NOT EXISTS "cached_categories" (
       "id" TEXT NOT NULL PRIMARY KEY, "name" TEXT NOT NULL,
+      "defaultTaxPercent" REAL DEFAULT 0,
       "displayOrder" INTEGER DEFAULT 0,
       "imageUrl" TEXT, "kitchenId" TEXT,
       "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,

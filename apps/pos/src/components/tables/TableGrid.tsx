@@ -680,7 +680,7 @@ export function TableGrid() {
           onClose={() => setSettleOrder(null)}
           onSettled={() => {
             const settledTableId = settleOrder?.id
-              ? tables.find((t) => t.orders.some((o) => o.id === settleOrder!.id))?.id ?? null
+              ? tables.find((t) => t.orders?.some((o) => o.id === settleOrder!.id))?.id ?? null
               : null
             setSettleOrder(null)
             if (settledTableId) {

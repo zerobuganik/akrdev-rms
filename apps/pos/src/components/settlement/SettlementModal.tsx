@@ -45,9 +45,9 @@ export function SettlementModal({ order, tableName, taxType, taxPercentage, onCl
   const exactGrandTotal = taxType === 'Inclusive'
     ? order.subtotal - discountAmount
     : order.subtotal + taxTotal - discountAmount
-  const { grandTotal } = calculateRounding(exactGrandTotal)
+  const { grandTotal: displayGrandTotal } = calculateRounding(exactGrandTotal)
   const totalPaid = cashNum + cardNum + upiNum
-  const change = totalPaid - grandTotal
+  const change = totalPaid - displayGrandTotal
 
   const settleMut = useMutation({
     mutationFn: async () => {
@@ -182,13 +182,13 @@ export function SettlementModal({ order, tableName, taxType, taxPercentage, onCl
           <div className="border-t pt-3">
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Grand Total</span>
-              <span className="font-bold">₹{grandTotal.toLocaleString()}</span>
+              <span className="font-bold">₹{displayGrandTotal.toLocaleString()}</span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Paid</span>
               <span>₹{totalPaid.toLocaleString()}</span>
             </div>
-            {totalPaid >= grandTotal && (
+            {totalPaid >= displayGrandTotal && (
               <div className="flex justify-between text-sm text-green-600">
                 <span>Change</span>
                 <span className="font-bold">₹{change.toLocaleString()}</span>
@@ -198,7 +198,7 @@ export function SettlementModal({ order, tableName, taxType, taxPercentage, onCl
 
           <button
             onClick={() => settleMut.mutate()}
-            disabled={totalPaid < grandTotal || settleMut.isPending}
+            disabled={totalPaid < displayGrandTotal || settleMut.isPending}
             className="w-full rounded-lg border px-4 py-2.5 text-sm font-bold text-white bg-green-500 hover:bg-green-600 disabled:opacity-50"
           >
             {settleMut.isPending ? 'Processing...' : 'Complete Settlement'}

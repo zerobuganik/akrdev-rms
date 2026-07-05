@@ -87,11 +87,11 @@ export function CartPanel({ tableId }: { tableId: string | null }) {
       if (!tableId || tableId === 'takeaway-new') return null
       const { data: active } = await apiClient.get(`/orders/${tableId}/active`).catch(() => ({ data: null }))
       if (active) {
-        return { ...active, items: (active.items ?? []).filter((i: { status: string }) => i.status !== 'Cancelled') }
+        return active
       }
       const { data } = await apiClient.get(`/orders/${tableId}`).catch(() => ({ data: null }))
       if (!data || data.status === 'Cancelled') return null
-      return { ...data, items: (data.items ?? []).filter((i: { status: string }) => i.status !== 'Cancelled') }
+      return data
     },
     enabled: !!tableId && tableId !== 'takeaway-new',
     retry: 1,

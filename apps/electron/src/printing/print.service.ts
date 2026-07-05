@@ -436,19 +436,13 @@ export class PrintService {
         const nameStr = this.pad(item.name, itemColW)
         const isCancelled = item.status === 'Cancelled'
         const itemLine = qtyStr + '  ' + nameStr
+        lines.push(
+          CMD.BOLD_ON,
+          itemLine,
+          CMD.BOLD_OFF,
+        )
         if (isCancelled) {
-          lines.push(
-            CMD.DOUBLE_HEIGHT + CMD.BOLD_ON,
-            itemLine,
-            CMD.NORMAL,
-            `${' '.repeat(qtyColW + 2)}${'\u00AF'.repeat(nameStr.length)}`,
-          )
-        } else {
-          lines.push(
-            CMD.DOUBLE_HEIGHT + CMD.BOLD_ON,
-            itemLine,
-            CMD.NORMAL,
-          )
+          lines.push(`${' '.repeat(qtyColW + 2)}  (Cancelled)`)
         }
         if (item.note && !isCancelled) {
           lines.push(' '.repeat(qtyColW + 2) + `${item.note}`)

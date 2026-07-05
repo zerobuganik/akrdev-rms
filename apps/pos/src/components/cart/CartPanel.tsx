@@ -130,6 +130,34 @@ export function CartPanel({ tableId }: { tableId: string | null }) {
       toast('Item cancelled', 'success')
       queryClient.invalidateQueries({ queryKey: ['order', tableId] })
       queryClient.invalidateQueries({ queryKey: ['tables'] })
+      const currentOrder = queryClient.getQueryData<Order | null>(['order', tableId])
+      if (currentOrder) {
+        const cancelledItem = currentOrder.items.find((i) => i.id === orderItemId)
+        if (cancelledItem) {
+          const tables = queryClient.getQueryData<Array<{ id: string; name: string }>>(['tables'])
+          const tableName = tables?.find((t) => t.id === tableId)?.name ?? (currentOrder.tableName ?? 'Table')
+          const kotId = cancelledItem.kotId
+          const kot = currentOrder.kots?.find((k) => k.id === kotId)
+          printerApi.printKOT({
+            printType: 'kot',
+            orderId: currentOrder.id,
+            tableName,
+            guestCount: currentOrder.guestCount,
+            serverName: user?.name ?? 'User',
+            kotNumber: kot?.kotNumber ?? 1,
+            items: [{
+              name: getItemDisplayName(cancelledItem),
+              quantity: cancelledItem.quantity,
+              unitPrice: cancelledItem.unitPrice,
+              lineTotal: cancelledItem.lineTotal,
+              note: cancelledItem.note,
+              status: 'Cancelled',
+            }],
+            date: formatPrintDate(),
+            orderType: currentOrder.orderType === 'Takeaway' ? 'Takeaway' : 'Dine In',
+          }).catch(() => {})
+        }
+      }
     },
   })
 

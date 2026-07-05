@@ -38,6 +38,9 @@ export interface PrintData {
     unitPrice?: number
     lineTotal?: number
     note?: string
+    status?: string
+    cancelledBy?: string
+    cancelledAt?: string
   }>
   subtotal?: number
   taxTotal?: number
@@ -75,8 +78,8 @@ const CMD = {
   DOUBLE_WIDTH: `${ESC}!\x20`,
   DOUBLE_BOTH: `${ESC}!\x30`,
   NORMAL: `${ESC}!\x00`,
-  UNDERLINE_ON: `${ESC}-\x01`,
-  UNDERLINE_OFF: `${ESC}-\x00`,
+  LINE_SPACING_0: `${ESC}3\x00`,
+  LINE_SPACING_24: `${ESC}3\x18`,
   CUT_PARTIAL: `${ESC}m`,
   CUT_FULL: `${ESC}i`,
   LINE_FEED: '\n',
@@ -425,21 +428,35 @@ export class PrintService {
       CMD.DIVIDER.slice(0, w),
     )
 
+    lines.push(CMD.LINE_SPACING_0)
+
     if (data.items) {
       for (const item of data.items) {
         const qtyStr = this.centerIn(String(item.quantity), qtyColW)
         const nameStr = this.pad(item.name, itemColW)
-        lines.push(
-          CMD.BOLD_ON,
-          qtyStr + '  ' + nameStr,
-          CMD.BOLD_OFF,
-        )
-        if (item.note) {
+        const isCancelled = item.status === 'Cancelled'
+        const itemLine = qtyStr + '  ' + nameStr
+        if (isCancelled) {
+          lines.push(
+            CMD.DOUBLE_HEIGHT + CMD.BOLD_ON,
+            itemLine,
+            CMD.NORMAL,
+            `${' '.repeat(qtyColW + 2)}${'\u00AF'.repeat(nameStr.length)}`,
+          )
+        } else {
+          lines.push(
+            CMD.DOUBLE_HEIGHT + CMD.BOLD_ON,
+            itemLine,
+            CMD.NORMAL,
+          )
+        }
+        if (item.note && !isCancelled) {
           lines.push(' '.repeat(qtyColW + 2) + `${item.note}`)
         }
       }
     }
 
+    lines.push(CMD.LINE_SPACING_24)
     lines.push(
       CMD.DIVIDER.slice(0, w),
       CMD.SPACER,

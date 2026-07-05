@@ -70,7 +70,7 @@ export interface PrintKOTData {
   guestCount?: number
   serverName?: string
   kotNumber: number
-  items: Array<{ name: string; quantity: number; unitPrice?: number; lineTotal?: number; note?: string }>
+  items: Array<{ name: string; quantity: number; unitPrice?: number; lineTotal?: number; note?: string; status?: string }>
   date?: string
   orderType?: string
 }

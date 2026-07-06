@@ -47,16 +47,14 @@ export const kotService = {
   },
 
   async sendWithItems(data: Record<string, unknown>, sentBy: string) {
-    const { tableId, tableName, guestCount, orderType, note, items } = data as {
-      tableId?: string; tableName?: string; guestCount: number; orderType?: string; note?: string
+    const { tableId, guestCount, orderType, note, items } = data as {
+      tableId?: string; guestCount: number; orderType?: string; note?: string
       items: Array<{ itemId: string; itemName: string; variationId?: string; variationName?: string; quantity: number; unitPrice: number; note?: string }>
     }
 
-    // Create order
     const order = await prisma.order.create({
       data: {
         tableId: (tableId as string) ?? null,
-        tableName: tableName ?? null,
         guestCount: guestCount ?? 2,
         orderType: (orderType ?? 'DineIn') as 'DineIn' | 'Takeaway',
         status: 'KOT_Sent',
@@ -65,6 +63,7 @@ export const kotService = {
         taxTotal: 0,
         discountTotal: 0,
         grandTotal: 0,
+        createdBy: sentBy,
       },
     })
 

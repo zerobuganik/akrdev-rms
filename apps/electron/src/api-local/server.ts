@@ -100,7 +100,7 @@ let cachedCloudEmployees: unknown[] | null = null
 // Restore in-memory cache from local SQLite on startup (survives app restarts)
 async function restoreLocalCache() {
   try {
-    const localTables = await localPrisma.cachedTable.findMany()
+    const localTables = await localPrisma.cachedTable.findMany({ orderBy: { name: 'asc' } })
     if (localTables.length > 0) {
       cachedCloudTables = localTables.map(t => ({
         id: t.id, name: t.name, capacity: t.capacity, status: t.status,
@@ -717,15 +717,15 @@ async function cleanDuplicateOrders() {
     ) as Array<{ tableId: string; cnt: number; first_created: string }>
 
     for (const row of dupes) {
-      // Find the oldest order (keep this one)
       const orders = await localPrisma.localOrder.findMany({
-        where: { tableId: row.tableId, status: { notIn: ['Settled', 'Cancelled'] } },
+        where: { tableId: row.tableId, status: { notIn: ['Cancelled'] } },
         orderBy: { createdAt: 'asc' },
         include: { items: true, kots: true },
       })
       if (orders.length <= 1) continue
 
-      const primary = orders[0]!
+      // Keep the oldest non-settled order as primary. If all are settled, keep oldest.
+      const primary = orders.find(o => o.status !== 'Settled') ?? orders[0]!
       for (let i = 1; i < orders.length; i++) {
         const dup = orders[i]!
         // Move items to primary order
@@ -1373,7 +1373,7 @@ app.get('/api/v1/tables', async (req, res) => {
     const tableName = req.query.tableName as string | undefined
 
     // 1. Load tables from local SQLite (persisted, updated on every create/edit, survives offline)
-    const localTables = await localPrisma.cachedTable.findMany()
+    const localTables = await localPrisma.cachedTable.findMany({ orderBy: { name: 'asc' } })
     let activeOrders: Array<{ id: string; tableId: string | null; tableName: string | null; status: string; subtotal: number; grandTotal: number; createdAt: Date; updatedAt: Date }> = []
     if (localTables.length > 0) {
       activeOrders = await localPrisma.localOrder.findMany({

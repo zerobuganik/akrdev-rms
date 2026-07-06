@@ -89,9 +89,7 @@ export function CartPanel({ tableId }: { tableId: string | null }) {
       if (active) {
         return active
       }
-      const { data } = await apiClient.get(`/orders/${tableId}`).catch(() => ({ data: null }))
-      if (!data || data.status === 'Cancelled') return null
-      return data
+      return null
     },
     enabled: !!tableId && tableId !== 'takeaway-new',
     retry: 1,

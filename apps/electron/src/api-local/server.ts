@@ -2273,7 +2273,8 @@ app.post('/api/v1/settlement', async (req, res) => {
     const { taxTotal, discountTotal, grandTotal } = computeOrderTotals(subtotal)
     const totalPaid = (payments.cash ?? 0) + (payments.card ?? 0) + (payments.upi ?? 0)
 
-    if (totalPaid < grandTotal) {
+    const effectiveGrandTotal = grandTotal > 0 ? grandTotal : order.grandTotal > 0 ? order.grandTotal : grandTotal
+    if (totalPaid < effectiveGrandTotal) {
       res.status(400).json({ error: { message: 'Insufficient payment' } }); return
     }
 

@@ -58,7 +58,7 @@ export const kotService = {
         tableId: (tableId as string) ?? null,
         tableName: tableName ?? null,
         guestCount: guestCount ?? 2,
-        orderType: orderType ?? 'DineIn',
+        orderType: (orderType ?? 'DineIn') as 'DineIn' | 'Takeaway',
         status: 'KOT_Sent',
         note: note ?? null,
         subtotal: 0,

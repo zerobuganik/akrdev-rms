@@ -2536,6 +2536,7 @@ app.get('/api/v1/print/history', async (req, res) => {
 })
 
 app.get('/api/v1/health', (_req, res) => {
+  cleanDuplicateOrders().catch(() => {})
   res.json({
     status: 'ok',
     cloudApiBase: getCloudApiBase(),
@@ -2639,6 +2640,7 @@ export function createLocalApiServer() {
         if (token && !syncInProgress) {
           syncWithProgress().catch(() => {})
         }
+        cleanDuplicateOrders().catch(() => {})
       }
       // Run immediately, then every 15 seconds
       runBackgroundSync()

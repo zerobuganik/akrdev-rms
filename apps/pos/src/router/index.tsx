@@ -11,7 +11,7 @@ import ItemsPage from '@/pages/ItemsPage'
 import EmployeesPage from '@/pages/EmployeesPage'
 import ActivityLogPage from '@/pages/ActivityLogPage'
 import SettingsPage from '@/pages/SettingsPage'
-import PaymentSummaryPage from '@/pages/PaymentSummaryPage'
+import PaymentHistoryPage from '@/pages/PaymentHistoryPage'
 
 export const router = createBrowserRouter([
   {
@@ -42,7 +42,7 @@ export const router = createBrowserRouter([
       { path: 'employees', element: <EmployeesPage /> },
       { path: 'activity-log', element: <ActivityLogPage /> },
       { path: 'settings', element: <SettingsPage /> },
-      { path: 'payment-summary', element: <PinGate><PaymentSummaryPage /></PinGate> },
+      { path: 'payment-history', element: <PinGate><PaymentHistoryPage /></PinGate> },
     ],
   },
   {

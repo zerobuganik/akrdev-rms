@@ -2127,6 +2127,64 @@ app.post('/api/v1/tables/:tableId/unlock', (req, res) => {
 
 // ── Settlement endpoints ──────────────────────────────────────
 
+app.get('/api/v1/settlement/ledger', async (req, res) => {
+  try {
+    const { startDate, endDate } = req.query as { startDate?: string; endDate?: string }
+    const where: Record<string, unknown> = {}
+
+    if (startDate || endDate) {
+      const settledAt: Record<string, Date> = {}
+      if (startDate) settledAt.gte = new Date(startDate)
+      if (endDate) settledAt.lte = new Date(new Date(endDate).setHours(23, 59, 59, 999))
+      where.settledAt = settledAt
+    } else {
+      const now = new Date()
+      where.settledAt = {
+        gte: new Date(now.getFullYear(), now.getMonth(), now.getDate()),
+        lte: now,
+      }
+    }
+
+    const settlements = await localPrisma.localSettlement.findMany({
+      where,
+      include: { order: { select: { id: true, orderType: true, tableName: true, grandTotal: true, createdAt: true } } },
+      orderBy: { settledAt: 'desc' },
+    })
+
+    const ledger = settlements.map((s) => ({
+      id: s.id,
+      orderId: s.orderId,
+      displayId: null,
+      orderType: s.order.orderType ?? 'DineIn',
+      tableName: s.order.tableName ?? '',
+      grandTotal: s.grandTotal,
+      cashPaid: s.cashPaid,
+      cardPaid: s.cardPaid,
+      upiPaid: s.upiPaid,
+      changeGiven: s.changeGiven,
+      netCash: s.cashPaid - s.changeGiven,
+      createdAt: s.settledAt,
+    }))
+
+    const totalCollected = settlements.reduce((s, i) => s + i.cashPaid + i.cardPaid + i.upiPaid - i.changeGiven, 0)
+    const totalCash = settlements.reduce((s, i) => s + i.cashPaid - i.changeGiven, 0)
+    const totalCard = settlements.reduce((s, i) => s + i.cardPaid, 0)
+    const totalUpi = settlements.reduce((s, i) => s + i.upiPaid, 0)
+
+    res.json({
+      cash: totalCash,
+      card: totalCard,
+      upi: totalUpi,
+      total: totalCollected,
+      count: settlements.length,
+      ledger,
+    })
+  } catch (err) {
+    console.error('Error fetching payment ledger:', err)
+    res.status(500).json({ error: 'Failed to fetch payment ledger' })
+  }
+})
+
 app.post('/api/v1/settlement', async (req, res) => {
   try {
     const { orderId, discountType, discountValue, discountReason, payments } = req.body

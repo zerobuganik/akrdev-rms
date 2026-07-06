@@ -28,7 +28,7 @@ const navItems = [
   { path: '/orders', label: 'Orders', icon: ClipboardList },
   { path: '/items', label: 'Items', icon: Package },
   { path: '/employees', label: 'Employees', icon: Users },
-  { path: '/payment-summary', label: 'Payments', icon: Banknote },
+  { path: '/payment-history', label: 'Payments', icon: Banknote },
   { path: '/activity-log', label: 'Activity Log', icon: History },
   { path: '/settings', label: 'Settings', icon: Settings },
 ]

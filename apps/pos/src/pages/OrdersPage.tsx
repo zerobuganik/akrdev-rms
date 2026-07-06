@@ -41,7 +41,7 @@ export default function OrdersPage() {
       const { data } = await apiClient.get('/orders', { params })
       return data
     },
-    refetchInterval: 10_000,
+    refetchInterval: 3_000,
   })
 
   const voidMut = useMutation({

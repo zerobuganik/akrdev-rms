@@ -2241,6 +2241,13 @@ app.post('/api/v1/settlement', async (req, res) => {
       }),
     ])
 
+    try {
+      if (io && order.tableId) {
+        io.to(`table:${order.tableId}`).emit('order:updated', { orderId, tableId: order.tableId, action: 'settled' })
+      }
+      io.emit('tables:updated')
+    } catch { }
+
     syncQueueService.enqueue('settle', { orderId, subtotal, taxTotal, discountTotal, grandTotal, discountType, discountValue, discountReason, payments, changeGiven: changeAmt }).catch(() => {})
 
     res.json({ orderId, subtotal, grandTotal, totalPaid, change: changeAmt })

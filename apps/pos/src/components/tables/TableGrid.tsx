@@ -78,7 +78,7 @@ export function TableGrid() {
       const { data } = await apiClient.get('/tables', { params })
       return data
     },
-    refetchInterval: 3_000,
+    refetchInterval: 1_500,
     staleTime: 0,
   })
 

@@ -711,36 +711,38 @@ async function initLocalDb() {
 
 async function cleanDuplicateOrders() {
   try {
-    // Find tables with multiple active orders (duplicates from old KOT-each-creates-order bug)
     const dupes = await localPrisma.$queryRawUnsafe(
-      `SELECT "tableId", COUNT(*) as cnt, MIN("createdAt") as first_created FROM "local_orders" WHERE "tableId" IS NOT NULL AND "status" NOT IN ('Settled', 'Cancelled') GROUP BY "tableId" HAVING cnt > 1`
-    ) as Array<{ tableId: string; cnt: number; first_created: string }>
+      `SELECT "tableId", COUNT(*) as cnt FROM "local_orders" WHERE "tableId" IS NOT NULL GROUP BY "tableId" HAVING cnt > 1`
+    ) as Array<{ tableId: string; cnt: number }>
 
     for (const row of dupes) {
       const orders = await localPrisma.localOrder.findMany({
-        where: { tableId: row.tableId, status: { notIn: ['Cancelled'] } },
+        where: { tableId: row.tableId, status: { not: 'Cancelled' } },
         orderBy: { createdAt: 'asc' },
         include: { items: true, kots: true },
       })
       if (orders.length <= 1) continue
 
-      // Keep the oldest non-settled order as primary. If all are settled, keep oldest.
+      const activeCount = orders.filter(o => o.status !== 'Settled').length
+      if (activeCount <= 1) continue
+
       const primary = orders.find(o => o.status !== 'Settled') ?? orders[0]!
-      for (let i = 1; i < orders.length; i++) {
-        const dup = orders[i]!
-        // Move items to primary order
-        for (const item of dup.items) {
-          await localPrisma.localOrderItem.update({
-            where: { id: item.id },
-            data: { orderId: primary.id, kotId: null },
-          }).catch(() => {})
-        }
-        // Move KOTs to primary order
-        for (const kot of dup.kots) {
-          await localPrisma.localKOT.update({
-            where: { id: kot.id },
-            data: { orderId: primary.id },
-          }).catch(() => {})
+      for (const dup of orders) {
+        if (dup.id === primary.id) continue
+        // Only merge items from non-settled duplicates
+        if (dup.status !== 'Settled') {
+          for (const item of dup.items) {
+            await localPrisma.localOrderItem.update({
+              where: { id: item.id },
+              data: { orderId: primary.id, kotId: null },
+            }).catch(() => {})
+          }
+          for (const kot of dup.kots) {
+            await localPrisma.localKOT.update({
+              where: { id: kot.id },
+              data: { orderId: primary.id },
+            }).catch(() => {})
+          }
         }
         // Cancel the duplicate order
         await localPrisma.localOrder.update({

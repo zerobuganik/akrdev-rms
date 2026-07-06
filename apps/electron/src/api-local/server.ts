@@ -2084,12 +2084,26 @@ app.post('/api/v1/kot/send-with-items', async (req, res, next) => {
       console.warn('[kot] Socket emit failed:', (err as Error).message)
     }
 
-    syncQueueService.enqueue('send-kot-with-items', {
-      tableId, tableName, guestCount, orderType, sentBy, note,
-      items: items.map((i: { itemId: string; itemName: string; variationId?: string; variationName?: string; quantity: number; unitPrice: number; note?: string }) => ({
-        itemId: i.itemId, itemName: i.itemName, variationId: i.variationId, variationName: i.variationName, quantity: i.quantity, unitPrice: i.unitPrice, note: i.note,
-      })),
-    }).catch((err) => console.warn('[kot] Sync queue enqueue failed:', (err as Error).message))
+    if (isNewOrder) {
+      syncQueueService.enqueue('send-kot-with-items', {
+        tableId, tableName: resolvedTableName, guestCount, orderType, sentBy, note,
+        items: items.map((i: { itemId: string; itemName: string; variationId?: string; variationName?: string; quantity: number; unitPrice: number; note?: string }) => ({
+          itemId: i.itemId, itemName: i.itemName, variationId: i.variationId, variationName: i.variationName, quantity: i.quantity, unitPrice: i.unitPrice, note: i.note,
+        })),
+      }).catch((err) => console.warn('[kot] Sync queue enqueue failed:', (err as Error).message))
+    } else {
+      for (const item of items) {
+        syncQueueService.enqueue('add-item', {
+          orderId,
+          itemId: item.itemId,
+          variationId: item.variationId,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          note: item.note,
+        }).catch((err) => console.warn('[kot] Sync add-item failed:', (err as Error).message))
+      }
+      syncQueueService.enqueue('send-kot', { orderId, sentBy }).catch((err) => console.warn('[kot] Sync send-kot failed:', (err as Error).message))
+    }
 
     res.status(201).json({ orderId, kotNumber })
   } catch (err) {

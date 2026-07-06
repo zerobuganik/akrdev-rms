@@ -706,6 +706,65 @@ async function ensureLocalAdmin() {
 async function initLocalDb() {
   await ensureTables()
   await ensureLocalAdmin()
+  await cleanDuplicateOrders()
+}
+
+async function cleanDuplicateOrders() {
+  try {
+    // Find tables with multiple active orders (duplicates from old KOT-each-creates-order bug)
+    const dupes = await localPrisma.$queryRawUnsafe(
+      `SELECT "tableId", COUNT(*) as cnt, MIN("createdAt") as first_created FROM "local_orders" WHERE "tableId" IS NOT NULL AND "status" NOT IN ('Settled', 'Cancelled') GROUP BY "tableId" HAVING cnt > 1`
+    ) as Array<{ tableId: string; cnt: number; first_created: string }>
+
+    for (const row of dupes) {
+      // Find the oldest order (keep this one)
+      const orders = await localPrisma.localOrder.findMany({
+        where: { tableId: row.tableId, status: { notIn: ['Settled', 'Cancelled'] } },
+        orderBy: { createdAt: 'asc' },
+        include: { items: true, kots: true },
+      })
+      if (orders.length <= 1) continue
+
+      const primary = orders[0]!
+      for (let i = 1; i < orders.length; i++) {
+        const dup = orders[i]!
+        // Move items to primary order
+        for (const item of dup.items) {
+          await localPrisma.localOrderItem.update({
+            where: { id: item.id },
+            data: { orderId: primary.id, kotId: null },
+          }).catch(() => {})
+        }
+        // Move KOTs to primary order
+        for (const kot of dup.kots) {
+          await localPrisma.localKOT.update({
+            where: { id: kot.id },
+            data: { orderId: primary.id },
+          }).catch(() => {})
+        }
+        // Cancel the duplicate order
+        await localPrisma.localOrder.update({
+          where: { id: dup.id },
+          data: { status: 'Cancelled', subtotal: 0, taxTotal: 0, discountTotal: 0, grandTotal: 0 },
+        }).catch(() => {})
+      }
+
+      // Recalculate primary order totals
+      const allItems = await localPrisma.localOrderItem.findMany({
+        where: { orderId: primary.id, status: { not: 'Cancelled' } },
+      })
+      const subtotal = allItems.reduce((s, i) => s + i.lineTotal, 0)
+      const { taxTotal, discountTotal, grandTotal } = computeOrderTotals(subtotal)
+      await localPrisma.localOrder.update({
+        where: { id: primary.id },
+        data: { subtotal, taxTotal, discountTotal, grandTotal },
+      })
+
+      console.log(`[cleanup] Merged ${orders.length - 1} duplicates into order ${primary.id} for table ${row.tableId}`)
+    }
+  } catch (err) {
+    console.warn('[cleanup] Failed to clean duplicate orders:', (err as Error).message)
+  }
 }
 
 // ==================== AUTH ====================

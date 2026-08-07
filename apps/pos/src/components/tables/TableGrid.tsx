@@ -256,7 +256,7 @@ export function TableGrid() {
     },
     onSuccess: (order) => {
       toast('Bill generated', 'success')
-      queryClient.invalidateQueries({ queryKey: ['tables', selectedAreas] })
+      queryClient.invalidateQueries({ queryKey: ['tables'] })
       queryClient.invalidateQueries({ queryKey: ['takeaway-orders'] })
       queryClient.refetchQueries({ queryKey: ['tables'] })
       const billItems = (order.items ?? []).filter((i: { status: string }) => i.status !== 'Cancelled')
@@ -686,10 +686,8 @@ export function TableGrid() {
             setSettleOrder(null)
             if (settledTableId) {
               queryClient.setQueryData(['order', settledTableId], null)
-              const tablesData = queryClient.getQueryData<Table[]>([...['tables'], selectedAreas.length > 0 ? 'area' : 'all'])
-              if (tablesData) queryClient.setQueryData(['tables', selectedAreas], tablesData.map(t => t.id === settledTableId ? { ...t, status: 'Available', orders: [] } : t))
             }
-            queryClient.invalidateQueries({ queryKey: ['tables', selectedAreas] })
+            queryClient.invalidateQueries({ queryKey: ['tables'] })
             queryClient.invalidateQueries({ queryKey: ['takeaway-orders'] })
             queryClient.refetchQueries({ queryKey: ['tables'] })
           }}

@@ -313,6 +313,7 @@ export function CartPanel({ tableId }: { tableId: string | null }) {
       queryClient.invalidateQueries({ queryKey: ['order', tableId] })
       queryClient.invalidateQueries({ queryKey: ['tables'] })
       queryClient.invalidateQueries({ queryKey: ['takeaway-orders'] })
+      queryClient.refetchQueries({ queryKey: ['tables'] })
     },
   })
 
@@ -647,10 +648,6 @@ export function CartPanel({ tableId }: { tableId: string | null }) {
             setShowSettlement(false)
             if (tableId) {
               queryClient.setQueryData(['order', tableId], null)
-              const tablesData = queryClient.getQueryData<Array<{ id: string; status: string; orders: unknown[] }>>(['tables'])
-              if (tablesData) {
-                queryClient.setQueryData(['tables'], tablesData.map(t => t.id === tableId ? { ...t, status: 'Available', orders: [] } : t))
-              }
             }
             queryClient.invalidateQueries({ queryKey: ['tables'] })
             queryClient.invalidateQueries({ queryKey: ['takeaway-orders'] })

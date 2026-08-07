@@ -21,6 +21,15 @@ router.get('/summary', requireRole('Admin', 'Cashier'), async (req, res, next) =
   } catch (err) { next(err) }
 })
 
+router.get('/ledger', requireRole('Admin', 'Cashier'), async (req, res, next) => {
+  try {
+    res.json(await settlementService.getPaymentLedger({
+      startDate: req.query.startDate as string,
+      endDate: req.query.endDate as string,
+    }))
+  } catch (err) { next(err) }
+})
+
 router.get('/:orderId', requireRole('Admin', 'Cashier'), async (req, res, next) => {
   try {
     res.json(await settlementService.getSettlement(req.params.orderId as string))

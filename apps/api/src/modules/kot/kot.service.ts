@@ -1,5 +1,6 @@
 import { prisma } from '../../lib/prisma.js'
 import { NotFoundError, ValidationError } from '../../lib/errors.js'
+import { calculateTax, calculateRounding } from '@akrdev/shared'
 
 export const kotService = {
   async send(orderId: string, sentBy: string) {
@@ -120,9 +121,16 @@ export const kotService = {
         _sum: { lineTotal: true },
       })
       const subtotal = newItemsSubtotal + (existingSubtotal._sum.lineTotal ?? 0)
+      const storeSettings = await tx.storeSettings.findUnique({ where: { id: 'default' } })
+      const taxSlab = await tx.taxSlab.findFirst({ where: { isDefault: true } })
+      const taxPercent = taxSlab?.percent ?? 0
+      const { taxTotal } = calculateTax(subtotal, taxPercent, storeSettings?.taxType ?? 'Exclusive')
+      const { grandTotal } = calculateRounding(
+        storeSettings?.taxType === 'Inclusive' ? subtotal : subtotal + taxTotal,
+      )
       await tx.order.update({
         where: { id: order.id },
-        data: { subtotal, grandTotal: subtotal },
+        data: { subtotal, taxTotal, grandTotal },
       })
 
       return { orderId: order.id, kotNumber: nextKotNumber, itemsSent: createdItems.length }

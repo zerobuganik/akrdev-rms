@@ -133,6 +133,62 @@ export const settlementService = {
     })
   },
 
+  async getPaymentLedger(params: { startDate?: string; endDate?: string }) {
+    const where: Record<string, unknown> = {
+      order: { status: 'Settled' },
+    }
+    if (params.startDate || params.endDate) {
+      const dateFilter: Record<string, Date> = {}
+      if (params.startDate) {
+        dateFilter.gte = new Date(params.startDate + 'T00:00:00.000Z')
+      }
+      if (params.endDate) {
+        dateFilter.lte = new Date(params.endDate + 'T23:59:59.999Z')
+      }
+      where.createdAt = dateFilter
+    } else {
+      const now = new Date()
+      where.createdAt = {
+        gte: new Date(now.getFullYear(), now.getMonth(), now.getDate()),
+        lte: now,
+      }
+    }
+    const settlements = await prisma.settlement.findMany({
+      where,
+      include: {
+        order: { select: { displayId: true, grandTotal: true, orderType: true, createdAt: true, table: { select: { name: true } } } },
+      },
+    })
+
+    const ledger = settlements.map((s) => ({
+      id: s.id,
+      orderId: s.orderId,
+      displayId: s.order.displayId,
+      orderType: s.order.orderType,
+      tableName: s.order.table?.name ?? '',
+      grandTotal: s.order.grandTotal,
+      cashPaid: s.cashPaid,
+      cardPaid: s.cardPaid,
+      upiPaid: s.upiPaid,
+      changeGiven: s.changeAmt,
+      netCash: s.cashPaid - s.changeAmt,
+      createdAt: s.order.createdAt,
+    }))
+
+    const rawCash = settlements.reduce((sum, s) => sum + s.cashPaid, 0)
+    const totalChange = settlements.reduce((sum, s) => sum + s.changeAmt, 0)
+    const cash = rawCash - totalChange
+
+    return {
+      cash,
+      card: settlements.reduce((sum, s) => sum + s.cardPaid, 0),
+      upi: settlements.reduce((sum, s) => sum + s.upiPaid, 0),
+      total: cash + settlements.reduce((sum, s) => sum + s.cardPaid + s.upiPaid, 0),
+      count: settlements.length,
+      ledger,
+    }
+  },
+
   async getPaymentSummary(params: { date?: string }) {
     const where: Record<string, unknown> = {
       order: { status: 'Settled' },

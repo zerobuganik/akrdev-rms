@@ -258,6 +258,7 @@ export function TableGrid() {
       toast('Bill generated', 'success')
       queryClient.invalidateQueries({ queryKey: ['tables', selectedAreas] })
       queryClient.invalidateQueries({ queryKey: ['takeaway-orders'] })
+      queryClient.refetchQueries({ queryKey: ['tables'] })
       const billItems = (order.items ?? []).filter((i: { status: string }) => i.status !== 'Cancelled')
       apiClient.get('/settings').then(({ data: settings }) => {
         // Merge items by same name+variation for clean bill
@@ -685,6 +686,8 @@ export function TableGrid() {
             setSettleOrder(null)
             if (settledTableId) {
               queryClient.setQueryData(['order', settledTableId], null)
+              const tablesData = queryClient.getQueryData<Table[]>([...['tables'], selectedAreas.length > 0 ? 'area' : 'all'])
+              if (tablesData) queryClient.setQueryData(['tables', selectedAreas], tablesData.map(t => t.id === settledTableId ? { ...t, status: 'Available', orders: [] } : t))
             }
             queryClient.invalidateQueries({ queryKey: ['tables', selectedAreas] })
             queryClient.invalidateQueries({ queryKey: ['takeaway-orders'] })

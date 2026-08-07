@@ -243,6 +243,8 @@ export function CartPanel({ tableId }: { tableId: string | null }) {
       toast('Bill generated', 'success')
       queryClient.invalidateQueries({ queryKey: ['order', tableId] })
       queryClient.invalidateQueries({ queryKey: ['takeaway-orders'] })
+      queryClient.invalidateQueries({ queryKey: ['tables'] })
+      queryClient.refetchQueries({ queryKey: ['tables'] })
       const currentOrder = queryClient.getQueryData<Order | null>(['order', tableId]) ?? order
       if (!currentOrder) return
       apiClient.get('/settings').then(({ data: s }) => {
@@ -643,7 +645,13 @@ export function CartPanel({ tableId }: { tableId: string | null }) {
           onClose={() => setShowSettlement(false)}
           onSettled={() => {
             setShowSettlement(false)
-            if (tableId) queryClient.setQueryData(['order', tableId], null)
+            if (tableId) {
+              queryClient.setQueryData(['order', tableId], null)
+              const tablesData = queryClient.getQueryData<Array<{ id: string; status: string; orders: unknown[] }>>(['tables'])
+              if (tablesData) {
+                queryClient.setQueryData(['tables'], tablesData.map(t => t.id === tableId ? { ...t, status: 'Available', orders: [] } : t))
+              }
+            }
             queryClient.invalidateQueries({ queryKey: ['tables'] })
             queryClient.invalidateQueries({ queryKey: ['takeaway-orders'] })
             queryClient.refetchQueries({ queryKey: ['tables'] })

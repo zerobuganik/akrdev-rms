@@ -22,6 +22,7 @@ export const settlementService = {
     }
 
     if (data.discountType && data.discountValue !== undefined && data.discountValue > 0) {
+      await prisma.orderDiscount.deleteMany({ where: { orderId } })
       await prisma.orderDiscount.create({
         data: {
           orderId,

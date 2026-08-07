@@ -69,7 +69,7 @@ export function TableCard({ table, onBill, onSettle, onDelete, onEdit, onMerge, 
   const config = statusConfig[table.status as keyof typeof statusConfig] ?? statusConfig.Available
   const activeOrder = table.orders?.find((o) => o.status !== 'Settled')
   const isOccupied = table.status !== 'Available' && table.status !== 'Reserved'
-  const isBilled = table.status === 'Billed'
+  const isBilled = table.status === 'Billed' || activeOrder?.status === 'Bill_Printed'
   const hasAmount = activeOrder && activeOrder.subtotal != null && activeOrder.subtotal > 0
   const billPrintedAt = isBilled && activeOrder?.updatedAt ? activeOrder.updatedAt : null
 

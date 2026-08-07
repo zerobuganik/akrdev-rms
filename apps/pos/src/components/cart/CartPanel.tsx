@@ -559,7 +559,7 @@ export function CartPanel({ tableId }: { tableId: string | null }) {
             )}
             <div className="flex justify-between font-bold">
               <span>Grand Total</span>
-              <span>₹{(order!.grandTotal + (hasCartItems ? cartItems.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0) : 0)).toLocaleString()}</span>
+              <span>₹{(order!.grandTotal).toLocaleString()}</span>
             </div>
           </div>
         )}
@@ -646,6 +646,7 @@ export function CartPanel({ tableId }: { tableId: string | null }) {
             if (tableId) queryClient.setQueryData(['order', tableId], null)
             queryClient.invalidateQueries({ queryKey: ['tables'] })
             queryClient.invalidateQueries({ queryKey: ['takeaway-orders'] })
+            queryClient.refetchQueries({ queryKey: ['tables'] })
           }}
         />
       )}

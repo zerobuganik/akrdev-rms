@@ -688,6 +688,7 @@ export function TableGrid() {
             }
             queryClient.invalidateQueries({ queryKey: ['tables', selectedAreas] })
             queryClient.invalidateQueries({ queryKey: ['takeaway-orders'] })
+            queryClient.refetchQueries({ queryKey: ['tables'] })
           }}
         />
       )}

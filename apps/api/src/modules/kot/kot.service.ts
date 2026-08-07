@@ -52,26 +52,49 @@ export const kotService = {
       items: Array<{ itemId: string; itemName: string; variationId?: string; variationName?: string; quantity: number; unitPrice: number; note?: string }>
     }
 
-    const order = await prisma.order.create({
-      data: {
-        tableId: (tableId as string) ?? null,
-        guestCount: guestCount ?? 2,
-        orderType: (orderType ?? 'DineIn') as 'DineIn' | 'Takeaway',
-        status: 'KOT_Sent',
-        note: note ?? null,
-        subtotal: 0,
-        taxTotal: 0,
-        discountTotal: 0,
-        grandTotal: 0,
-        createdBy: sentBy,
-      },
+    let order
+    if (tableId) {
+      const existingActive = await prisma.order.findFirst({
+        where: { tableId: tableId as string, status: { notIn: ['Settled', 'Cancelled'] } },
+      })
+      if (existingActive) {
+        order = existingActive
+        order = await prisma.order.update({
+          where: { id: order.id },
+          data: { status: 'KOT_Sent', guestCount: guestCount ?? existingActive.guestCount, note: note ?? existingActive.note },
+        })
+      }
+    }
+
+    if (!order) {
+      order = await prisma.order.create({
+        data: {
+          tableId: (tableId as string) ?? null,
+          guestCount: guestCount ?? 2,
+          orderType: (orderType ?? 'DineIn') as 'DineIn' | 'Takeaway',
+          status: 'KOT_Sent',
+          note: note ?? null,
+          subtotal: 0,
+          taxTotal: 0,
+          discountTotal: 0,
+          grandTotal: 0,
+          createdBy: sentBy,
+        },
+      })
+    }
+
+    const lastKot = await prisma.kOT.findFirst({
+      where: { orderId: order.id },
+      orderBy: { kotNumber: 'desc' },
+      select: { kotNumber: true },
     })
+    const nextKotNumber = (lastKot?.kotNumber ?? 0) + 1
 
     const kot = await prisma.kOT.create({
-      data: { orderId: order.id, kotNumber: 1, sentBy },
+      data: { orderId: order.id, kotNumber: nextKotNumber, sentBy },
     })
 
-    const createdItems: Array<{ lineTotal: number }> = []
+    const createdItems: Array<{ id: string; lineTotal: number }> = []
     for (const item of items) {
       const oi = await prisma.orderItem.create({
         data: {
@@ -86,10 +109,15 @@ export const kotService = {
           note: item.note ?? null,
         },
       })
-      createdItems.push(oi)
+      createdItems.push({ id: oi.id, lineTotal: oi.lineTotal })
     }
 
-    const subtotal = createdItems.reduce((s, i) => s + i.lineTotal, 0)
+    const newItemsSubtotal = createdItems.reduce((s, i) => s + i.lineTotal, 0)
+    const existingSubtotal = await prisma.orderItem.aggregate({
+      where: { orderId: order.id, status: { not: 'Cancelled' }, id: { notIn: createdItems.map(i => i.id) } },
+      _sum: { lineTotal: true },
+    })
+    const subtotal = newItemsSubtotal + (existingSubtotal._sum.lineTotal ?? 0)
     await prisma.order.update({
       where: { id: order.id },
       data: { subtotal, grandTotal: subtotal },
@@ -99,6 +127,6 @@ export const kotService = {
       await prisma.table.update({ where: { id: tableId as string }, data: { status: 'Occupied' } }).catch(() => {})
     }
 
-    return { orderId: order.id, kotNumber: 1, itemsSent: createdItems.length }
+    return { orderId: order.id, kotNumber: nextKotNumber, itemsSent: createdItems.length }
   },
 }

@@ -5,14 +5,14 @@ export const tableService = {
   async findAll() {
     return prisma.table.findMany({
       where: { deactivatedAt: null },
-      include: { area: true, orders: { where: { status: { notIn: ['Settled'] } }, orderBy: { createdAt: 'desc' }, take: 1 } },
+      include: { area: true, orders: { where: { status: { notIn: ['Settled', 'Cancelled'] } }, orderBy: { createdAt: 'desc' }, take: 1 } },
       orderBy: { position: 'asc' },
     })
   },
   async findByArea(areaId: string) {
     return prisma.table.findMany({
       where: { areaId, deactivatedAt: null },
-      include: { area: true, orders: { where: { status: { notIn: ['Settled'] } }, orderBy: { createdAt: 'desc' }, take: 1 } },
+      include: { area: true, orders: { where: { status: { notIn: ['Settled', 'Cancelled'] } }, orderBy: { createdAt: 'desc' }, take: 1 } },
       orderBy: { position: 'asc' },
     })
   },

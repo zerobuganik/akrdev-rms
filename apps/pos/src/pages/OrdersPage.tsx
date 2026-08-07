@@ -17,7 +17,7 @@ interface Order {
   guestCount: number
   createdAt: string
   customer?: { phone: string; name?: string }
-  items: Array<{ item: { name: string }; quantity: number; lineTotal: number; status: string; variation?: { name: string }; cancelledByUser?: { name: string }; cancelledAt?: string }>
+  items: Array<{ item?: { name: string } | null; quantity: number; lineTotal: number; status: string; variation?: { name: string } | null; cancelledByUser?: { name: string } | null; cancelledAt?: string }>
   kots: Array<{ kotNumber: number; sentAt: string; sentBy?: string }>
   settlement?: { cash?: number; card?: number; upi?: number; cashPaid?: number; cardPaid?: number; upiPaid?: number }
 }
@@ -279,7 +279,7 @@ export default function OrdersPage() {
               {selectedOrder.items.filter((i) => i.status !== 'Cancelled').map((item, i) => (
                 <div key={i} className="flex justify-between border-b py-1">
                   <span>
-                    {item.item.name} {item.variation?.name ? `(${item.variation.name})` : ''} ×{item.quantity}
+                    {item.item?.name ?? 'Unknown'} {item.variation?.name ? `(${item.variation.name})` : ''} ×{item.quantity}
                   </span>
                   <span>₹{item.lineTotal.toLocaleString()}</span>
                 </div>
@@ -287,7 +287,7 @@ export default function OrdersPage() {
               {selectedOrder.items.filter((i) => i.status === 'Cancelled').map((item, i) => (
                 <div key={`c-${i}`} className="flex justify-between border-b py-1 line-through opacity-60">
                   <span>
-                    {item.item.name} {item.variation?.name ? `(${item.variation.name})` : ''} ×{item.quantity}
+                    {item.item?.name ?? 'Unknown'} {item.variation?.name ? `(${item.variation.name})` : ''} ×{item.quantity}
                     {item.cancelledByUser?.name && <span className="text-xs text-muted-foreground"> — by {item.cancelledByUser.name}</span>}
                   </span>
                   <span>₹{item.lineTotal.toLocaleString()}</span>

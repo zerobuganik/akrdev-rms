@@ -1,3 +1,6 @@
+import { config } from 'dotenv'
+config()
+
 import { PrismaClient } from '../../dist/generated/prisma/index.js'
 import { PrismaPg } from '@prisma/adapter-pg'
 

@@ -35,9 +35,10 @@ export default function OrdersPage() {
   const { data: orders = [] } = useQuery<Order[]>({
     queryKey: ['orders', tab],
     queryFn: async () => {
-      const params: Record<string, string> = {}
-      if (tab === 'Settled') params.status = 'Settled'
-      else if (tab === 'Cancelled') params.status = 'Cancelled'
+      const params = new URLSearchParams()
+      if (tab === 'Settled') params.set('status', 'Settled')
+      else if (tab === 'Cancelled') params.set('status', 'Cancelled')
+      else params.set('excludeStatus', 'Settled,Cancelled')
       const { data } = await apiClient.get('/orders', { params })
       return data
     },

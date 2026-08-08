@@ -245,6 +245,7 @@ export function CartPanel({ tableId }: { tableId: string | null }) {
       queryClient.invalidateQueries({ queryKey: ['takeaway-orders'] })
       queryClient.invalidateQueries({ queryKey: ['tables'] })
       queryClient.refetchQueries({ queryKey: ['tables'] })
+      queryClient.refetchQueries({ queryKey: ['order', tableId] })
       const currentOrder = queryClient.getQueryData<Order | null>(['order', tableId]) ?? order
       if (!currentOrder) return
       apiClient.get('/settings').then(({ data: s }) => {
@@ -270,7 +271,10 @@ export function CartPanel({ tableId }: { tableId: string | null }) {
         }).catch(() => {})
       }).catch(() => {})
     },
-    onError: (err: AxiosError<{ error?: { message?: string } }>) => { toast('Failed to generate bill', 'error') },
+    onError: (err: AxiosError<{ error?: { message?: string } }>) => {
+      const msg = (err.response?.data as { error?: { message?: string } })?.error?.message ?? 'Failed to generate bill'
+      toast(msg, 'error')
+    },
   })
 
   const updateGuestCount = useMutation({

@@ -41,7 +41,7 @@ router.post('/takeaway', async (req, res, next) => {
   } catch (err) { next(err) }
 })
 router.get('/', async (req, res, next) => {
-  try { res.json(await orderService.list({ status: req.query.status as string, date: req.query.date as string, areaId: req.query.areaId as string })) } catch (err) { next(err) }
+  try { res.json(await orderService.list({ status: req.query.status as string, date: req.query.date as string, areaId: req.query.areaId as string, excludeStatus: req.query.excludeStatus as string })) } catch (err) { next(err) }
 })
 router.get('/:tableId/active', async (req, res, next) => {
   try {

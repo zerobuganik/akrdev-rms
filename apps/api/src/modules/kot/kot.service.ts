@@ -53,23 +53,22 @@ export const kotService = {
       items: Array<{ itemId: string; itemName: string; variationId?: string; variationName?: string; quantity: number; unitPrice: number; note?: string }>
     }
 
-    let order
-    let existingOrderId: string | null = null
-    if (tableId) {
-      const existingActive = await prisma.order.findFirst({
-        where: { tableId: tableId as string, status: { notIn: ['Settled', 'Cancelled'] } },
-        select: { id: true },
-      })
-      existingOrderId = existingActive?.id ?? null
-    }
-
+    let order: any
     const result = await prisma.$transaction(async (tx) => {
-      if (existingOrderId) {
-        order = await tx.order.update({
-          where: { id: existingOrderId },
-          data: { status: 'KOT_Sent', guestCount: guestCount ?? 2, note: note ?? null },
+      if (tableId) {
+        const existingActive = await tx.order.findFirst({
+          where: { tableId: tableId as string, status: { notIn: ['Settled', 'Cancelled'] } },
+          select: { id: true },
         })
-      } else {
+        if (existingActive) {
+          order = await tx.order.update({
+            where: { id: existingActive.id },
+            data: { status: 'KOT_Sent', guestCount: guestCount ?? 2, note: note ?? null },
+          })
+        }
+      }
+
+      if (!order) {
         order = await tx.order.create({
           data: {
             tableId: (tableId as string) ?? null,

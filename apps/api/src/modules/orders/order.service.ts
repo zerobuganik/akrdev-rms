@@ -57,9 +57,14 @@ export const orderService = {
     })
   },
 
-  async list(filters: { status?: string; date?: string; areaId?: string }) {
+  async list(filters: { status?: string; date?: string; areaId?: string; excludeStatus?: string }) {
     const where: Record<string, unknown> = {}
-    if (filters.status) where.status = filters.status
+    if (filters.status) {
+      where.status = filters.status
+    } else if (filters.excludeStatus) {
+      const excludeStatuses = filters.excludeStatus.split(',').map(s => s.trim())
+      where.status = { notIn: excludeStatuses }
+    }
     if (filters.areaId) where.table = { areaId: filters.areaId }
     if (filters.date) {
       const date = new Date(filters.date)

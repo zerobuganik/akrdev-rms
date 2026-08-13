@@ -289,17 +289,7 @@ async function syncFromCloud(phone: string, password: string) {
       const raw = await ordersRes.json()
       if (Array.isArray(raw)) {
         for (const o of raw as Array<Record<string, unknown>>) {
-          await localPrisma.localOrder.upsert({
-            where: { id: o.id as string },
-            create: {
-              id: o.id as string, tableId: o.tableId as string ?? null, tableName: o.tableName as string ?? null,
-              guestCount: o.guestCount as number ?? 2, status: o.status as string ?? 'Draft',
-              subtotal: o.subtotal as number ?? 0, taxTotal: o.taxTotal as number ?? 0,
-              discountTotal: o.discountTotal as number ?? 0, grandTotal: o.grandTotal as number ?? 0,
-              orderType: o.orderType as string ?? 'DineIn', syncStatus: 'Synced',
-            },
-            update: { status: o.status as string, subtotal: o.subtotal as number, taxTotal: o.taxTotal as number, discountTotal: o.discountTotal as number, grandTotal: o.grandTotal as number },
-          }).catch(() => {})
+          await upsertLocalOrderFromCloud(o)
 
           // Sync order items
           const items = o.items as Array<Record<string, unknown>> | undefined
@@ -471,17 +461,7 @@ async function syncWithProgress(phone?: string, password?: string): Promise<void
         const raw = await r.json()
         if (Array.isArray(raw)) {
           for (const o of raw as Array<Record<string, unknown>>) {
-            await localPrisma.localOrder.upsert({
-              where: { id: o.id as string },
-              create: {
-                id: o.id as string, tableId: o.tableId as string ?? null, tableName: o.tableName as string ?? null,
-                guestCount: o.guestCount as number ?? 2, status: o.status as string ?? 'Draft',
-                subtotal: o.subtotal as number ?? 0, taxTotal: o.taxTotal as number ?? 0,
-                discountTotal: o.discountTotal as number ?? 0, grandTotal: o.grandTotal as number ?? 0,
-                orderType: o.orderType as string ?? 'DineIn', syncStatus: 'Synced',
-              },
-              update: { status: o.status as string, subtotal: o.subtotal as number, taxTotal: o.taxTotal as number, discountTotal: o.discountTotal as number, grandTotal: o.grandTotal as number },
-            }).catch(() => {})
+            await upsertLocalOrderFromCloud(o)
             const items = o.items as Array<Record<string, unknown>> | undefined
             if (items?.length) {
               for (const item of items) {
@@ -644,17 +624,7 @@ async function startupCloudSync() {
       const raw = await ordersRes.json()
       if (Array.isArray(raw)) {
         for (const o of raw as Array<Record<string, unknown>>) {
-          await localPrisma.localOrder.upsert({
-            where: { id: o.id as string },
-            create: {
-              id: o.id as string, tableId: o.tableId as string ?? null, tableName: o.tableName as string ?? null,
-              guestCount: o.guestCount as number ?? 2, status: o.status as string ?? 'Draft',
-              subtotal: o.subtotal as number ?? 0, taxTotal: o.taxTotal as number ?? 0,
-              discountTotal: o.discountTotal as number ?? 0, grandTotal: o.grandTotal as number ?? 0,
-              orderType: o.orderType as string ?? 'DineIn', syncStatus: 'Synced',
-            },
-            update: { status: o.status as string, subtotal: o.subtotal as number, taxTotal: o.taxTotal as number, discountTotal: o.discountTotal as number, grandTotal: o.grandTotal as number },
-          }).catch(() => {})
+          await upsertLocalOrderFromCloud(o)
           const items = o.items as Array<Record<string, unknown>> | undefined
           if (items?.length) {
             for (const item of items) {
@@ -888,6 +858,28 @@ function reshapeOrderItems(order: Record<string, unknown> & { items?: Array<Reco
       cancelledByUser: item.cancelledBy ? { name: item.cancelledBy } : undefined,
     })),
   }
+}
+
+// Upsert a cloud order into local storage with correct table name + sync status
+async function upsertLocalOrderFromCloud(o: Record<string, unknown>) {
+  const cloudTable = (o.table as Record<string, unknown> | null) ?? null
+  const resolvedTableName = (o.tableName as string) ?? (cloudTable?.name as string) ?? null
+  await localPrisma.localOrder.upsert({
+    where: { id: o.id as string },
+    create: {
+      id: o.id as string, tableId: o.tableId as string ?? null, tableName: resolvedTableName,
+      guestCount: o.guestCount as number ?? 2, status: o.status as string ?? 'Draft',
+      subtotal: o.subtotal as number ?? 0, taxTotal: o.taxTotal as number ?? 0,
+      discountTotal: o.discountTotal as number ?? 0, grandTotal: o.grandTotal as number ?? 0,
+      orderType: o.orderType as string ?? 'DineIn', syncStatus: 'Synced',
+    },
+    update: {
+      tableName: resolvedTableName ?? undefined, status: o.status as string,
+      subtotal: o.subtotal as number, taxTotal: o.taxTotal as number,
+      discountTotal: o.discountTotal as number, grandTotal: o.grandTotal as number,
+      syncStatus: 'Synced',
+    },
+  }).catch(() => {})
 }
 
 app.post('/api/v1/tables', async (req, res) => {
@@ -2167,7 +2159,7 @@ app.post('/api/v1/kot/send-with-items', async (req, res, next) => {
 
     if (isNewOrder) {
       syncQueueService.enqueue('send-kot-with-items', {
-        tableId, tableName: resolvedTableName, guestCount, orderType, sentBy, note,
+        orderId, tableId, tableName: resolvedTableName, guestCount, orderType, sentBy, note,
         items: items.map((i: { itemId: string; itemName: string; variationId?: string; variationName?: string; quantity: number; unitPrice: number; note?: string }) => ({
           itemId: i.itemId, itemName: i.itemName, variationId: i.variationId, variationName: i.variationName, quantity: i.quantity, unitPrice: i.unitPrice, note: i.note,
         })),

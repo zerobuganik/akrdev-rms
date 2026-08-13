@@ -48,8 +48,8 @@ export const kotService = {
   },
 
   async sendWithItems(data: Record<string, unknown>, sentBy: string) {
-    const { tableId, guestCount, orderType, note, items } = data as {
-      tableId?: string; guestCount: number; orderType?: string; note?: string
+    const { tableId, guestCount, orderType, note, items, orderId: providedOrderId } = data as {
+      tableId?: string; guestCount: number; orderType?: string; note?: string; orderId?: string
       items: Array<{ itemId: string; itemName: string; variationId?: string; variationName?: string; quantity: number; unitPrice: number; note?: string }>
     }
 
@@ -71,6 +71,7 @@ export const kotService = {
       if (!order) {
         order = await tx.order.create({
           data: {
+            ...(providedOrderId ? { id: providedOrderId } : {}),
             tableId: (tableId as string) ?? null,
             guestCount: guestCount ?? 2,
             orderType: (orderType ?? 'DineIn') as 'DineIn' | 'Takeaway',

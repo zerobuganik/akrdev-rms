@@ -864,19 +864,35 @@ function reshapeOrderItems(order: Record<string, unknown> & { items?: Array<Reco
 async function upsertLocalOrderFromCloud(o: Record<string, unknown>) {
   const cloudTable = (o.table as Record<string, unknown> | null) ?? null
   const resolvedTableName = (o.tableName as string) ?? (cloudTable?.name as string) ?? null
+  const cloudStatus = o.status as string ?? 'Draft'
+
+  // Status ranks to prevent a stale cloud pull from downgrading a newer local status
+  const STATUS_RANK: Record<string, number> = {
+    New: 0, Draft: 0, KOT_Sent: 1, Ready: 2, Bill_Printed: 3, Settled: 4, Cancelled: 5,
+  }
+  const local = await localPrisma.localOrder.findUnique({ where: { id: o.id as string } }).catch(() => null)
+  const localRank = local ? (STATUS_RANK[local.status] ?? 0) : -1
+  const cloudRank = STATUS_RANK[cloudStatus] ?? 0
+  // Preserve local status when it's further along (e.g. Bill_Printed local vs KOT_Sent cloud)
+  const effectiveStatus = localRank > cloudRank ? local!.status : cloudStatus
+  const effectiveSubtotal = localRank > cloudRank && local ? local.subtotal : (o.subtotal as number)
+  const effectiveGrandTotal = localRank > cloudRank && local ? local.grandTotal : (o.grandTotal as number)
+  const effectiveTaxTotal = localRank > cloudRank && local ? local.taxTotal : (o.taxTotal as number)
+  const effectiveDiscountTotal = localRank > cloudRank && local ? local.discountTotal : (o.discountTotal as number)
+
   await localPrisma.localOrder.upsert({
     where: { id: o.id as string },
     create: {
       id: o.id as string, tableId: o.tableId as string ?? null, tableName: resolvedTableName,
-      guestCount: o.guestCount as number ?? 2, status: o.status as string ?? 'Draft',
+      guestCount: o.guestCount as number ?? 2, status: effectiveStatus,
       subtotal: o.subtotal as number ?? 0, taxTotal: o.taxTotal as number ?? 0,
       discountTotal: o.discountTotal as number ?? 0, grandTotal: o.grandTotal as number ?? 0,
       orderType: o.orderType as string ?? 'DineIn', syncStatus: 'Synced',
     },
     update: {
-      tableName: resolvedTableName ?? undefined, status: o.status as string,
-      subtotal: o.subtotal as number, taxTotal: o.taxTotal as number,
-      discountTotal: o.discountTotal as number, grandTotal: o.grandTotal as number,
+      tableName: resolvedTableName ?? undefined, status: effectiveStatus,
+      subtotal: effectiveSubtotal, taxTotal: effectiveTaxTotal,
+      discountTotal: effectiveDiscountTotal, grandTotal: effectiveGrandTotal,
       syncStatus: 'Synced',
     },
   }).catch(() => {})
@@ -1684,6 +1700,13 @@ app.put('/api/v1/orders/:id', async (req, res) => {
       }
       if (io) io.emit('tables:updated')
     }
+    // Enqueue status change to cloud so it isn't reverted on next pull
+    if ((req.body as { status?: string }).status) {
+      syncQueueService.enqueue('update-order-status', {
+        orderId: req.params.id as string,
+        status: (req.body as { status: string }).status,
+      }).catch(() => {})
+    }
     res.json(order)
   } catch (err) {
     console.error('Error updating order:', err)
@@ -2115,10 +2138,13 @@ app.post('/api/v1/kot/send-with-items', async (req, res, next) => {
       data: { id: kotId, orderId, kotNumber, sentBy: sentBy ?? 'User' },
     })
 
+    const createdItemIds: string[] = []
     for (const item of items) {
+      const itemId = crypto.randomUUID()
+      createdItemIds.push(itemId)
       await localPrisma.localOrderItem.create({
         data: {
-          id: crypto.randomUUID(),
+          id: itemId,
           orderId,
           itemId: item.itemId,
           itemName: item.itemName ?? 'Item',
@@ -2159,9 +2185,9 @@ app.post('/api/v1/kot/send-with-items', async (req, res, next) => {
 
     if (isNewOrder) {
       syncQueueService.enqueue('send-kot-with-items', {
-        orderId, tableId, tableName: resolvedTableName, guestCount, orderType, sentBy, note,
-        items: items.map((i: { itemId: string; itemName: string; variationId?: string; variationName?: string; quantity: number; unitPrice: number; note?: string }) => ({
-          itemId: i.itemId, itemName: i.itemName, variationId: i.variationId, variationName: i.variationName, quantity: i.quantity, unitPrice: i.unitPrice, note: i.note,
+        orderId, kotId, tableId, tableName: resolvedTableName, guestCount, orderType, sentBy, note,
+        items: items.map((i: { itemId: string; itemName: string; variationId?: string; variationName?: string; quantity: number; unitPrice: number; note?: string }, idx: number) => ({
+          id: createdItemIds[idx], itemId: i.itemId, itemName: i.itemName, variationId: i.variationId, variationName: i.variationName, quantity: i.quantity, unitPrice: i.unitPrice, note: i.note,
         })),
       }).catch((err) => console.warn('[kot] Sync queue enqueue failed:', (err as Error).message))
     } else {

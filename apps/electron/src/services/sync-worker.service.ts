@@ -107,6 +107,13 @@ export class SyncWorkerService {
         })
         break
       }
+      case 'update-order-status': {
+        const { orderId, status } = payload as { orderId: string; status: string }
+        await this.fetchWithRetry(`${getCloudApiBase()}/orders/${orderId}`, {
+          method: 'PUT', headers, body: JSON.stringify({ status }),
+        })
+        break
+      }
       case 'send-kot-with-items': {
         await this.fetchWithRetry(`${getCloudApiBase()}/kot/send-with-items`, {
           method: 'POST', headers, body: JSON.stringify(payload),

@@ -48,9 +48,9 @@ export const kotService = {
   },
 
   async sendWithItems(data: Record<string, unknown>, sentBy: string) {
-    const { tableId, guestCount, orderType, note, items, orderId: providedOrderId } = data as {
-      tableId?: string; guestCount: number; orderType?: string; note?: string; orderId?: string
-      items: Array<{ itemId: string; itemName: string; variationId?: string; variationName?: string; quantity: number; unitPrice: number; note?: string }>
+    const { tableId, guestCount, orderType, note, items, orderId: providedOrderId, kotId: providedKotId } = data as {
+      tableId?: string; guestCount: number; orderType?: string; note?: string; orderId?: string; kotId?: string
+      items: Array<{ itemId: string; itemName: string; id?: string; variationId?: string; variationName?: string; quantity: number; unitPrice: number; note?: string }>
     }
 
     let order: any
@@ -94,13 +94,14 @@ export const kotService = {
       const nextKotNumber = (lastKot?.kotNumber ?? 0) + 1
 
       const kot = await tx.kOT.create({
-        data: { orderId: order.id, kotNumber: nextKotNumber, sentBy },
+        data: { ...(providedKotId ? { id: providedKotId } : {}), orderId: order.id, kotNumber: nextKotNumber, sentBy },
       })
 
       const createdItems: Array<{ id: string; lineTotal: number }> = []
       for (const item of items) {
         const oi = await tx.orderItem.create({
           data: {
+            ...(item.id ? { id: item.id } : {}),
             orderId: order.id,
             itemId: item.itemId,
             quantity: item.quantity ?? 1,

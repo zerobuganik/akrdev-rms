@@ -206,6 +206,8 @@ export function CartPanel({ tableId }: { tableId: string | null }) {
       queryClient.invalidateQueries({ queryKey: ['order', tableId] })
       queryClient.invalidateQueries({ queryKey: ['tables'] })
       queryClient.invalidateQueries({ queryKey: ['takeaway-orders'] })
+      queryClient.refetchQueries({ queryKey: ['takeaway-orders'] })
+      queryClient.refetchQueries({ queryKey: ['tables'] })
       const tables = queryClient.getQueryData<Array<{ id: string; name: string }>>(['tables'])
       const tableName = tables?.find((t) => t.id === tableId)?.name ?? (tableId === 'takeaway-new' ? 'Takeaway' : 'Table')
       printerApi.printKOT({

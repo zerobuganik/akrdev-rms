@@ -2261,10 +2261,20 @@ app.get('/api/v1/settlement/ledger', async (req, res) => {
     const { startDate, endDate } = req.query as { startDate?: string; endDate?: string }
     const where: Record<string, unknown> = {}
 
+    // Parse yyyy-MM-dd as LOCAL dates (avoid UTC-midnight timezone shift)
+    const parseLocal = (s: string): Date => {
+      const [y, m, d] = s.split('-').map(Number)
+      return new Date(y, (m ?? 1) - 1, d ?? 1)
+    }
+
     if (startDate || endDate) {
       const settledAt: Record<string, Date> = {}
-      if (startDate) settledAt.gte = new Date(startDate)
-      if (endDate) settledAt.lte = new Date(new Date(endDate).setHours(23, 59, 59, 999))
+      if (startDate) settledAt.gte = parseLocal(startDate)
+      if (endDate) {
+        const e = parseLocal(endDate)
+        e.setHours(23, 59, 59, 999)
+        settledAt.lte = e
+      }
       where.settledAt = settledAt
     } else {
       const now = new Date()
@@ -2324,15 +2334,18 @@ app.post('/api/v1/settlement', async (req, res) => {
     if (!order) { res.status(404).json({ error: { message: 'Order not found' } }); return }
 
     const subtotal = order.items.reduce((sum, i) => sum + i.lineTotal, 0)
-    const { taxTotal, discountTotal, grandTotal } = computeOrderTotals(subtotal)
+    const discounts = (discountType && discountValue > 0)
+      ? [{ type: discountType, value: discountValue }]
+      : []
+    const { taxTotal, discountTotal, grandTotal } = computeOrderTotals(subtotal, discounts)
     const totalPaid = (payments.cash ?? 0) + (payments.card ?? 0) + (payments.upi ?? 0)
 
     const effectiveGrandTotal = grandTotal > 0 ? grandTotal : order.grandTotal > 0 ? order.grandTotal : grandTotal
     if (totalPaid < effectiveGrandTotal) {
       res.status(400).json({ error: { message: 'Insufficient payment' } }); return
     }
-
-    const changeAmt = totalPaid - grandTotal
+    // Use the rounded grand total for change calculation (consistency with frontend)
+    const changeAmt = totalPaid - effectiveGrandTotal
 
     await localPrisma.$transaction([
       localPrisma.localOrder.update({
@@ -2385,10 +2398,11 @@ app.get('/api/v1/settlement/summary', async (req, res) => {
     const where: Record<string, unknown> = {}
 
     if (date) {
-      const d = new Date(date)
+      const [y, m, d] = date.split('-').map(Number)
+      const localDate = new Date(y, (m ?? 1) - 1, d ?? 1)
       where.settledAt = {
-        gte: new Date(d.setHours(0, 0, 0, 0)),
-        lte: new Date(d.setHours(23, 59, 59, 999)),
+        gte: new Date(localDate.getFullYear(), localDate.getMonth(), localDate.getDate()),
+        lte: new Date(localDate.getFullYear(), localDate.getMonth(), localDate.getDate(), 23, 59, 59, 999),
       }
     } else {
       const now = new Date()

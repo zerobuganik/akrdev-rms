@@ -4,7 +4,6 @@ import { apiClient } from '@/lib/apiClient'
 import { X } from 'lucide-react'
 import { toast } from '@/stores/useToastStore'
 import { calculateRounding } from '@akrdev/shared'
-import { calculateTax } from '@akrdev/shared'
 
 interface SettlementModalProps {
   order: {
@@ -21,7 +20,7 @@ interface SettlementModalProps {
   onSettled: () => void
 }
 
-export function SettlementModal({ order, tableName, taxType, taxPercentage, onClose, onSettled }: SettlementModalProps) {
+export function SettlementModal({ order, tableName, onClose, onSettled }: SettlementModalProps) {
   const [discountType, setDiscountType] = useState<'Percentage' | 'Flat' | null>(null)
   const [discountValue, setDiscountValue] = useState(0)
   const [discountReason, setDiscountReason] = useState('')
@@ -37,14 +36,17 @@ export function SettlementModal({ order, tableName, taxType, taxPercentage, onCl
   const cardNum = Number(cardRef.current?.value || cardDisplay) || 0
   const upiNum = Number(upiRef.current?.value || upiDisplay) || 0
 
-  const discountAmount = discountType === 'Percentage'
-    ? (order.subtotal * discountValue) / 100
-    : discountValue
+  const discountAmount = discountType === null
+    ? 0
+    : discountType === 'Percentage'
+      ? (order.subtotal * discountValue) / 100
+      : discountValue
 
-  const { taxTotal } = calculateTax(order.subtotal ?? 0, taxPercentage ?? 0, taxType as 'Inclusive' | 'Exclusive')
-  const exactGrandTotal = taxType === 'Inclusive'
-    ? order.subtotal - discountAmount
-    : order.subtotal + taxTotal - discountAmount
+  // Use stored order totals (already include tax) instead of recomputing against
+  // possibly-stale tax settings. Apply discount on top.
+  const storedSubtotal = order.subtotal ?? 0
+  const storedTaxTotal = order.taxTotal ?? 0
+  const exactGrandTotal = storedSubtotal + storedTaxTotal - discountAmount
   const { grandTotal: displayGrandTotal } = calculateRounding(exactGrandTotal)
   const totalPaid = cashNum + cardNum + upiNum
   const change = totalPaid - displayGrandTotal
@@ -99,11 +101,11 @@ export function SettlementModal({ order, tableName, taxType, taxPercentage, onCl
           <div className="space-y-1 text-sm">
             <div className="flex justify-between">
               <span className="text-muted-foreground">Subtotal</span>
-              <span>₹{order.subtotal.toLocaleString()}</span>
+              <span>₹{storedSubtotal.toLocaleString()}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Tax</span>
-              <span>₹{order.taxTotal.toLocaleString()}</span>
+              <span>₹{storedTaxTotal.toLocaleString()}</span>
             </div>
           </div>
 

@@ -42,11 +42,12 @@ export function SettlementModal({ order, tableName, onClose, onSettled }: Settle
       ? (order.subtotal * discountValue) / 100
       : discountValue
 
-  // Use stored order totals (already include tax) instead of recomputing against
-  // possibly-stale tax settings. Apply discount on top.
+  // Use the order's stored grandTotal as the single source of truth (already includes tax).
+  // Fall back to subtotal + taxTotal if grandTotal is missing. Apply discount on top.
   const storedSubtotal = order.subtotal ?? 0
   const storedTaxTotal = order.taxTotal ?? 0
-  const exactGrandTotal = storedSubtotal + storedTaxTotal - discountAmount
+  const baseGrandTotal = order.grandTotal > 0 ? order.grandTotal : (storedSubtotal + storedTaxTotal)
+  const exactGrandTotal = baseGrandTotal - discountAmount
   const { grandTotal: displayGrandTotal } = calculateRounding(exactGrandTotal)
   const totalPaid = cashNum + cardNum + upiNum
   const change = totalPaid - displayGrandTotal

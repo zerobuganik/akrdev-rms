@@ -2333,19 +2333,28 @@ app.post('/api/v1/settlement', async (req, res) => {
     })
     if (!order) { res.status(404).json({ error: { message: 'Order not found' } }); return }
 
-    const subtotal = order.items.reduce((sum, i) => sum + i.lineTotal, 0)
+    const itemsSubtotal = order.items.reduce((sum, i) => sum + i.lineTotal, 0)
+    // Use the stored order subtotal as authoritative (already incl. tax in grandTotal).
+    const subtotal = order.subtotal > 0 ? order.subtotal : itemsSubtotal
     const discounts = (discountType && discountValue > 0)
       ? [{ type: discountType, value: discountValue }]
       : []
-    const { taxTotal, discountTotal, grandTotal } = computeOrderTotals(subtotal, discounts)
+
+    // Compute tax for consistency, but prefer stored grandTotal as the authoritative amount.
+    const computed = computeOrderTotals(subtotal, discounts)
+    const discountAmount = discounts.reduce((sum, d) => sum + (d.type === 'Percentage' ? (subtotal * d.value / 100) : d.value), 0)
+    const storedGrandTotal = order.grandTotal > 0 ? order.grandTotal : computed.grandTotal
+    // Apply any new discount on top of the stored grand total
+    const { grandTotal } = calculateRounding(storedGrandTotal - discountAmount)
+    const taxTotal = computed.taxTotal
+    const discountTotal = discountAmount
     const totalPaid = (payments.cash ?? 0) + (payments.card ?? 0) + (payments.upi ?? 0)
 
-    const effectiveGrandTotal = grandTotal > 0 ? grandTotal : order.grandTotal > 0 ? order.grandTotal : grandTotal
-    if (totalPaid < effectiveGrandTotal) {
-      res.status(400).json({ error: { message: 'Insufficient payment' } }); return
+    if (totalPaid < grandTotal) {
+      res.status(400).json({ error: { message: `Insufficient payment: need ₹${grandTotal}` } }); return
     }
     // Use the rounded grand total for change calculation (consistency with frontend)
-    const changeAmt = totalPaid - effectiveGrandTotal
+    const changeAmt = totalPaid - grandTotal
 
     await localPrisma.$transaction([
       localPrisma.localOrder.update({

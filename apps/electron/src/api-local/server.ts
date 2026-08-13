@@ -1548,9 +1548,13 @@ app.get('/api/v1/areas', async (_req, res) => {
 app.get('/api/v1/orders', async (req, res) => {
   try {
     const statusFilter = req.query.status as string | undefined
+    const excludeStatus = req.query.excludeStatus as string | undefined
     const where: Record<string, unknown> = {}
     if (statusFilter) {
       where.status = statusFilter
+    } else if (excludeStatus) {
+      const excludeStatuses = excludeStatus.split(',').map(s => s.trim())
+      where.status = { notIn: excludeStatuses }
     }
     const orders = await localPrisma.localOrder.findMany({
       where,
@@ -1669,11 +1673,25 @@ app.get('/api/v1/orders/:id', async (req, res) => {
 
 app.put('/api/v1/orders/:id', async (req, res) => {
   try {
+    const existing = await localPrisma.localOrder.findUnique({ where: { id: req.params.id as string } })
+    if (!existing) { res.status(404).json({ error: { message: 'Order not found' } }); return }
     const order = await localPrisma.localOrder.update({
       where: { id: req.params.id as string },
       data: req.body,
       include: { items: true, kots: true, settlement: true },
     })
+    // Update table status based on the new order status
+    if (existing.tableId && (req.body as { status?: string }).status) {
+      const newStatus = (req.body as { status: string }).status
+      const tableStatus = newStatus === 'Bill_Printed' ? 'Billed' : newStatus === 'KOT_Sent' ? 'Occupied' : undefined
+      if (tableStatus) {
+        await localPrisma.cachedTable.update({
+          where: { id: existing.tableId },
+          data: { status: tableStatus },
+        }).catch(() => {})
+      }
+      if (io) io.emit('tables:updated')
+    }
     res.json(order)
   } catch (err) {
     console.error('Error updating order:', err)
@@ -2035,6 +2053,7 @@ app.post('/api/v1/kot/send', async (req, res) => {
         status: 'KOT_Sent',
       })
     }
+    if (io) io.emit('tables:updated')
 
     syncQueueService.enqueue('send-kot', { orderId }).catch(() => {})
 
@@ -2141,6 +2160,7 @@ app.post('/api/v1/kot/send-with-items', async (req, res, next) => {
           action: 'kot-sent-with-items',
         })
       }
+      if (io) io.emit('tables:updated')
     } catch (err) {
       console.warn('[kot] Socket emit failed:', (err as Error).message)
     }
@@ -2301,6 +2321,12 @@ app.post('/api/v1/settlement', async (req, res) => {
           changeGiven: changeAmt,
         },
       }),
+      ...(order.tableId ? [
+        localPrisma.cachedTable.update({
+          where: { id: order.tableId },
+          data: { status: 'Available' },
+        }),
+      ] : []),
     ])
 
     try {

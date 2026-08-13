@@ -52,11 +52,15 @@ export function TableGrid() {
 
   // Listen for real-time order updates from Captain App via Socket.IO
   useEffect(() => {
-    const cleanup = socketIO.on('order:updated', () => {
+    const cleanupOrder = socketIO.on('order:updated', () => {
       queryClient.invalidateQueries({ queryKey: ['tables'] })
       queryClient.invalidateQueries({ queryKey: ['takeaway-orders'] })
     })
-    return cleanup
+    const cleanupTables = socketIO.on('tables:updated', () => {
+      queryClient.invalidateQueries({ queryKey: ['tables'] })
+      queryClient.refetchQueries({ queryKey: ['tables'] })
+    })
+    return () => { cleanupOrder(); cleanupTables() }
   }, [socketIO, queryClient])
 
   const { data: areas = [] } = useQuery<Area[]>({

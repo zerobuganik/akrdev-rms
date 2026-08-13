@@ -68,10 +68,12 @@ export function SettlementModal({ order, tableName, taxType, taxPercentage, onCl
       onSettled()
     },
     onError: (err: unknown) => {
-      const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error
+      const data = (err as { response?: { data?: { error?: { message?: string } | string } } })?.response?.data
+      const e = data?.error
+      const msg = typeof e === 'string' ? e : e?.message
         ?? (err as Error)?.message
         ?? 'Settlement failed'
-      toast(msg, 'error')
+      toast(String(msg), 'error')
     },
   })
 

@@ -38,7 +38,7 @@ export default function OrdersPage() {
       const params = new URLSearchParams()
       if (tab === 'Settled') params.set('status', 'Settled')
       else if (tab === 'Cancelled') params.set('status', 'Cancelled')
-      else params.set('excludeStatus', 'Settled,Cancelled')
+      else params.set('excludeStatus', 'Settled,Cancelled,Merged')
       const { data } = await apiClient.get('/orders', { params })
       return data
     },

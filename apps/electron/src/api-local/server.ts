@@ -868,12 +868,13 @@ async function upsertLocalOrderFromCloud(o: Record<string, unknown>) {
 
   // Status ranks to prevent a stale cloud pull from downgrading a newer local status
   const STATUS_RANK: Record<string, number> = {
-    New: 0, Draft: 0, KOT_Sent: 1, Ready: 2, Bill_Printed: 3, Settled: 4, Cancelled: 5,
+    New: 0, Draft: 0, KOT_Sent: 1, Ready: 2, Bill_Printed: 3, Settled: 4, Cancelled: 5, Merged: 6,
   }
   const local = await localPrisma.localOrder.findUnique({ where: { id: o.id as string } }).catch(() => null)
   const localRank = local ? (STATUS_RANK[local.status] ?? 0) : -1
   const cloudRank = STATUS_RANK[cloudStatus] ?? 0
-  // Preserve local status when it's further along (e.g. Bill_Printed local vs KOT_Sent cloud)
+  // Preserve local status when it's further along (e.g. Bill_Printed local vs KOT_Sent cloud;
+  // Merged local vs Cancelled cloud). Never downgrade.
   const effectiveStatus = localRank > cloudRank ? local!.status : cloudStatus
   const effectiveSubtotal = localRank > cloudRank && local ? local.subtotal : (o.subtotal as number)
   const effectiveGrandTotal = localRank > cloudRank && local ? local.grandTotal : (o.grandTotal as number)
@@ -1387,7 +1388,7 @@ app.get('/api/v1/tables', async (req, res) => {
     let activeOrders: Array<{ id: string; tableId: string | null; tableName: string | null; status: string; subtotal: number; grandTotal: number; createdAt: Date; updatedAt: Date }> = []
     if (localTables.length > 0) {
       activeOrders = await localPrisma.localOrder.findMany({
-        where: { status: { notIn: ['Settled', 'Cancelled'] } },
+        where: { status: { notIn: ['Settled', 'Cancelled', 'Merged'] } },
         select: { id: true, tableId: true, tableName: true, status: true, subtotal: true, grandTotal: true, createdAt: true, updatedAt: true },
       })
       const orderByTableId = new Map<string, (typeof activeOrders)[number]>()
@@ -1417,7 +1418,7 @@ app.get('/api/v1/tables', async (req, res) => {
     const sourceTables = cachedCloudTables
     if (sourceTables && (sourceTables as unknown[]).length > 0) {
       const localOrders = await localPrisma.localOrder.findMany({
-        where: { status: { notIn: ['Settled', 'Cancelled'] } },
+        where: { status: { notIn: ['Settled', 'Cancelled', 'Merged'] } },
         select: { id: true, tableId: true, tableName: true, status: true, subtotal: true, grandTotal: true, createdAt: true, updatedAt: true },
       })
       const localByTableId = new Map<string, (typeof localOrders)[number]>()
@@ -1654,7 +1655,7 @@ app.post('/api/v1/orders/takeaway', async (req, res) => {
 app.get('/api/v1/orders/takeaway/active', async (_req, res) => {
   try {
     const orders = await localPrisma.localOrder.findMany({
-      where: { orderType: 'Takeaway', status: { notIn: ['Settled', 'Cancelled'] } },
+      where: { orderType: 'Takeaway', status: { notIn: ['Settled', 'Cancelled', 'Merged'] } },
       include: { items: true, kots: true },
       orderBy: { createdAt: 'desc' },
     })
@@ -1986,7 +1987,7 @@ app.post('/api/v1/cart/merge-tables', async (req, res) => {
       return
     }
     const sourceOrder = await localPrisma.localOrder.findFirst({
-      where: { tableId: sourceTableId, status: { notIn: ['Settled', 'Cancelled'] } },
+      where: { tableId: sourceTableId, status: { notIn: ['Settled', 'Cancelled', 'Merged'] } },
       include: { items: true },
     })
     if (!sourceOrder) {
@@ -1994,8 +1995,9 @@ app.post('/api/v1/cart/merge-tables', async (req, res) => {
       return
     }
     let destOrder = await localPrisma.localOrder.findFirst({
-      where: { tableId: destTableId, status: { notIn: ['Settled', 'Cancelled'] } },
+      where: { tableId: destTableId, status: { notIn: ['Settled', 'Cancelled', 'Merged'] } },
     })
+    let didMerge = false
     if (!destOrder) {
       const destTbl = await localPrisma.cachedTable.findUnique({ where: { id: destTableId } }).catch(() => null)
       await localPrisma.localOrder.update({
@@ -2003,6 +2005,7 @@ app.post('/api/v1/cart/merge-tables', async (req, res) => {
         data: { tableId: destTableId, tableName: destTbl?.name ?? null },
       })
     } else {
+      didMerge = true
       const sourceKOTs = await localPrisma.localKOT.findMany({
         where: { orderId: sourceOrder.id },
       })
@@ -2032,7 +2035,20 @@ app.post('/api/v1/cart/merge-tables', async (req, res) => {
         data: { subtotal, taxTotal, discountTotal, grandTotal },
       })
     }
-    syncQueueService.enqueue('admin-put', { path: '/cart/merge-tables', body: { sourceTableId, destTableId } }).catch(() => {})
+    // Free the source table. When merging into an existing order, mark the source
+    // order as "Merged" (not Cancelled) so it's clearly understood as merged.
+    await localPrisma.cachedTable.update({
+      where: { id: sourceTableId },
+      data: { status: 'Available' },
+    }).catch(() => {})
+    if (didMerge) {
+      await localPrisma.localOrder.update({
+        where: { id: sourceOrder.id },
+        data: { status: 'Merged', tableId: null, subtotal: 0, taxTotal: 0, discountTotal: 0, grandTotal: 0 },
+      }).catch(() => {})
+    }
+    if (io) io.emit('tables:updated')
+    syncQueueService.enqueue('admin-create', { path: '/cart/merge-tables', body: { sourceTableId, destTableId } }).catch(() => {})
     res.json({ ok: true })
   } catch (err) {
     console.error('[merge-tables] Error:', err)
@@ -2095,7 +2111,7 @@ app.post('/api/v1/kot/send-with-items', async (req, res, next) => {
 
     if (tableId) {
       const existing = await localPrisma.localOrder.findFirst({
-        where: { tableId, status: { notIn: ['Settled', 'Cancelled'] } },
+        where: { tableId, status: { notIn: ['Settled', 'Cancelled', 'Merged'] } },
         include: { kots: true },
       })
       if (existing) {

@@ -132,8 +132,19 @@ export default function CartPage() {
     void runMutation(() => apiClient.post('/cart/remove-item', { orderItemId }))
   }
 
-  const handleCancel = (orderItemId: string) => {
-    void runMutation(() => apiClient.post('/cart/cancel-item', { orderItemId, cancelledBy: user?.name }))
+  const handleCancel = (orderItemIds: string[]) => {
+    void (async () => {
+      try {
+        await Promise.all(
+          orderItemIds.map((orderItemId) => apiClient.post('/cart/cancel-item', { orderItemId, cancelledBy: user?.name })),
+        )
+        toast('Item cancelled', 'success')
+        invalidate()
+      } catch (err) {
+        toast(getApiErrorMessage(err, 'Failed to cancel item'), 'error')
+        mediumHaptic()
+      }
+    })()
   }
 
   const handleServerItemNote = (orderItemId: string, note: string) => {

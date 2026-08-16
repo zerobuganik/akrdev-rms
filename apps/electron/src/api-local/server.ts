@@ -289,7 +289,8 @@ async function syncFromCloud(phone: string, password: string) {
       const raw = await ordersRes.json()
       if (Array.isArray(raw)) {
         for (const o of raw as Array<Record<string, unknown>>) {
-          await upsertLocalOrderFromCloud(o)
+          const isNew = await upsertLocalOrderFromCloud(o)
+          if (!isNew) continue
 
           // Sync order items
           const items = o.items as Array<Record<string, unknown>> | undefined
@@ -461,7 +462,8 @@ async function syncWithProgress(phone?: string, password?: string): Promise<void
         const raw = await r.json()
         if (Array.isArray(raw)) {
           for (const o of raw as Array<Record<string, unknown>>) {
-            await upsertLocalOrderFromCloud(o)
+            const isNew = await upsertLocalOrderFromCloud(o)
+            if (!isNew) continue
             const items = o.items as Array<Record<string, unknown>> | undefined
             if (items?.length) {
               for (const item of items) {
@@ -624,7 +626,8 @@ async function startupCloudSync() {
       const raw = await ordersRes.json()
       if (Array.isArray(raw)) {
         for (const o of raw as Array<Record<string, unknown>>) {
-          await upsertLocalOrderFromCloud(o)
+          const isNew = await upsertLocalOrderFromCloud(o)
+          if (!isNew) continue
           const items = o.items as Array<Record<string, unknown>> | undefined
           if (items?.length) {
             for (const item of items) {
@@ -894,8 +897,11 @@ function reshapeOrderItems(order: Record<string, unknown> & { items?: Array<Reco
   }
 }
 
-// Upsert a cloud order into local storage with correct table name + sync status
-async function upsertLocalOrderFromCloud(o: Record<string, unknown>) {
+// Upsert a cloud order into local storage with correct table name + sync status.
+// Returns true when the order was newly created locally (i.e. it did not exist before),
+// so callers can decide whether to also pull its items (local orders are authoritative
+// for their items once they exist — re-pulling items causes duplicates/orphaned kotIds).
+async function upsertLocalOrderFromCloud(o: Record<string, unknown>): Promise<boolean> {
   const cloudTable = (o.table as Record<string, unknown> | null) ?? null
   const resolvedTableName = (o.tableName as string) ?? (cloudTable?.name as string) ?? null
   const cloudStatus = o.status as string ?? 'Draft'
@@ -905,6 +911,7 @@ async function upsertLocalOrderFromCloud(o: Record<string, unknown>) {
     New: 0, Draft: 0, KOT_Sent: 1, Ready: 2, Bill_Printed: 3, Settled: 4, Cancelled: 5, Merged: 6,
   }
   const local = await localPrisma.localOrder.findUnique({ where: { id: o.id as string } }).catch(() => null)
+  const isNew = !local
   const localRank = local ? (STATUS_RANK[local.status] ?? 0) : -1
   const cloudRank = STATUS_RANK[cloudStatus] ?? 0
   // Preserve local status when it's further along (e.g. Bill_Printed local vs KOT_Sent cloud;
@@ -931,6 +938,7 @@ async function upsertLocalOrderFromCloud(o: Record<string, unknown>) {
       syncStatus: 'Synced',
     },
   }).catch(() => {})
+  return isNew
 }
 
 app.post('/api/v1/tables', async (req, res) => {

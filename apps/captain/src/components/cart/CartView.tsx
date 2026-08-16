@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { apiClient } from '@/lib/apiClient'
-import { formatCurrency, getItemDisplayName } from '@/lib/format'
+import { formatCurrency } from '@/lib/format'
 import { lightHaptic } from '@/lib/native-bridge'
 import {
   Plus,
@@ -16,7 +16,15 @@ import {
   ChevronDown,
   ChevronUp,
 } from 'lucide-react'
-import type { CaptainOrder, CaptainOrderItem, CaptainCustomer, CaptainCartItem } from '@/lib/types'
+import type { CaptainOrder, CaptainOrderItem, CaptainCustomer, CaptainCartItem, CaptainKOT } from '@/lib/types'
+
+interface MergedItem {
+  ids: string[]
+  name: string
+  quantity: number
+  unitPrice: number
+  lineTotal: number
+}
 
 interface CartViewProps {
   order: CaptainOrder | null
@@ -32,7 +40,7 @@ interface CartViewProps {
   onServerSetQty: (orderItemId: string, quantity: number) => void
   onServerRemove: (orderItemId: string) => void
   onServerItemNote: (orderItemId: string, note: string) => void
-  onCancel: (orderItemId: string) => void
+  onCancel: (orderItemIds: string[]) => void
   onOrderNote: (note: string) => void
   onGuestCount: (count: number) => void
   onAssignCustomer: (phone: string, name?: string) => void
@@ -40,105 +48,12 @@ interface CartViewProps {
   onPrintBill: () => void
 }
 
-function ServerItemRow({
-  item,
-  onServerSetQty,
-  onServerRemove,
-  onServerItemNote,
-  onCancel,
-}: {
-  item: CaptainOrderItem
-  onServerSetQty: (orderItemId: string, quantity: number) => void
-  onServerRemove: (orderItemId: string) => void
-  onServerItemNote: (orderItemId: string, note: string) => void
-  onCancel: (orderItemId: string) => void
-}) {
-  if (item.status === 'Cancelled') {
-    return (
-      <div className="flex items-center justify-between rounded-lg border border-dashed bg-muted/40 px-3 py-2">
-        <div className="min-w-0">
-          <span className="text-sm text-muted-foreground line-through">{getItemDisplayName(item)}</span>
-          {item.cancelledByUser?.name && (
-            <p className="text-[10px] text-muted-foreground">deleted by {item.cancelledByUser.name}</p>
-          )}
-        </div>
-        <span className="text-xs text-muted-foreground">×{item.quantity}</span>
-      </div>
-    )
-  }
+function itemName(item: CaptainOrderItem): string {
+  return item.itemName ?? item.item?.name ?? 'Item'
+}
 
-  const sent = item.status === 'Sent' || item.status === 'Ready'
-
-  return (
-    <div className="rounded-lg border bg-card px-3 py-2 shadow-sm">
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-medium leading-tight">{getItemDisplayName(item)}</p>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            {formatCurrency(item.unitPrice)} × {item.quantity}
-          </p>
-        </div>
-        <span className="shrink-0 text-sm font-bold">{formatCurrency(item.lineTotal)}</span>
-      </div>
-
-      <div className="mt-1.5 flex items-center gap-1.5">
-        {!sent ? (
-          <div className="flex items-center gap-1 rounded-lg border">
-            <button
-              onClick={() => onServerSetQty(item.id, Math.max(1, item.quantity - 1))}
-              className="p-1.5 text-muted-foreground hover:bg-muted active:scale-90"
-            >
-              <Minus size={13} />
-            </button>
-            <span className="w-6 text-center text-sm font-semibold">{item.quantity}</span>
-            <button
-              onClick={() => onServerSetQty(item.id, item.quantity + 1)}
-              className="p-1.5 text-muted-foreground hover:bg-muted active:scale-90"
-            >
-              <Plus size={13} />
-            </button>
-          </div>
-        ) : (
-          <span className="rounded-md bg-emerald-50 px-2 py-1 text-[10px] font-semibold text-emerald-700">
-            SENT
-          </span>
-        )}
-
-        <div className="relative ml-auto flex min-w-0 flex-1 items-center gap-1">
-          <div className="relative min-w-0 flex-1">
-            <StickyNote size={13} className="absolute left-1.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-            <input
-              key={item.id}
-              defaultValue={item.note ?? ''}
-              placeholder="Note"
-              onBlur={(e) => {
-                const v = e.target.value.trim()
-                if (v !== (item.note ?? '')) onServerItemNote(item.id, v)
-              }}
-              className="w-full rounded-md border py-1 pl-6 pr-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary/20"
-            />
-          </div>
-          {sent ? (
-            <button
-              onClick={() => onCancel(item.id)}
-              className="shrink-0 rounded-md p-1.5 text-amber-600 hover:bg-amber-50 active:scale-90"
-              title="Cancel item"
-            >
-              <XCircle size={15} />
-            </button>
-          ) : (
-            <button
-              onClick={() => onServerRemove(item.id)}
-              className="shrink-0 rounded-md p-1.5 text-destructive hover:bg-red-50 active:scale-90"
-              title="Remove item"
-            >
-              <Trash2 size={15} />
-            </button>
-          )}
-        </div>
-      </div>
-    </div>
-  )
+function itemVariationName(item: CaptainOrderItem): string | undefined {
+  return item.variationName ?? item.variation?.name ?? undefined
 }
 
 function LocalItemRow({
@@ -209,6 +124,74 @@ function LocalItemRow({
   )
 }
 
+function NewItemRow({
+  item,
+  onServerSetQty,
+  onServerRemove,
+  onServerItemNote,
+}: {
+  item: CaptainOrderItem
+  onServerSetQty: (orderItemId: string, quantity: number) => void
+  onServerRemove: (orderItemId: string) => void
+  onServerItemNote: (orderItemId: string, note: string) => void
+}) {
+  const displayName = itemVariationName(item) ? `${itemName(item)} (${itemVariationName(item)})` : itemName(item)
+  return (
+    <div className="rounded-lg border bg-card px-3 py-2 shadow-sm">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-medium leading-tight">{displayName}</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            {formatCurrency(item.unitPrice)} × {item.quantity}
+          </p>
+        </div>
+        <span className="shrink-0 text-sm font-bold">{formatCurrency(item.lineTotal)}</span>
+      </div>
+
+      <div className="mt-1.5 flex items-center gap-1.5">
+        <div className="flex items-center gap-1 rounded-lg border">
+          <button
+            onClick={() => onServerSetQty(item.id, Math.max(1, item.quantity - 1))}
+            className="p-1.5 text-muted-foreground hover:bg-muted active:scale-90"
+          >
+            <Minus size={13} />
+          </button>
+          <span className="w-6 text-center text-sm font-semibold">{item.quantity}</span>
+          <button
+            onClick={() => onServerSetQty(item.id, item.quantity + 1)}
+            className="p-1.5 text-muted-foreground hover:bg-muted active:scale-90"
+          >
+            <Plus size={13} />
+          </button>
+        </div>
+
+        <div className="relative ml-auto flex min-w-0 flex-1 items-center gap-1">
+          <div className="relative min-w-0 flex-1">
+            <StickyNote size={13} className="absolute left-1.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <input
+              key={item.id}
+              defaultValue={item.note ?? ''}
+              placeholder="Note"
+              onBlur={(e) => {
+                const v = e.target.value.trim()
+                if (v !== (item.note ?? '')) onServerItemNote(item.id, v)
+              }}
+              className="w-full rounded-md border py-1 pl-6 pr-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary/20"
+            />
+          </div>
+          <button
+            onClick={() => onServerRemove(item.id)}
+            className="shrink-0 rounded-md p-1.5 text-destructive hover:bg-red-50 active:scale-90"
+            title="Remove item"
+          >
+            <Trash2 size={15} />
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function CartView(props: CartViewProps) {
   const {
     order,
@@ -241,38 +224,44 @@ export function CartView(props: CartViewProps) {
     enabled: customerPhone.length >= 3,
   })
 
-  const kotNumberById = useMemo(() => {
-    const m = new Map<string, number>()
-    for (const k of order?.kots ?? []) m.set(k.id, k.kotNumber)
-    return m
-  }, [order])
+  const newItems = useMemo(() => (order?.items ?? []).filter((i) => i.status === 'New'), [order])
+  const sentItems = useMemo(() => (order?.items ?? []).filter((i) => i.status === 'Sent' || i.status === 'Ready'), [order])
+  const cancelledItems = useMemo(() => (order?.items ?? []).filter((i) => i.status === 'Cancelled' && i.kotId), [order])
 
-  const groups = useMemo(() => {
-    const items = order?.items ?? []
-    const newItems: CaptainOrderItem[] = []
-    const cancelled: CaptainOrderItem[] = []
-    const sentByKot = new Map<string, CaptainOrderItem[]>()
+  const mergeItems = (items: CaptainOrderItem[]): MergedItem[] => {
+    const map = new Map<string, MergedItem>()
     for (const i of items) {
-      if (i.status === 'Cancelled') cancelled.push(i)
-      else if (i.status === 'New') newItems.push(i)
-      else {
-        const key = i.kotId ?? 'unknown'
-        const arr = sentByKot.get(key) ?? []
-        arr.push(i)
-        sentByKot.set(key, arr)
+      if (i.status === 'Cancelled') continue
+      const key = `${i.itemId}-${i.variationId ?? 'none'}`
+      const existing = map.get(key)
+      const displayName = itemVariationName(i) ? `${itemName(i)} (${itemVariationName(i)})` : itemName(i)
+      if (existing) {
+        existing.quantity += i.quantity
+        existing.lineTotal += i.lineTotal
+        existing.ids.push(i.id)
+      } else {
+        map.set(key, { ids: [i.id], name: displayName, quantity: i.quantity, unitPrice: i.unitPrice, lineTotal: i.lineTotal })
       }
     }
-    const kotGroups = [...sentByKot.entries()]
-      .map(([kotId, list]) => ({ kotId, kotNumber: kotNumberById.get(kotId) ?? 0, list }))
-      .sort((a, b) => a.kotNumber - b.kotNumber)
-    return { newItems, cancelled, kotGroups }
-  }, [order, kotNumberById])
+    return Array.from(map.values())
+  }
+
+  const kotGroups = useMemo(() => {
+    const kots = (order?.kots ?? []).slice().sort((a, b) => a.kotNumber - b.kotNumber)
+    return kots
+      .map((kot: CaptainKOT) => {
+        const kotSent = sentItems.filter((i) => i.kotId === kot.id)
+        const kotCancelled = cancelledItems.filter((i) => i.kotId === kot.id)
+        return { kot, merged: mergeItems(kotSent), cancelled: kotCancelled }
+      })
+      .filter((g) => g.merged.length > 0 || g.cancelled.length > 0)
+  }, [order, sentItems, cancelledItems])
 
   const localSubtotal = cartItems.reduce((s, i) => s + i.unitPrice * i.quantity, 0)
   const activeCount = cartItems.length + (order?.items.filter((i) => i.status !== 'Cancelled').length ?? 0)
-  const canSendKot = cartItems.length > 0 || groups.newItems.length > 0
+  const canSendKot = cartItems.length > 0 || newItems.length > 0
   const isBilled = order?.status === 'Bill_Printed' || order?.status === 'Settled'
-  const hasBillableOrder = !!order && (order.items.some((i) => i.status !== 'Cancelled'))
+  const hasBillableOrder = !!order && order.items.some((i) => i.status !== 'Cancelled')
   const subtotal = (order?.subtotal ?? 0) + localSubtotal
   const grandTotal = (order?.grandTotal ?? 0) + localSubtotal
 
@@ -349,7 +338,7 @@ export function CartView(props: CartViewProps) {
           </div>
         )}
 
-        {activeCount === 0 && groups.cancelled.length === 0 && (
+        {activeCount === 0 && (
           <p className="py-10 text-center text-sm text-muted-foreground">Cart is empty — add items from the menu.</p>
         )}
 
@@ -372,63 +361,62 @@ export function CartView(props: CartViewProps) {
           </div>
         )}
 
-        {groups.newItems.length > 0 && (
+        {newItems.length > 0 && (
           <div className="mb-3">
             <h4 className="mb-1.5 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
               <span className="h-1.5 w-1.5 rounded-full bg-amber-500" /> New order
             </h4>
             <div className="space-y-2">
-              {groups.newItems.map((item) => (
-                <ServerItemRow
+              {newItems.map((item) => (
+                <NewItemRow
                   key={item.id}
                   item={item}
                   onServerSetQty={onServerSetQty}
                   onServerRemove={onServerRemove}
                   onServerItemNote={onServerItemNote}
-                  onCancel={onCancel}
                 />
               ))}
             </div>
           </div>
         )}
 
-        {groups.kotGroups.map((g) => (
-          <div key={g.kotId} className="mb-3">
+        {kotGroups.map((g) => (
+          <div key={g.kot.id} className="mb-3">
             <h4 className="mb-1.5 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> KOT {g.kotNumber} — sent to kitchen
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+              KOT #{g.kot.kotNumber} — By {g.kot.sentBy} — {new Date(g.kot.sentAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
             </h4>
             <div className="space-y-2">
-              {g.list.map((item) => (
-                <ServerItemRow
-                  key={item.id}
-                  item={item}
-                  onServerSetQty={onServerSetQty}
-                  onServerRemove={onServerRemove}
-                  onServerItemNote={onServerItemNote}
-                  onCancel={onCancel}
-                />
+              {g.merged.map((m) => (
+                <div key={m.ids[0]} className="flex items-center gap-2 rounded-lg border bg-card px-3 py-2 shadow-sm">
+                  {!isBilled && (
+                    <button
+                      onClick={() => onCancel(m.ids)}
+                      className="shrink-0 rounded-md p-1.5 text-amber-600 hover:bg-amber-50 active:scale-90"
+                      title="Cancel item"
+                    >
+                      <XCircle size={15} />
+                    </button>
+                  )}
+                  <span className="min-w-0 flex-1 text-sm font-medium leading-tight">{m.name}</span>
+                  <span className="shrink-0 text-xs text-muted-foreground">×{m.quantity}</span>
+                  <span className="shrink-0 text-sm font-bold">{formatCurrency(m.lineTotal)}</span>
+                </div>
+              ))}
+              {g.cancelled.map((item) => (
+                <div key={item.id} className="flex items-center gap-2 rounded-lg border border-dashed bg-muted/40 px-3 py-2">
+                  <span className="min-w-0 flex-1 text-sm text-muted-foreground line-through">
+                    {itemVariationName(item) ? `${itemName(item)} (${itemVariationName(item)})` : itemName(item)}
+                  </span>
+                  <span className="shrink-0 text-xs text-muted-foreground">×{item.quantity}</span>
+                  {item.cancelledByUser?.name && (
+                    <span className="shrink-0 text-xs text-muted-foreground">by {item.cancelledByUser.name}</span>
+                  )}
+                </div>
               ))}
             </div>
           </div>
         ))}
-
-        {groups.cancelled.length > 0 && (
-          <div className="mb-3">
-            <h4 className="mb-1.5 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Cancelled</h4>
-            <div className="space-y-2">
-              {groups.cancelled.map((item) => (
-                <ServerItemRow
-                  key={item.id}
-                  item={item}
-                  onServerSetQty={onServerSetQty}
-                  onServerRemove={onServerRemove}
-                  onServerItemNote={onServerItemNote}
-                  onCancel={onCancel}
-                />
-              ))}
-            </div>
-          </div>
-        )}
       </div>
 
       <div className="shrink-0 border-t bg-card px-4 py-3">

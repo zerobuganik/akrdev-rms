@@ -179,9 +179,11 @@ export function CartPanel({ tableId }: { tableId: string | null }) {
 
   const sendKOT = useMutation({
     mutationFn: async () => {
-      const isTakeaway = tableId === 'takeaway-new'
+      const isTakeaway = tableId === 'takeaway-new' || order?.orderType === 'Takeaway'
+      const hasOrder = !!order
       const { data } = await apiClient.post('/kot/send-with-items', {
-        tableId: isTakeaway ? undefined : tableId,
+        tableId: (tableId === 'takeaway-new' || hasOrder) ? undefined : tableId,
+        orderId: order?.id,
         tableName: undefined,
         guestCount,
         orderType: isTakeaway ? 'Takeaway' : 'DineIn',
@@ -201,6 +203,7 @@ export function CartPanel({ tableId }: { tableId: string | null }) {
     },
     onSuccess: (result) => {
       const savedItems = [...cartItems]
+      const isTakeaway = tableId === 'takeaway-new' || order?.orderType === 'Takeaway'
       toast('KOT sent successfully', 'success')
       useCartStore.getState().clearCart()
       queryClient.invalidateQueries({ queryKey: ['order', tableId] })
@@ -209,7 +212,9 @@ export function CartPanel({ tableId }: { tableId: string | null }) {
       queryClient.refetchQueries({ queryKey: ['takeaway-orders'] })
       queryClient.refetchQueries({ queryKey: ['tables'] })
       const tables = queryClient.getQueryData<Array<{ id: string; name: string }>>(['tables'])
-      const tableName = tables?.find((t) => t.id === tableId)?.name ?? (tableId === 'takeaway-new' ? 'Takeaway' : 'Table')
+      const tableName = isTakeaway
+        ? 'Takeaway'
+        : (tables?.find((t) => t.id === tableId)?.name ?? 'Table')
       printerApi.printKOT({
         printType: 'kot',
         orderId: result.orderId,
@@ -225,7 +230,7 @@ export function CartPanel({ tableId }: { tableId: string | null }) {
           note: i.note,
         })),
         date: formatPrintDate(),
-        orderType: tableId === 'takeaway-new' ? 'Takeaway' : 'Dine In',
+        orderType: isTakeaway ? 'Takeaway' : 'Dine In',
       }).catch(() => {})
       if (tableId === 'takeaway-new') {
         navigate(`/cart/${result.orderId}`, { replace: true })

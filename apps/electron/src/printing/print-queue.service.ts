@@ -21,13 +21,14 @@ export interface PrintJob {
 }
 
 export const printQueueService = {
-  async enqueue(printerId: string, printType: string, orderId?: string, tableName?: string): Promise<PrintJob> {
+  async enqueue(printerId: string, printType: string, orderId?: string, tableName?: string, payload?: unknown): Promise<PrintJob> {
     return localPrisma.printHistory.create({
       data: {
         printerId,
         printType,
         orderId: orderId ?? null,
         tableName: tableName ?? null,
+        payload: payload ? JSON.stringify(payload) : null,
         status: 'Pending',
       },
     }) as unknown as PrintJob

@@ -142,6 +142,7 @@ model PrintHistory {
   printType  String
   orderId    String?
   tableName  String?
+  payload    String?
   status     String   @default("Pending")
   retryCount Int      @default(0)
   error      String?

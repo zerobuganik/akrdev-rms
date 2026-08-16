@@ -323,9 +323,15 @@ export class PrintService {
       data.printType,
       data.orderId,
       data.tableName,
+      data,
     )
 
-    const adapter = this.adapters.get(printerId)
+    let adapter = this.adapters.get(printerId)
+    if (!adapter) {
+      // The adapter may have been dropped (e.g. after a config change) — try to reconnect.
+      await this.reconnectPrinter(printerId).catch(() => {})
+      adapter = this.adapters.get(printerId)
+    }
     if (!adapter) {
       await printQueueService.markFailed(job.id, 'Printer not connected')
       throw new Error('Printer not connected')
@@ -398,10 +404,11 @@ export class PrintService {
    */
   private formatKOT(data: PrintData, paperWidth: number): Buffer {
     const w = this.width(paperWidth)
+    const tableLabel = data.orderType === 'Takeaway' ? 'Takeaway' : `Table: ${data.tableName ?? '—'}`
     const lines: string[] = [
       CMD.ALIGN_CENTER,
       CMD.DOUBLE_BOTH,
-      `Table: ${data.tableName ?? '—'}`,
+      tableLabel,
       CMD.NORMAL,
       CMD.DIVIDER.slice(0, w),
     ]
@@ -598,7 +605,7 @@ export class PrintService {
 
     // Info rows: Table/Date on one line, Order#/Type on next
     lines.push(CMD.ALIGN_LEFT)
-    const tableLeft = data.tableName ? `Table: ${data.tableName}` : ''
+    const tableLeft = data.orderType === 'Takeaway' ? 'Takeaway' : (data.tableName ? `Table: ${data.tableName}` : '')
     const dateRight = data.date ? `Date: ${data.date}` : ''
     lines.push(this.lineLeftRight(tableLeft, dateRight, w))
 
@@ -819,21 +826,36 @@ export class PrintService {
     let processed = 0
     for (const job of pending) {
       try {
-        const adapter = this.adapters.get(job.printerId)
+        let adapter = this.adapters.get(job.printerId)
+        if (!adapter) {
+          await this.reconnectPrinter(job.printerId).catch(() => {})
+          adapter = this.adapters.get(job.printerId)
+        }
         if (!adapter) continue
 
         const delay = await printQueueService.getRetryDelay(job.retryCount)
         const elapsed = Date.now() - job.createdAt.getTime()
         if (elapsed < delay) continue
 
+        const payload = job.payload ? (JSON.parse(job.payload) as PrintData) : null
+        if (!payload) {
+          await printQueueService.markFailed(job.id, 'No print payload stored')
+          continue
+        }
+        const printer = await localPrisma.printerConfig.findUnique({ where: { id: job.printerId } }).catch(() => null)
+        const paperWidth = printer?.paperWidth ?? 80
+
+        let buffer: Buffer
+        if (payload.printType === 'kot') buffer = this.formatKOT(payload, paperWidth)
+        else if (payload.printType === 'reprint-bill') buffer = await this.formatReprint(payload, paperWidth)
+        else buffer = await this.formatBill(payload, paperWidth)
+
         // Re-open printer if needed
         if (!adapter.isOpen()) {
           await adapter.open()
         }
 
-        // Send a simple reprint
-        const testBuffer = this.formatTestPrint()
-        await adapter.write(testBuffer)
+        await adapter.write(buffer)
         await printQueueService.markCompleted(job.id)
         processed++
       } catch (err) {

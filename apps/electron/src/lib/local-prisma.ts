@@ -97,7 +97,8 @@ export async function ensureTables() {
     `CREATE TABLE IF NOT EXISTS "print_history" (
       "id" TEXT NOT NULL PRIMARY KEY, "printerId" TEXT NOT NULL,
       "printType" TEXT NOT NULL, "orderId" TEXT,
-      "tableName" TEXT, "status" TEXT NOT NULL DEFAULT 'Pending',
+      "tableName" TEXT, "payload" TEXT,
+      "status" TEXT NOT NULL DEFAULT 'Pending',
       "retryCount" INTEGER NOT NULL DEFAULT 0, "error" TEXT,
       "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY ("printerId") REFERENCES "printer_configs"("id") ON DELETE CASCADE
@@ -162,6 +163,12 @@ export async function ensureTables() {
     try { await localPrisma.$executeRawUnsafe(sql) } catch (err) {
       console.error(`[local-prisma] Failed to execute: ${sql.slice(0, 80)}... — ${(err as Error).message}`)
     }
+  }
+  // Migration: add the payload column to print_history for existing databases.
+  try {
+    await localPrisma.$executeRawUnsafe(`ALTER TABLE "print_history" ADD COLUMN "payload" TEXT`)
+  } catch {
+    // Column already exists — safe to ignore.
   }
   console.log('[local-prisma] Ensured local tables exist')
 }

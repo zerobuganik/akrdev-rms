@@ -2343,19 +2343,34 @@ app.post('/api/v1/kot/send', async (req, res) => {
 
 app.post('/api/v1/kot/send-with-items', async (req, res, next) => {
   try {
-    const { tableId, tableName, guestCount, orderType, sentBy, note, items } = req.body
+    const { tableId, tableName, guestCount, orderType, sentBy, note, items, orderId: providedOrderId } = req.body
 
     if (!items || !Array.isArray(items) || items.length === 0) {
       res.status(400).json({ error: 'No items provided' })
       return
     }
 
-    let orderId: string
+    let orderId: string | undefined = providedOrderId as string | undefined
     let kotId = crypto.randomUUID()
     let kotNumber = 1
     let isNewOrder = false
 
-    if (tableId) {
+    // Prefer an explicit orderId (used by POS/Captain for subsequent KOTs on an
+    // existing order — especially Takeaway orders, which have no tableId).
+    if (orderId) {
+      const existing = await localPrisma.localOrder.findUnique({
+        where: { id: orderId },
+        include: { kots: true },
+      })
+      if (existing && !['Settled', 'Cancelled', 'Merged'].includes(existing.status)) {
+        kotNumber = existing.kots.length > 0 ? Math.max(...existing.kots.map((k) => k.kotNumber)) + 1 : 1
+      } else {
+        orderId = undefined
+      }
+    }
+
+    // Fallback: find the active order for this table.
+    if (!orderId && tableId) {
       const existing = await localPrisma.localOrder.findFirst({
         where: { tableId, status: { notIn: ['Settled', 'Cancelled', 'Merged'] } },
         include: { kots: true },
@@ -2363,11 +2378,11 @@ app.post('/api/v1/kot/send-with-items', async (req, res, next) => {
       if (existing) {
         orderId = existing.id
         kotNumber = existing.kots.length > 0 ? Math.max(...existing.kots.map((k) => k.kotNumber)) + 1 : 1
-      } else {
-        orderId = crypto.randomUUID()
-        isNewOrder = true
       }
-    } else {
+    }
+
+    // Otherwise create a brand-new order.
+    if (!orderId) {
       orderId = crypto.randomUUID()
       isNewOrder = true
     }

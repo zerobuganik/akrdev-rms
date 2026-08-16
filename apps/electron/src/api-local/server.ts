@@ -914,31 +914,36 @@ async function upsertLocalOrderFromCloud(o: Record<string, unknown>): Promise<bo
   const isNew = !local
   const localRank = local ? (STATUS_RANK[local.status] ?? 0) : -1
   const cloudRank = STATUS_RANK[cloudStatus] ?? 0
-  // Preserve local status when it's further along (e.g. Bill_Printed local vs KOT_Sent cloud;
-  // Merged local vs Cancelled cloud). Never downgrade.
-  const effectiveStatus = localRank > cloudRank ? local!.status : cloudStatus
-  const effectiveSubtotal = localRank > cloudRank && local ? local.subtotal : (o.subtotal as number)
-  const effectiveGrandTotal = localRank > cloudRank && local ? local.grandTotal : (o.grandTotal as number)
-  const effectiveTaxTotal = localRank > cloudRank && local ? local.taxTotal : (o.taxTotal as number)
-  const effectiveDiscountTotal = localRank > cloudRank && local ? local.discountTotal : (o.discountTotal as number)
 
-  await localPrisma.localOrder.upsert({
-    where: { id: o.id as string },
-    create: {
-      id: o.id as string, tableId: o.tableId as string ?? null, tableName: resolvedTableName,
-      guestCount: o.guestCount as number ?? 2, status: effectiveStatus,
-      subtotal: o.subtotal as number ?? 0, taxTotal: o.taxTotal as number ?? 0,
-      discountTotal: o.discountTotal as number ?? 0, grandTotal: o.grandTotal as number ?? 0,
-      orderType: o.orderType as string ?? 'DineIn', syncStatus: 'Synced',
-    },
-    update: {
-      tableName: resolvedTableName ?? undefined, status: effectiveStatus,
-      subtotal: effectiveSubtotal, taxTotal: effectiveTaxTotal,
-      discountTotal: effectiveDiscountTotal, grandTotal: effectiveGrandTotal,
-      syncStatus: 'Synced',
-    },
-  }).catch(() => {})
-  return isNew
+  if (isNew) {
+    await localPrisma.localOrder.create({
+      data: {
+        id: o.id as string, tableId: o.tableId as string ?? null, tableName: resolvedTableName,
+        guestCount: o.guestCount as number ?? 2, status: cloudStatus,
+        subtotal: o.subtotal as number ?? 0, taxTotal: o.taxTotal as number ?? 0,
+        discountTotal: o.discountTotal as number ?? 0, grandTotal: o.grandTotal as number ?? 0,
+        orderType: o.orderType as string ?? 'DineIn', syncStatus: 'Synced',
+      },
+    }).catch(() => {})
+    return true
+  }
+
+  // Existing order: only update when the cloud is genuinely further along.
+  // Skipping the no-op update keeps the local order authoritative (so a cancel
+  // decrements totals correctly) and avoids bumping `updatedAt` every sync poll
+  // (which was resetting the "since bill printed" timer on the tables grid).
+  if (cloudRank > localRank) {
+    await localPrisma.localOrder.update({
+      where: { id: o.id as string },
+      data: {
+        tableName: resolvedTableName ?? undefined, status: cloudStatus,
+        subtotal: o.subtotal as number ?? 0, taxTotal: o.taxTotal as number ?? 0,
+        discountTotal: o.discountTotal as number ?? 0, grandTotal: o.grandTotal as number ?? 0,
+        syncStatus: 'Synced',
+      },
+    }).catch(() => {})
+  }
+  return false
 }
 
 app.post('/api/v1/tables', async (req, res) => {
@@ -2041,7 +2046,11 @@ app.post('/api/v1/cart/cancel-item', async (req, res) => {
       const subtotal = order.items.reduce((s, i) => s + i.lineTotal, 0)
       const { taxTotal, discountTotal, grandTotal } = computeOrderTotals(subtotal)
       await localPrisma.localOrder.update({ where: { id: item.orderId }, data: { subtotal, taxTotal, discountTotal, grandTotal } })
+      emitOrderUpdated(order, 'cancel-item')
     }
+
+    // Sync soft-cancel to cloud (cloud /cart/remove-item performs a soft cancel)
+    syncQueueService.enqueue('remove-item', { orderItemId }).catch(() => {})
 
     res.json({ cancelled: true })
   } catch (err) {

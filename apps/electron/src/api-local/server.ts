@@ -815,6 +815,40 @@ app.post('/api/v1/auth/refresh', async (_req, res) => {
   }
 })
 
+app.post('/api/v1/auth/change-pin', async (req, res) => {
+  try {
+    const { phone, currentPin, newPin } = req.body ?? {}
+    if (!phone || !currentPin || !newPin) {
+      res.status(400).json({ error: { message: 'phone, currentPin, and newPin are required', statusCode: 400 } })
+      return
+    }
+    if (String(newPin).length < 4 || String(newPin).length > 8) {
+      res.status(400).json({ error: { message: 'New PIN must be 4–8 digits', statusCode: 400 } })
+      return
+    }
+    const credential = await localPrisma.localCredential.findUnique({ where: { phone } })
+    if (!credential) {
+      res.status(401).json({ error: { message: 'No credential found for this account', statusCode: 401 } })
+      return
+    }
+    if (!credential.pinHash) {
+      res.status(400).json({ error: { message: 'No PIN is set on this account', statusCode: 400 } })
+      return
+    }
+    const valid = await argon2.verify(credential.pinHash, String(currentPin))
+    if (!valid) {
+      res.status(401).json({ error: { message: 'Current PIN is incorrect', statusCode: 401 } })
+      return
+    }
+    const newPinHash = await argon2.hash(String(newPin))
+    await localPrisma.localCredential.update({ where: { phone }, data: { pinHash: newPinHash } })
+    res.json({ ok: true })
+  } catch (err) {
+    console.error('[auth] Change PIN error:', err)
+    res.status(500).json({ error: { message: 'Internal server error', statusCode: 500 } })
+  }
+})
+
 // ── Admin CRUD stubs (locale-only, queued for cloud sync) ──
 // These endpoints accept writes locally and queue them for background sync.
 // They return success immediately without any cloud dependency.
@@ -1385,11 +1419,11 @@ app.get('/api/v1/tables', async (req, res) => {
 
     // 1. Load tables from local SQLite (persisted, updated on every create/edit, survives offline)
     const localTables = await localPrisma.cachedTable.findMany({ orderBy: { name: 'asc' } })
-    let activeOrders: Array<{ id: string; tableId: string | null; tableName: string | null; status: string; subtotal: number; grandTotal: number; createdAt: Date; updatedAt: Date }> = []
+    let activeOrders: Array<{ id: string; tableId: string | null; tableName: string | null; status: string; subtotal: number; grandTotal: number; createdAt: Date; updatedAt: Date; kots: Array<{ sentAt: Date }> }> = []
     if (localTables.length > 0) {
       activeOrders = await localPrisma.localOrder.findMany({
         where: { status: { notIn: ['Settled', 'Cancelled', 'Merged'] } },
-        select: { id: true, tableId: true, tableName: true, status: true, subtotal: true, grandTotal: true, createdAt: true, updatedAt: true },
+        select: { id: true, tableId: true, tableName: true, status: true, subtotal: true, grandTotal: true, createdAt: true, updatedAt: true, kots: { select: { sentAt: true } } },
       })
       const orderByTableId = new Map<string, (typeof activeOrders)[number]>()
       const orderByTableName = new Map<string, (typeof activeOrders)[number]>()
@@ -1399,14 +1433,22 @@ app.get('/api/v1/tables', async (req, res) => {
       }
       let tables = localTables.map((t) => {
         const local = orderByTableId.get(t.id) ?? orderByTableName.get(t.name)
-        const tableStatus = local ? (local.status === 'KOT_Sent' ? 'Occupied' : local.status === 'Bill_Printed' ? 'Billed' : t.status) : t.status
+        const hasKot = local ? local.kots.length > 0 : false
+        const firstKotAt = local && local.kots.length > 0
+          ? new Date(Math.min(...local.kots.map((k) => new Date(k.sentAt).getTime()))).toISOString()
+          : null
+        const tableStatus = local
+          ? (local.status === 'Bill_Printed' ? 'Billed'
+            : (hasKot || local.status === 'KOT_Sent' || local.status === 'Ready') ? 'Occupied'
+            : t.status)
+          : t.status
         return {
           id: t.id,
           name: t.name,
           capacity: t.capacity,
           status: tableStatus,
           area: t.areaId ? { id: t.areaId, name: t.areaName ?? '' } : null,
-          orders: local ? [{ id: local.id, createdAt: local.createdAt, updatedAt: local.updatedAt, subtotal: local.subtotal, grandTotal: local.grandTotal, status: local.status }] : [],
+          orders: local ? [{ id: local.id, createdAt: local.createdAt, updatedAt: local.updatedAt, subtotal: local.subtotal, grandTotal: local.grandTotal, status: local.status, firstKotAt }] : [],
         }
       })
       if (tableName) tables = tables.filter((t) => t.name.toLowerCase().includes(tableName.toLowerCase()))
@@ -1419,7 +1461,7 @@ app.get('/api/v1/tables', async (req, res) => {
     if (sourceTables && (sourceTables as unknown[]).length > 0) {
       const localOrders = await localPrisma.localOrder.findMany({
         where: { status: { notIn: ['Settled', 'Cancelled', 'Merged'] } },
-        select: { id: true, tableId: true, tableName: true, status: true, subtotal: true, grandTotal: true, createdAt: true, updatedAt: true },
+        select: { id: true, tableId: true, tableName: true, status: true, subtotal: true, grandTotal: true, createdAt: true, updatedAt: true, kots: { select: { sentAt: true } } },
       })
       const localByTableId = new Map<string, (typeof localOrders)[number]>()
       const localByTableName = new Map<string, (typeof localOrders)[number]>()
@@ -1429,14 +1471,22 @@ app.get('/api/v1/tables', async (req, res) => {
       }
       let tables = (sourceTables as { id: string; name: string; capacity?: number; status?: string; area?: { id: string; name: string }; areaName?: string }[]).map((ct) => {
         const local = localByTableId.get(ct.id) ?? localByTableName.get(ct.name)
-        const tableStatus = local ? (local.status === 'KOT_Sent' ? 'Occupied' : local.status === 'Bill_Printed' ? 'Billed' : ct.status ?? 'Available') : ct.status ?? 'Available'
+        const hasKot = local ? local.kots.length > 0 : false
+        const firstKotAt = local && local.kots.length > 0
+          ? new Date(Math.min(...local.kots.map((k) => new Date(k.sentAt).getTime()))).toISOString()
+          : null
+        const tableStatus = local
+          ? (local.status === 'Bill_Printed' ? 'Billed'
+            : (hasKot || local.status === 'KOT_Sent' || local.status === 'Ready') ? 'Occupied'
+            : ct.status ?? 'Available')
+          : ct.status ?? 'Available'
         return {
           id: ct.id,
           name: ct.name,
           capacity: ct.capacity ?? 0,
           status: tableStatus,
           area: ct.area ?? (ct.areaName ? { id: ct.areaName, name: ct.areaName } : null),
-          orders: local ? [{ id: local.id, createdAt: local.createdAt, updatedAt: local.updatedAt, subtotal: local.subtotal, grandTotal: local.grandTotal, status: local.status }] : [],
+          orders: local ? [{ id: local.id, createdAt: local.createdAt, updatedAt: local.updatedAt, subtotal: local.subtotal, grandTotal: local.grandTotal, status: local.status, firstKotAt }] : [],
         }
       })
       if (tableName) tables = tables.filter((t) => t.name.toLowerCase().includes(tableName.toLowerCase()))
@@ -1586,6 +1636,20 @@ app.get('/api/v1/employees', (_req, res) => {
   res.json([])
 })
 
+app.get('/api/v1/orders/takeaway/active', async (_req, res) => {
+  try {
+    const orders = await localPrisma.localOrder.findMany({
+      where: { orderType: 'Takeaway', status: { notIn: ['Settled', 'Cancelled', 'Merged'] } },
+      include: { items: true, kots: true },
+      orderBy: { createdAt: 'desc' },
+    })
+    res.json(orders.map(reshapeOrderItems))
+  } catch (err) {
+    console.error('Error fetching takeaway orders:', err)
+    res.status(500).json({ error: 'Failed to fetch takeaway orders' })
+  }
+})
+
 app.get('/api/v1/orders/:tableId/active', async (req, res) => {
   try {
     const { tableId } = req.params
@@ -1614,6 +1678,12 @@ app.get('/api/v1/orders/:tableId/active', async (req, res) => {
 app.post('/api/v1/orders', async (req, res) => {
   try {
     const { tableId, tableName, guestCount, orderType } = req.body
+    // Resolve the real table name (client may only send a tableId)
+    let resolvedTableName = tableName ?? null
+    if (tableId && !resolvedTableName) {
+      const tbl = await localPrisma.cachedTable.findUnique({ where: { id: tableId } }).catch(() => null)
+      if (tbl) resolvedTableName = tbl.name
+    }
     // Use $transaction to prevent race conditions on concurrent create-order calls
     const order = await localPrisma.$transaction(async (tx) => {
       const existing = await tx.localOrder.findFirst({
@@ -1622,7 +1692,7 @@ app.post('/api/v1/orders', async (req, res) => {
       })
       if (existing && tableId) return existing
       const created = await tx.localOrder.create({
-        data: { tableId: tableId ?? null, tableName: tableName ?? `Table ${tableId ?? 'Takeaway'}`, guestCount: guestCount ?? 2, orderType: orderType ?? 'DineIn' },
+        data: { tableId: tableId ?? null, tableName: resolvedTableName ?? (tableId ? null : 'Takeaway'), guestCount: guestCount ?? 2, orderType: orderType ?? 'DineIn' },
         include: { items: true, kots: true, settlement: true },
       })
       return created
@@ -1649,20 +1719,6 @@ app.post('/api/v1/orders/takeaway', async (req, res) => {
   } catch (err) {
     console.error('Error creating takeaway order:', err)
     res.status(500).json({ error: 'Failed to create takeaway order' })
-  }
-})
-
-app.get('/api/v1/orders/takeaway/active', async (_req, res) => {
-  try {
-    const orders = await localPrisma.localOrder.findMany({
-      where: { orderType: 'Takeaway', status: { notIn: ['Settled', 'Cancelled', 'Merged'] } },
-      include: { items: true, kots: true },
-      orderBy: { createdAt: 'desc' },
-    })
-    res.json(orders.map(reshapeOrderItems))
-  } catch (err) {
-    console.error('Error fetching takeaway orders:', err)
-    res.status(500).json({ error: 'Failed to fetch takeaway orders' })
   }
 })
 
@@ -1761,6 +1817,33 @@ app.post('/api/v1/cart/add-item', async (req, res) => {
 
     const qty = quantity ?? 1
     const lineTotal = reqLineTotal ?? unitPrice * qty
+
+    // Merge with an existing "New" line for the same item + variation (increment qty)
+    const existingItem = await localPrisma.localOrderItem.findFirst({
+      where: { orderId, itemId, variationId: variationId ?? null, status: 'New' },
+    })
+    if (existingItem) {
+      const newQty = existingItem.quantity + qty
+      const updated = await localPrisma.localOrderItem.update({
+        where: { id: existingItem.id },
+        data: { quantity: newQty, lineTotal: existingItem.unitPrice * newQty },
+      })
+      const mergedOrder = await localPrisma.localOrder.findUnique({
+        where: { id: orderId },
+        include: { items: { where: { status: { not: 'Cancelled' } } } },
+      })
+      if (mergedOrder) {
+        const subtotal = mergedOrder.items.reduce((s, i) => s + i.lineTotal, 0)
+        const totals = computeOrderTotals(subtotal)
+        await localPrisma.localOrder.update({ where: { id: orderId }, data: { subtotal, ...totals } })
+      }
+      if (io && mergedOrder?.tableId) {
+        io.to(`table:${mergedOrder.tableId}`).emit('order:updated', { orderId, tableId: mergedOrder.tableId, action: 'add-item' })
+      }
+      syncQueueService.enqueue('add-item', { orderId, itemId, variationId, quantity: qty, unitPrice, lineTotal, itemName: itemDisplayName }).catch(() => {})
+      res.status(200).json(updated)
+      return
+    }
 
     const item = await localPrisma.localOrderItem.create({
       data: {
@@ -1959,6 +2042,140 @@ app.post('/api/v1/cart/cancel-item', async (req, res) => {
   }
 })
 
+// Emit order:updated for a table when a cart/order mutation happens
+function emitOrderUpdated(order: { id: string; tableId: string | null }, action: string) {
+  if (io && order.tableId) {
+    io.to(`table:${order.tableId}`).emit('order:updated', {
+      orderId: order.id,
+      tableId: order.tableId,
+      action,
+    })
+  }
+  if (io) io.emit('tables:updated')
+}
+
+app.put('/api/v1/cart/item-note', async (req, res) => {
+  try {
+    const { orderItemId, note } = req.body
+    const item = await localPrisma.localOrderItem.findUnique({ where: { id: orderItemId } })
+    if (!item) { res.status(404).json({ error: 'Item not found' }); return }
+
+    await localPrisma.localOrderItem.update({
+      where: { id: orderItemId },
+      data: { note: note ?? null },
+    })
+
+    const order = await localPrisma.localOrder.findUnique({ where: { id: item.orderId } })
+    if (order) emitOrderUpdated(order, 'item-note')
+
+    syncQueueService.enqueue('item-note', { orderItemId, note: note ?? null }).catch(() => {})
+
+    res.json({ note: note ?? null })
+  } catch (err) {
+    console.error('Error updating item note:', err)
+    res.status(500).json({ error: 'Failed to update item note' })
+  }
+})
+
+app.put('/api/v1/cart/order-note', async (req, res) => {
+  try {
+    const { orderId, note } = req.body
+    const order = await localPrisma.localOrder.findUnique({ where: { id: orderId } })
+    if (!order) { res.status(404).json({ error: 'Order not found' }); return }
+
+    await localPrisma.localOrder.update({
+      where: { id: orderId },
+      data: { note: note ?? null },
+    })
+
+    emitOrderUpdated(order, 'order-note')
+
+    syncQueueService.enqueue('order-note', { orderId, note: note ?? null }).catch(() => {})
+
+    res.json({ note: note ?? null })
+  } catch (err) {
+    console.error('Error updating order note:', err)
+    res.status(500).json({ error: 'Failed to update order note' })
+  }
+})
+
+app.put('/api/v1/cart/guest-count', async (req, res) => {
+  try {
+    const { orderId, guestCount } = req.body
+    const order = await localPrisma.localOrder.findUnique({ where: { id: orderId } })
+    if (!order) { res.status(404).json({ error: 'Order not found' }); return }
+
+    const count = Math.max(1, Math.min(99, Number(guestCount) || 1))
+    await localPrisma.localOrder.update({
+      where: { id: orderId },
+      data: { guestCount: count },
+    })
+
+    emitOrderUpdated(order, 'guest-count')
+
+    syncQueueService.enqueue('guest-count', { orderId, guestCount: count }).catch(() => {})
+
+    res.json({ guestCount: count })
+  } catch (err) {
+    console.error('Error updating guest count:', err)
+    res.status(500).json({ error: 'Failed to update guest count' })
+  }
+})
+
+app.post('/api/v1/cart/assign-customer', async (req, res) => {
+  try {
+    const { orderId, phone, name } = req.body
+    const order = await localPrisma.localOrder.findUnique({ where: { id: orderId } })
+    if (!order) { res.status(404).json({ error: 'Order not found' }); return }
+    if (!phone) { res.status(400).json({ error: 'Phone is required' }); return }
+
+    const customerId = crypto.randomUUID()
+    await localPrisma.$executeRawUnsafe(
+      `INSERT INTO "cached_customers" ("id", "phone", "name") VALUES (?, ?, ?)
+       ON CONFLICT("phone") DO UPDATE SET "name" = COALESCE(excluded."name", "cached_customers"."name")`,
+      customerId,
+      phone,
+      name ?? null,
+    ).catch(() => {})
+
+    const row = await localPrisma.$queryRawUnsafe<Array<{ id: string }>>(
+      `SELECT "id" FROM "cached_customers" WHERE "phone" = ? LIMIT 1`,
+      phone,
+    ).catch(() => [])
+    const existingCustomerId = row?.[0]?.id ?? customerId
+
+    await localPrisma.localOrder.update({
+      where: { id: orderId },
+      data: { customerId: existingCustomerId, customerPhone: phone },
+    })
+
+    emitOrderUpdated(order, 'assign-customer')
+
+    syncQueueService.enqueue('assign-customer', { orderId, phone, name: name ?? null }).catch(() => {})
+
+    res.json({ customerId: existingCustomerId, phone })
+  } catch (err) {
+    console.error('Error assigning customer:', err)
+    res.status(500).json({ error: 'Failed to assign customer' })
+  }
+})
+
+app.get('/api/v1/customers/search', async (req, res) => {
+  try {
+    const phone = req.query.phone as string | undefined
+    if (!phone) { res.json([]); return }
+    const rows = await localPrisma.$queryRawUnsafe<Array<{ id: string; phone: string; name: string | null }>>(
+      `SELECT "id", "phone", "name" FROM "cached_customers"
+       WHERE "phone" LIKE ? ORDER BY "phone" LIMIT 10`,
+      `%${phone}%`,
+    ).catch(() => [])
+    res.json(rows.map((r) => ({ id: r.id, phone: r.phone, name: r.name })))
+  } catch (err) {
+    console.error('Error searching customers:', err)
+    res.status(500).json({ error: 'Failed to search customers' })
+  }
+})
+
 app.post('/api/v1/cart/move-table', async (req, res) => {
   try {
     const { orderId, destTableId } = req.body
@@ -2088,7 +2305,19 @@ app.post('/api/v1/kot/send', async (req, res) => {
 
     syncQueueService.enqueue('send-kot', { orderId }).catch(() => {})
 
-    res.json({ kotId: kot.id, kotNumber: nextKotNumber })
+    res.json({
+      kotId: kot.id,
+      kotNumber: nextKotNumber,
+      items: newItems.map((i) => ({
+        id: i.id,
+        itemName: i.itemName,
+        variationName: i.variationName,
+        quantity: i.quantity,
+        unitPrice: i.unitPrice,
+        lineTotal: i.lineTotal,
+        note: i.note,
+      })),
+    })
   } catch (err) {
     console.error('Error sending KOT:', err)
     res.status(500).json({ error: 'Failed to send KOT' })

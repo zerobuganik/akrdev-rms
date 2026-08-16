@@ -21,6 +21,8 @@ const ALLOWED_INVOKE_CHANNELS = [
   // Window
   'window:close',
   'window:minimize',
+  // Network
+  'get-lan-ip',
 ]
 
 const ALLOWED_ON_CHANNELS = [

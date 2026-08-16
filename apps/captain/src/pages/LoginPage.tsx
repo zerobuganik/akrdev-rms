@@ -1,155 +1,211 @@
-import { useState, useRef, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { useAuthStore } from '@/stores/useAuthStore'
-import { lightHaptic } from '@/lib/native-bridge'
-import { addBackButtonListener } from '@/lib/native-bridge'
+import { useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import { useAuthStore, canUsePin } from '@/stores/useAuthStore'
+import { lightHaptic, mediumHaptic, successHaptic } from '@/lib/native-bridge'
+import { ArrowLeft, Delete, Loader2, LockKeyhole } from 'lucide-react'
+
+type Phase = 'phone' | 'pin' | 'password'
+
+const PIN_DIGITS = ['1', '2', '3', '4', '5', '6', '7', '8', '9']
 
 export default function LoginPage() {
-  const [phone, setPhone] = useState('')
-  const [pin, setPin] = useState('')
-  const [step, setStep] = useState<'phone' | 'pin'>('phone')
-  const { login, isLoading, error, clearError } = useAuthStore()
   const navigate = useNavigate()
-  const loginTimerRef = useRef<ReturnType<typeof setTimeout>>()
+  const { login, loginWithPin, isLoading, error, clearError } = useAuthStore()
+  const [phase, setPhase] = useState<Phase>('phone')
+  const [phone, setPhone] = useState(() => localStorage.getItem('akrdev-last-phone') ?? '')
+  const [pin, setPin] = useState('')
+  const [password, setPassword] = useState('')
 
-  useEffect(() => {
-    return addBackButtonListener(() => {
-      if (step === 'pin') {
-        setStep('phone')
-        clearError()
-      }
-    })
-  }, [step, clearError])
+  const goPhone = () => {
+    clearError()
+    setPin('')
+    setPassword('')
+    setPhase('phone')
+  }
 
-  const handleLogin = async (enteredPin?: string) => {
-    const pinToUse = enteredPin ?? pin
-    if (pinToUse.length < 4) return
+  const handlePhoneSubmit = () => {
+    if (phone.trim().length < 10) {
+      mediumHaptic()
+      return
+    }
+    lightHaptic()
+    clearError()
+    setPhase(canUsePin(phone.trim()) ? 'pin' : 'password')
+  }
+
+  const handlePinDigit = (d: string) => {
+    if (isLoading) return
+    lightHaptic()
+    const next = (pin + d).slice(0, 4)
+    setPin(next)
+    if (next.length === 4) void submitPin(next)
+  }
+
+  const submitPin = async (value: string) => {
     try {
-      await login(phone, pinToUse)
+      await loginWithPin(phone.trim(), value)
+      successHaptic()
       navigate('/tables', { replace: true })
     } catch {
+      mediumHaptic()
       setPin('')
     }
   }
 
+  const submitPassword = async () => {
+    if (!password) return
+    try {
+      await login(phone.trim(), password)
+      successHaptic()
+      navigate('/tables', { replace: true })
+    } catch {
+      mediumHaptic()
+    }
+  }
+
   return (
-    <div className="flex h-full items-center justify-center bg-background p-4">
+    <div className="flex h-full flex-col items-center justify-center bg-background p-4">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
-          <h1 className="text-2xl font-bold">AKRDev Captain</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Restaurant Management</p>
+          <h1 className="text-2xl font-bold">Welcome</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Sign in to start taking orders</p>
         </div>
 
-        {step === 'phone' ? (
-          <div className="space-y-4">
-            <label className="block text-sm font-medium text-muted-foreground">
-              Enter your phone number
-            </label>
+        {phase === 'phone' && (
+          <div className="space-y-3">
+            <label className="block text-sm font-medium">Phone Number</label>
             <input
               type="tel"
               value={phone}
-              onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
-              placeholder="Phone number"
-              className="w-full rounded-lg border bg-card px-4 py-3 text-lg focus:outline-none focus:ring-2 focus:ring-primary/20"
-              autoFocus
+              onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+              placeholder="10-digit phone number"
               inputMode="numeric"
+              autoFocus
+              className="w-full rounded-lg border bg-card px-4 py-3 text-center text-lg tracking-widest font-mono focus:outline-none focus:ring-2 focus:ring-primary/20"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handlePhoneSubmit()
+              }}
             />
             <button
-              onClick={() => { lightHaptic(); setStep('pin') }}
-              disabled={phone.length < 10}
-              className="w-full rounded-lg bg-primary py-3 font-medium text-primary-foreground transition-all active:scale-[0.98] disabled:opacity-50"
+              onClick={handlePhoneSubmit}
+              disabled={phone.trim().length < 10 || isLoading}
+              className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary py-3 font-medium text-primary-foreground transition-all active:scale-[0.98] disabled:opacity-50"
             >
+              {isLoading ? <Loader2 size={16} className="animate-spin" /> : <LockKeyhole size={16} />}
               Continue
             </button>
+            <p className="text-center text-sm text-muted-foreground">
+              Wrong device?{' '}
+              <Link to="/pair" className="font-medium text-primary underline">
+                Re-pair
+              </Link>
+            </p>
           </div>
-        ) : (
-          <div className="space-y-5">
-            <div className="flex items-center justify-between">
-              <button
-                onClick={() => { lightHaptic(); setStep('phone'); clearError() }}
-                className="text-sm text-muted-foreground hover:text-foreground"
-              >
-                ← Back
-              </button>
-              <span className="text-sm font-medium">{phone}</span>
-            </div>
+        )}
 
+        {phase === 'pin' && (
+          <div className="space-y-4">
+            <button
+              onClick={goPhone}
+              className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+            >
+              <ArrowLeft size={14} /> {phone}
+            </button>
             <p className="text-center text-sm text-muted-foreground">Enter your 4-digit PIN</p>
-
-            <div className="flex justify-center gap-3">
-              {Array.from({ length: 4 }).map((_, i) => (
+            <div className="flex justify-center gap-4 py-2">
+              {[0, 1, 2, 3].map((i) => (
                 <div
                   key={i}
-                  className={`h-4 w-4 rounded-full border-2 transition-colors ${
-                    i < pin.length ? 'border-primary bg-primary' : 'border-muted'
+                  className={`h-4 w-4 rounded-full border-2 ${
+                    i < pin.length ? 'border-primary bg-primary' : 'border-border'
                   }`}
                 />
               ))}
             </div>
-
-            <div className="grid grid-cols-3 gap-2">
-              {['1', '2', '3', '4', '5', '6', '7', '8', '9', 'clear', '0', 'backspace'].map((key) => (
+            <div className="grid grid-cols-3 gap-3">
+              {PIN_DIGITS.map((d) => (
                 <button
-                  key={key}
-                  onClick={() => {
-                    lightHaptic()
-                    if (key === 'clear') setPin('')
-                    else if (key === 'backspace') setPin(pin.slice(0, -1))
-                    else if (pin.length < 4) {
-                      const newPin = pin + key
-                      setPin(newPin)
-                      if (newPin.length === 4) {
-                        clearTimeout(loginTimerRef.current)
-                        loginTimerRef.current = setTimeout(() => handleLogin(newPin), 200)
-                      }
-                    }
-                  }}
-                  disabled={isLoading}
-                  className={`rounded-xl py-3 text-lg font-medium transition-all active:scale-[0.95] ${
-                    key === 'clear'
-                      ? 'bg-red-50 text-red-600 active:bg-red-100'
-                      : key === 'backspace'
-                        ? 'bg-muted active:bg-border'
-                        : 'border bg-card active:bg-muted'
-                  }`}
+                  key={d}
+                  onClick={() => handlePinDigit(d)}
+                  className="rounded-xl border bg-card py-4 text-xl font-semibold transition-all active:scale-95 hover:border-primary/30"
                 >
-                  {key === 'clear' ? 'C' : key === 'backspace' ? '⌫' : key}
+                  {d}
                 </button>
               ))}
+              <div />
+              <button
+                onClick={() => handlePinDigit('0')}
+                className="rounded-xl border bg-card py-4 text-xl font-semibold transition-all active:scale-95 hover:border-primary/30"
+              >
+                0
+              </button>
+              <button
+                onClick={() => {
+                  lightHaptic()
+                  setPin((p) => p.slice(0, -1))
+                }}
+                className="flex items-center justify-center rounded-xl border bg-card py-4 transition-all active:scale-95 hover:border-primary/30"
+              >
+                <Delete size={20} />
+              </button>
             </div>
-
             <button
-              onClick={() => handleLogin()}
-              disabled={pin.length < 4 || isLoading}
-              className="w-full rounded-lg bg-primary py-3 font-medium text-primary-foreground transition-all active:scale-[0.98] disabled:opacity-50"
+              onClick={() => {
+                clearError()
+                setPin('')
+                setPhase('password')
+              }}
+              className="w-full text-center text-sm text-muted-foreground underline"
             >
-              {isLoading ? 'Logging in...' : 'Login'}
+              Use password instead
             </button>
+          </div>
+        )}
 
-            {error && !isLoading && (
-              <p className="text-center text-sm text-destructive">{error}</p>
-            )}
-            {isLoading && (
-              <p className="text-center text-sm text-muted-foreground">Verifying...</p>
+        {phase === 'password' && (
+          <div className="space-y-3">
+            <button
+              onClick={goPhone}
+              className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+            >
+              <ArrowLeft size={14} /> {phone}
+            </button>
+            <label className="block text-sm font-medium">Password</label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Enter password"
+              autoFocus
+              className="w-full rounded-lg border bg-card px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') void submitPassword()
+              }}
+            />
+            <button
+              onClick={() => void submitPassword()}
+              disabled={!password || isLoading}
+              className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary py-3 font-medium text-primary-foreground transition-all active:scale-[0.98] disabled:opacity-50"
+            >
+              {isLoading ? <Loader2 size={16} className="animate-spin" /> : <LockKeyhole size={16} />}
+              Sign in
+            </button>
+            {canUsePin(phone.trim()) && (
+              <button
+                onClick={() => {
+                  clearError()
+                  setPassword('')
+                  setPhase('pin')
+                }}
+                className="w-full text-center text-sm text-muted-foreground underline"
+              >
+                Use PIN instead
+              </button>
             )}
           </div>
         )}
 
-        <div className="mt-6 pt-4 border-t">
-          <button
-            onClick={() => {
-              localStorage.removeItem('akrdev-rms-config')
-              localStorage.removeItem('akrdev-cloud-url')
-              localStorage.removeItem('accessToken')
-              localStorage.removeItem('refreshToken')
-              localStorage.removeItem('user')
-              window.location.reload()
-            }}
-            className="w-full text-xs text-muted-foreground hover:text-destructive transition-colors"
-          >
-            Reset connection & pair again
-          </button>
-        </div>
+        {error && <p className="mt-4 text-center text-sm text-destructive">{error}</p>}
       </div>
     </div>
   )

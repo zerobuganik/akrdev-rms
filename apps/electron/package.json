@@ -1,5 +1,6 @@
 {
   "name": "@akrdev/electron",
+  "productName": "Topshe POS",
   "version": "1.0.0",
   "private": true,
   "main": "./dist/main.js",

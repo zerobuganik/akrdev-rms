@@ -114,6 +114,30 @@ export class SyncWorkerService {
         })
         break
       }
+      case 'item-note': {
+        await this.fetchWithRetry(`${getCloudApiBase()}/cart/item-note`, {
+          method: 'PUT', headers, body: JSON.stringify(payload),
+        })
+        break
+      }
+      case 'order-note': {
+        await this.fetchWithRetry(`${getCloudApiBase()}/cart/order-note`, {
+          method: 'PUT', headers, body: JSON.stringify(payload),
+        })
+        break
+      }
+      case 'guest-count': {
+        await this.fetchWithRetry(`${getCloudApiBase()}/cart/guest-count`, {
+          method: 'PUT', headers, body: JSON.stringify(payload),
+        })
+        break
+      }
+      case 'assign-customer': {
+        await this.fetchWithRetry(`${getCloudApiBase()}/cart/assign-customer`, {
+          method: 'POST', headers, body: JSON.stringify(payload),
+        })
+        break
+      }
       case 'send-kot-with-items': {
         await this.fetchWithRetry(`${getCloudApiBase()}/kot/send-with-items`, {
           method: 'POST', headers, body: JSON.stringify(payload),

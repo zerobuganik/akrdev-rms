@@ -1,387 +1,406 @@
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
-import { useParams, useSearchParams, useNavigate } from 'react-router-dom'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { apiClient } from '@/lib/apiClient'
-import { useSocketIO } from '@/lib/useSocketIO'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { apiClient, getApiErrorMessage } from '@/lib/apiClient'
+import { useCartStore } from '@/stores/useCartStore'
+import { useAuthStore } from '@/stores/useAuthStore'
+import { toast } from '@/stores/useToastStore'
+import { successHaptic, mediumHaptic } from '@/lib/native-bridge'
+import { onSocket, subscribeTable, unsubscribeTable } from '@/lib/socket'
+import { MenuView } from '@/components/menu/MenuView'
+import { CartView } from '@/components/cart/CartView'
+import { getItemDisplayName } from '@/lib/format'
+import { ArrowLeft, ChevronLeft, ChevronRight, ShoppingCart, UtensilsCrossed } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { SendHorizontal, Printer, ChevronLeft, ChevronRight } from 'lucide-react'
-import { lightHaptic, mediumHaptic, successHaptic } from '@/lib/native-bridge'
-import type { MenuItem, MenuCategory, Order, OrderItem, Table } from '@akrdev/types'
-import CartPageMenuView from './CartPageMenuView'
-import CartPageCartView from './CartPageCartView'
-import VariationModal from './VariationModal'
-
-function getItemName(item: OrderItem): string {
-  return item.item?.name ?? item.itemName ?? 'Item'
-}
+import type { CaptainOrder, CaptainTable, MenuItem } from '@/lib/types'
 
 export default function CartPage() {
-  const { tableId: routeTableId } = useParams<{ tableId: string }>()
-  const [searchParams] = useSearchParams()
-  const initialTableName = searchParams.get('name') ?? 'Table'
+  const { tableId, orderId } = useParams()
+  const isTakeaway = !tableId
+  const isNewTakeaway = isTakeaway && orderId === 'new'
+  const entityId = isNewTakeaway ? '' : (tableId ?? orderId ?? '')
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-
-  const [tableId, setTableId] = useState(routeTableId ?? '')
-  const [tableName, setTableName] = useState(initialTableName)
-  const [view, setView] = useState<'menu' | 'cart'>('menu')
-  const [search, setSearch] = useState('')
-  const [variationItem, setVariationItem] = useState<MenuItem | null>(null)
-  const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null)
-  const hasSetInitialCategory = useRef(false)
-
-  const touchStartX = useRef(0)
-  const touchStartY = useRef(0)
+  const user = useAuthStore((s) => s.user)
+  const {
+    view,
+    setView,
+    guestCount,
+    setGuestCount,
+    orderNote,
+    setOrderNote,
+    items,
+    addItem,
+    removeItem,
+    updateItemQty,
+    updateItemNote,
+    clearCart,
+  } = useCartStore()
+  const [sendingKot, setSendingKot] = useState(false)
+  const [printingBill, setPrintingBill] = useState(false)
+  const syncedOrderIdRef = useRef<string | null>(null)
 
   useEffect(() => {
-    if (routeTableId) {
-      setTableId(routeTableId)
-    }
-  }, [routeTableId])
-
-  useEffect(() => {
-    const name = searchParams.get('name') ?? 'Table'
-    setTableName(name)
-  }, [searchParams])
-
-  const { data: allTables = [] } = useQuery<Table[]>({
-    queryKey: ['tables-local'],
-    queryFn: async () => {
-      const { data } = await apiClient.get('/tables')
-      return Array.isArray(data) ? data : []
-    },
-    staleTime: 0,
-  })
-
-  const currentTableIndex = useMemo(() => allTables.findIndex((t) => t.id === tableId), [allTables, tableId])
-  const prevTable = currentTableIndex > 0 ? allTables[currentTableIndex - 1] : null
-  const nextTable = currentTableIndex >= 0 && currentTableIndex < allTables.length - 1 ? allTables[currentTableIndex + 1] : null
-
-  const switchTable = useCallback((table: Table) => {
-    lightHaptic()
-    setTableId(table.id)
-    setTableName(table.name)
+    clearCart()
+    syncedOrderIdRef.current = null
     setView('menu')
-    setSearch('')
-    setActiveCategoryId(null)
-    hasSetInitialCategory.current = false
-    navigate(`/cart/${table.id}?name=${encodeURIComponent(table.name)}`, { replace: true })
-  }, [navigate])
+  }, [entityId, clearCart, setView])
 
-  const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    touchStartX.current = e.touches[0]!.clientX
-    touchStartY.current = e.touches[0]!.clientY
-  }, [])
-
-  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
-    const dx = e.changedTouches[0]!.clientX - touchStartX.current
-    const dy = e.changedTouches[0]!.clientY - touchStartY.current
-    if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 50) {
-      if (dx > 0 && prevTable) switchTable(prevTable)
-      else if (dx < 0 && nextTable) switchTable(nextTable)
-    }
-  }, [prevTable, nextTable, switchTable])
-
-  const { data: items = [] } = useQuery<MenuItem[]>({
-    queryKey: ['local-items'],
-    queryFn: async () => { const { data } = await apiClient.get('/items'); return Array.isArray(data) ? data : [] },
-    staleTime: 0,
+  const orderQuery = useQuery({
+    queryKey: ['order', entityId],
+    queryFn: async () => (await apiClient.get<CaptainOrder | null>(`/orders/${entityId}/active`)).data,
+    refetchInterval: 4000,
+    enabled: !!entityId,
   })
-
-  const { data: categories = [] } = useQuery<MenuCategory[]>({
-    queryKey: ['local-categories'],
-    queryFn: async () => { const { data } = await apiClient.get('/categories'); return Array.isArray(data) ? data : [] },
-    staleTime: 0,
-  })
-
-  const { data: order, isLoading: orderLoading } = useQuery<Order>({
-    queryKey: ['local-order', tableId],
-    queryFn: async () => { const { data } = await apiClient.get(`/orders/${tableId}/active`); return data },
-    enabled: !!tableId,
-    refetchInterval: 3_000,
-    staleTime: 0,
-  })
-
-  const itemsByCategory = useMemo(() => {
-    const map = new Map<string, { category: MenuCategory | null; items: MenuItem[] }>()
-    for (const item of items) {
-      if (!item.inStock) continue
-      const key = item.categoryId ?? '__no_cat__'
-      if (!map.has(key)) {
-        map.set(key, { category: item.category ?? null, items: [] })
-      }
-      map.get(key)!.items.push(item)
-    }
-    const result = Array.from(map.values())
-    for (const cat of categories) {
-      if (!map.has(cat.id)) {
-        result.push({ category: cat, items: [] })
-      }
-    }
-    return result
-  }, [items, categories])
+  const order = orderQuery.data ?? null
 
   useEffect(() => {
-    if (itemsByCategory.length > 0 && !hasSetInitialCategory.current) {
-      hasSetInitialCategory.current = true
-      // Find first group that actually has items
-      const firstWithItems = itemsByCategory.find(g => g.items.length > 0)
-      setActiveCategoryId(firstWithItems?.category?.id ?? itemsByCategory[0]!.category?.id ?? '__no_cat__')
+    if (order && syncedOrderIdRef.current !== order.id) {
+      syncedOrderIdRef.current = order.id
+      setGuestCount(order.guestCount ?? 2)
+      setOrderNote(order.note ?? '')
     }
-  }, [itemsByCategory])
+  }, [order, setGuestCount, setOrderNote])
 
-  const addItemMut = useMutation({
-    mutationFn: async (item: { id: string; variation?: { id: string } }) => {
-      // Server-side POST /orders handles idempotent get-or-create atomically
-      const createRes = await apiClient.post('/orders', { tableId, tableName })
-      const orderId = createRes.data?.id
-      await apiClient.post('/cart/add-item', {
-        orderId,
-        itemId: item.id,
-        variationId: item.variation?.id,
-        quantity: 1,
-      })
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['local-order', tableId] })
-      setView('cart')
-      successHaptic()
-    },
-    onError: () => {
+  const tablesQuery = useQuery({
+    queryKey: ['tables'],
+    queryFn: async () => (await apiClient.get<CaptainTable[]>('/tables')).data,
+    staleTime: 10_000,
+  })
+  const tables = tablesQuery.data ?? []
+
+  useEffect(() => {
+    if (!entityId || isTakeaway) return
+    subscribeTable(entityId)
+    const offUpdated = onSocket('order:updated', (payload) => {
+      const p = payload as { tableId?: string }
+      if (p?.tableId === entityId) queryClient.invalidateQueries({ queryKey: ['order', entityId] })
+    })
+    const offStatus = onSocket('order:status-change', (payload) => {
+      const p = payload as { tableId?: string }
+      if (p?.tableId === entityId) queryClient.invalidateQueries({ queryKey: ['order', entityId] })
+    })
+    return () => {
+      unsubscribeTable(entityId)
+      offUpdated()
+      offStatus()
+    }
+  }, [entityId, isTakeaway, queryClient])
+
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: ['order', entityId] })
+    queryClient.invalidateQueries({ queryKey: ['tables'] })
+    queryClient.invalidateQueries({ queryKey: ['takeaway-orders'] })
+  }
+
+  const runMutation = async (fn: () => Promise<unknown>, successMsg?: string) => {
+    try {
+      await fn()
+      if (successMsg) toast(successMsg, 'success')
+      invalidate()
+    } catch (err) {
+      toast(getApiErrorMessage(err, 'Action failed'), 'error')
       mediumHaptic()
-    },
-  })
-
-  const removeItemMut = useMutation({
-    mutationFn: async (orderItemId: string) => {
-      await apiClient.post('/cart/remove-item', { orderItemId })
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['local-order', tableId] })
-      mediumHaptic()
-    },
-    onError: () => {
-      mediumHaptic()
-    },
-  })
-
-  const updateQtyMut = useMutation({
-    mutationFn: async ({ orderItemId, quantity }: { orderItemId: string; quantity: number }) => {
-      await apiClient.put('/cart/item-qty', { orderItemId, quantity })
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['local-order', tableId] })
-      lightHaptic()
-    },
-    onError: () => {
-      lightHaptic()
-    },
-  })
-
-  const sendKOTMut = useMutation({
-    mutationFn: async () => {
-      const { data: kotResult } = await apiClient.post('/kot/send', { orderId: order!.id })
-      const newItems = (order?.items ?? []).filter(i => i.status === 'New')
-      apiClient.post('/print/kot', {
-        printType: 'kot',
-        orderId: order!.id,
-        tableName: tableName,
-        kotNumber: kotResult.kotNumber,
-        items: newItems.map(i => ({
-          name: getItemName(i),
-          quantity: i.quantity,
-          unitPrice: i.unitPrice,
-          lineTotal: i.lineTotal,
-          note: i.note,
-        })),
-        date: new Date().toLocaleString('en-IN'),
-        orderType: 'Dine In',
-      }).catch(() => {})
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['local-order', tableId] })
-      successHaptic()
-    },
-  })
-
-  const generateBillMut = useMutation({
-    mutationFn: async () => {
-      await apiClient.put(`/orders/${order!.id}`, { status: 'Bill_Printed' })
-      const sentItems = (order?.items ?? []).filter(i => i.status === 'Sent' || i.status === 'Ready')
-      apiClient.post('/print/bill', {
-        printType: 'bill',
-        orderId: order!.id,
-        tableName: tableName,
-        items: sentItems.map(i => ({
-          name: getItemName(i),
-          quantity: i.quantity,
-          unitPrice: i.unitPrice,
-          lineTotal: i.lineTotal,
-          note: i.note,
-        })),
-        subtotal: order!.subtotal,
-        taxTotal: order!.taxTotal,
-        grandTotal: order!.grandTotal,
-        orderNumber: order!.id.slice(0, 8).toUpperCase(),
-        date: new Date().toLocaleString('en-IN', { hour12: false }),
-        orderType: 'Dine In',
-      }).catch(() => {})
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['local-order', tableId] })
-      successHaptic()
-    },
-  })
-
-  const handleItemClick = (item: MenuItem) => {
-    lightHaptic()
-    if (item.variations.length > 0) {
-      setVariationItem(item)
-    } else {
-      addItemMut.mutate(item)
     }
   }
 
-  const activeItems = order?.items?.filter(i => i.status !== 'Cancelled') ?? []
-  const cancelledItems = order?.items?.filter(i => i.status === 'Cancelled') ?? []
-  const newItems = activeItems.filter(i => i.status === 'New')
-  const canGenerateBill = order && order.status !== 'Bill_Printed' && order.status !== 'Settled'
-  const needsKOT = newItems.length > 0
+  const handleAddItem = (item: MenuItem, variationId?: string) => {
+    if (order) {
+      void runMutation(
+        () => apiClient.post('/cart/add-item', { orderId: order.id, itemId: item.id, variationId, quantity: 1 }),
+      ).then(() => successHaptic())
+      return
+    }
+    let unitPrice = item.basePrice
+    let variationName: string | undefined
+    if (variationId) {
+      const v = item.variations?.find((x) => x.id === variationId)
+      if (v) {
+        unitPrice += v.priceAdjustment
+        variationName = v.name
+      }
+    }
+    addItem({ itemId: item.id, itemName: item.name, unitPrice, variationId, variationName })
+    void successHaptic()
+  }
+
+  const handleServerSetQty = (orderItemId: string, quantity: number) => {
+    void runMutation(() => apiClient.put('/cart/item-qty', { orderItemId, quantity }))
+  }
+
+  const handleServerRemove = (orderItemId: string) => {
+    void runMutation(() => apiClient.post('/cart/remove-item', { orderItemId }))
+  }
+
+  const handleCancel = (orderItemId: string) => {
+    void runMutation(() => apiClient.post('/cart/cancel-item', { orderItemId, cancelledBy: user?.name }))
+  }
+
+  const handleServerItemNote = (orderItemId: string, note: string) => {
+    void runMutation(() => apiClient.put('/cart/item-note', { orderItemId, note }))
+  }
+
+  const handleOrderNote = (note: string) => {
+    setOrderNote(note)
+    if (order) {
+      void runMutation(() => apiClient.put('/cart/order-note', { orderId: order.id, note }))
+    }
+  }
+
+  const handleGuestCount = (guestCount: number) => {
+    setGuestCount(guestCount)
+    if (order) {
+      void runMutation(() => apiClient.put('/cart/guest-count', { orderId: order.id, guestCount }))
+    }
+  }
+
+  const handleAssignCustomer = (phone: string, name?: string) => {
+    if (!order) return
+    void runMutation(() => apiClient.post('/cart/assign-customer', { orderId: order.id, phone, name }))
+  }
+
+  const printKot = async (
+    orderIdForPrint: string,
+    tableName: string,
+    kotGuestCount: number,
+    kotNumber: number,
+    kotItems: Array<{ itemName: string; variationName: string | null; quantity: number; unitPrice: number; lineTotal: number; note: string | null }>,
+  ) => {
+    const printItems = kotItems.map((i) => ({
+      name: getItemDisplayName({ itemName: i.itemName, variationName: i.variationName }),
+      quantity: i.quantity,
+      unitPrice: i.unitPrice,
+      lineTotal: i.lineTotal,
+      note: i.note ?? undefined,
+    }))
+    await apiClient
+      .post('/print/kot', {
+        printType: 'kot',
+        orderId: orderIdForPrint,
+        tableName,
+        guestCount: kotGuestCount,
+        serverName: user?.name ?? 'Captain',
+        kotNumber,
+        items: printItems,
+        date: new Date().toLocaleString('en-IN'),
+        orderType: isTakeaway ? 'Takeaway' : 'Dine In',
+      })
+      .catch(() => {})
+  }
+
+  const handleSendKOT = async () => {
+    setSendingKot(true)
+    try {
+      if (order) {
+        if (!order.items.some((i) => i.status === 'New')) return
+        const { data } = await apiClient.post('/kot/send', { orderId: order.id, sentBy: user?.name ?? 'Captain' })
+        toast('KOT sent', 'success')
+        invalidate()
+        await printKot(
+          order.id,
+          order.tableName ?? (isTakeaway ? 'Takeaway' : 'Table'),
+          guestCount,
+          (data as { kotNumber: number }).kotNumber,
+          (data as { items: Array<{ itemName: string; variationName: string | null; quantity: number; unitPrice: number; lineTotal: number; note: string | null }> }).items ?? [],
+        )
+      } else {
+        if (items.length === 0) return
+        const payloadItems = items.map((i) => ({
+          itemId: i.itemId,
+          itemName: i.itemName,
+          variationId: i.variationId,
+          variationName: i.variationName,
+          quantity: i.quantity,
+          unitPrice: i.unitPrice,
+          note: i.note,
+        }))
+        const printItems = items.map((i) => ({
+          itemName: i.itemName,
+          variationName: i.variationName ?? null,
+          quantity: i.quantity,
+          unitPrice: i.unitPrice,
+          lineTotal: i.unitPrice * i.quantity,
+          note: i.note ?? null,
+        }))
+        const { data } = await apiClient.post('/kot/send-with-items', {
+          tableId: isTakeaway ? undefined : entityId,
+          guestCount,
+          orderType: isTakeaway ? 'Takeaway' : 'DineIn',
+          note: orderNote || undefined,
+          items: payloadItems,
+        })
+        const resultOrderId = (data as { orderId: string }).orderId
+        toast('KOT sent', 'success')
+        clearCart()
+        invalidate()
+        await printKot(
+          resultOrderId,
+          isTakeaway ? 'Takeaway' : (resolvedTableName ?? 'Table'),
+          guestCount,
+          (data as { kotNumber: number }).kotNumber,
+          printItems,
+        )
+        if (isNewTakeaway) {
+          navigate(`/takeaway/${resultOrderId}`, { replace: true })
+        }
+      }
+    } catch (err) {
+      toast(getApiErrorMessage(err, 'Failed to send KOT'), 'error')
+    } finally {
+      setSendingKot(false)
+    }
+  }
+
+  const printBill = async () => {
+    if (!order) return
+    const settings = await apiClient.get('/settings').then((r) => r.data).catch(() => ({}))
+    const billItems = order.items
+      .filter((i) => i.status !== 'Cancelled')
+      .map((i) => ({
+        name: getItemDisplayName(i),
+        quantity: i.quantity,
+        unitPrice: i.unitPrice,
+        lineTotal: i.lineTotal,
+        note: i.note ?? undefined,
+      }))
+    await apiClient
+      .post('/print/bill', {
+        printType: 'bill',
+        orderId: order.id,
+        tableName: order.tableName ?? (isTakeaway ? 'Takeaway' : 'Table'),
+        restaurantName: settings?.companyName,
+        restaurantAddress: settings?.address,
+        phone: settings?.phone,
+        email: settings?.email,
+        website: settings?.website,
+        fssai: settings?.fssai,
+        gstin: settings?.gstin,
+        headerText: settings?.headerText,
+        footerText: settings?.footerText,
+        orderNumber: order.id.slice(0, 8).toUpperCase(),
+        guestCount: order.guestCount,
+        serverName: user?.name ?? 'Captain',
+        items: billItems,
+        subtotal: order.subtotal,
+        taxTotal: order.taxTotal,
+        discountTotal: order.discountTotal,
+        grandTotal: order.grandTotal,
+        roundingAdjustment: order.roundingAdjustment ?? 0,
+        taxName: 'GST',
+        date: new Date().toLocaleString('en-IN'),
+        orderType: isTakeaway ? 'Takeaway' : 'Dine In',
+      })
+      .catch(() => {})
+  }
+
+  const handlePrintBill = async () => {
+    if (!order) return
+    setPrintingBill(true)
+    try {
+      await apiClient.put(`/orders/${order.id}`, { status: 'Bill_Printed' })
+      toast('Bill printed', 'success')
+      invalidate()
+      await printBill()
+    } catch (err) {
+      toast(getApiErrorMessage(err, 'Failed to print bill'), 'error')
+    } finally {
+      setPrintingBill(false)
+    }
+  }
+
+  const tableIndex = tables.findIndex((t) => t.id === tableId)
+  const prevTable = tableIndex > 0 ? tables[tableIndex - 1] : undefined
+  const nextTable = tableIndex >= 0 && tableIndex < tables.length - 1 ? tables[tableIndex + 1] : undefined
+
+  const backPath = isTakeaway ? '/takeaway' : '/tables'
+  const resolvedTableName = tables.find((t) => t.id === tableId)?.name
+  const headerTitle = isTakeaway ? 'Takeaway' : (resolvedTableName ?? order?.tableName ?? 'Table')
+
+  const menuCartItems = useMemo(() => [
+    ...items.map((i) => ({ itemId: i.itemId, quantity: i.quantity })),
+    ...(order?.items ?? []).map((i) => ({ itemId: i.itemId, quantity: i.quantity, status: i.status })),
+  ], [items, order])
+
+  const cartBadgeCount = items.length + (order?.items.filter((i) => i.status !== 'Cancelled').length ?? 0)
 
   return (
     <div className="flex h-full flex-col bg-background">
-      <header
-        className="shrink-0 bg-card border-b px-3 py-2"
-        onTouchStart={handleTouchStart}
-        onTouchEnd={handleTouchEnd}
-      >
-        <div className="flex items-center gap-1.5">
-          <button
-            onClick={() => { lightHaptic(); navigate('/tables') }}
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md hover:bg-muted active:scale-95 transition-all"
-          >
-            <ChevronLeft size={16} />
-          </button>
-
-          <div className="flex items-center min-w-0 flex-1 gap-1">
-            {prevTable ? (
-              <button onClick={() => switchTable(prevTable)} className="flex h-7 w-7 shrink-0 items-center justify-center rounded hover:bg-muted active:scale-90">
-                <ChevronLeft size={13} className="text-muted-foreground" />
-              </button>
-            ) : <div className="w-7 shrink-0" />}
-
-            <div className="min-w-0 flex-1 text-center select-none">
-              <div className="text-sm font-bold truncate">{tableName}</div>
-              {order && (
-                <div className="text-[10px] text-muted-foreground">
-                  ₹{order.grandTotal.toLocaleString()}
-                  {order.kots?.length ? ` · KOT #${order.kots[order.kots.length - 1]?.kotNumber}` : ''}
-                </div>
-              )}
-            </div>
-
-            {nextTable ? (
-              <button onClick={() => switchTable(nextTable)} className="flex h-7 w-7 shrink-0 items-center justify-center rounded hover:bg-muted active:scale-90">
-                <ChevronRight size={13} className="text-muted-foreground" />
-              </button>
-            ) : <div className="w-7 shrink-0" />}
-          </div>
-
-          <div className="flex rounded-md bg-muted p-0.5">
-            <button
-              onClick={() => { lightHaptic(); setView('menu') }}
-              className={cn(
-                'rounded px-3 py-1 text-xs font-semibold transition-all',
-                view === 'menu' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground',
-              )}
-            >
-              Menu
-            </button>
-            <button
-              onClick={() => { lightHaptic(); setView('cart') }}
-              className={cn(
-                'relative rounded px-3 py-1 text-xs font-semibold transition-all',
-                view === 'cart' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground',
-              )}
-            >
-              Cart
-              {activeItems.length > 0 && (
-                <span className="absolute -top-1 -right-1 flex h-3.5 min-w-[14px] items-center justify-center rounded-full bg-destructive px-0.5 text-[9px] font-bold text-white">
-                  {activeItems.length}
-                </span>
-              )}
-            </button>
-          </div>
+      <header className="flex items-center gap-2 border-b bg-card px-2 py-2">
+        <button onClick={() => navigate(backPath)} className="rounded-md p-2 text-muted-foreground hover:bg-muted">
+          <ArrowLeft size={18} />
+        </button>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-bold">{headerTitle}</p>
+          <p className="truncate text-[10px] text-muted-foreground">
+            {isTakeaway ? 'Takeaway order' : `${guestCount} guests`}
+          </p>
         </div>
+        {!isTakeaway && (
+          <div className="flex items-center gap-0.5">
+            <button
+              onClick={() => prevTable && navigate(`/cart/${prevTable.id}`)}
+              disabled={!prevTable}
+              className="rounded-md p-1.5 text-muted-foreground hover:bg-muted disabled:opacity-30"
+            >
+              <ChevronLeft size={18} />
+            </button>
+            <button
+              onClick={() => nextTable && navigate(`/cart/${nextTable.id}`)}
+              disabled={!nextTable}
+              className="rounded-md p-1.5 text-muted-foreground hover:bg-muted disabled:opacity-30"
+            >
+              <ChevronRight size={18} />
+            </button>
+          </div>
+        )}
       </header>
 
-      {view === 'menu' ? (
-        <CartPageMenuView
-          items={items}
-          categories={categories}
-          itemsByCategory={itemsByCategory}
-          activeCategoryId={activeCategoryId}
-          search={search}
-          onSearchChange={setSearch}
-          onCategoryChange={(id) => { lightHaptic(); setActiveCategoryId(id) }}
-          onItemClick={handleItemClick}
-        />
-      ) : (
-        <div className="flex flex-1 flex-col overflow-hidden">
-          <CartPageCartView
+      <div className="min-h-0 flex-1 overflow-hidden">
+        {view === 'menu' ? <MenuView onAddItem={handleAddItem} cartItems={menuCartItems} /> : (
+          <CartView
             order={order}
-            orderLoading={orderLoading}
-            onSwitchToMenu={() => setView('menu')}
+            isTakeaway={isTakeaway}
+            sendingKot={sendingKot}
+            printingBill={printingBill}
+            cartItems={items}
+            guestCount={guestCount}
+            orderNote={orderNote}
+            onLocalSetQty={updateItemQty}
+            onLocalRemove={removeItem}
+            onLocalItemNote={updateItemNote}
+            onServerSetQty={handleServerSetQty}
+            onServerRemove={handleServerRemove}
+            onServerItemNote={handleServerItemNote}
+            onCancel={handleCancel}
+            onOrderNote={handleOrderNote}
+            onGuestCount={handleGuestCount}
+            onAssignCustomer={handleAssignCustomer}
+            onSendKOT={() => void handleSendKOT()}
+            onPrintBill={() => void handlePrintBill()}
           />
+        )}
+      </div>
 
-          {order && activeItems.length > 0 && (
-            <div className="shrink-0 border-t bg-card p-3 space-y-2.5">
-              <div className="space-y-1 text-sm">
-                <div className="flex justify-between"><span className="text-muted-foreground">Subtotal</span><span>₹{order.subtotal.toLocaleString()}</span></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">Tax</span><span>₹{order.taxTotal.toLocaleString()}</span></div>
-                {order.discountTotal > 0 && (
-                  <div className="flex justify-between text-destructive"><span>Discount</span><span>−₹{order.discountTotal.toLocaleString()}</span></div>
-                )}
-                <div className="flex justify-between border-t pt-1 font-bold"><span>Grand Total</span><span>₹{order.grandTotal.toLocaleString()}</span></div>
-              </div>
-
-              <div className="flex gap-2">
-                {needsKOT && (
-                  <button
-                    onClick={() => sendKOTMut.mutate()}
-                    disabled={sendKOTMut.isPending}
-                    className="flex-1 rounded-md bg-amber-500 py-2.5 text-sm font-bold text-white hover:bg-amber-600 disabled:opacity-50 active:scale-95 transition-all"
-                  >
-                    <SendHorizontal size={14} className="inline mr-1" />
-                    {sendKOTMut.isPending ? 'Sending...' : 'KOT'}
-                  </button>
-                )}
-                {canGenerateBill && (
-                  <button
-                    onClick={() => generateBillMut.mutate()}
-                    disabled={generateBillMut.isPending}
-                    className="flex-1 rounded-md bg-blue-500 py-2.5 text-sm font-bold text-white hover:bg-blue-600 disabled:opacity-50 active:scale-95 transition-all"
-                  >
-                    <Printer size={14} className="inline mr-1" />
-                    {generateBillMut.isPending ? 'Printing...' : 'Bill'}
-                  </button>
-                )}
-              </div>
-            </div>
+      <div className="flex shrink-0 border-t bg-card">
+        <button
+          onClick={() => setView('menu')}
+          className={cn(
+            'flex flex-1 items-center justify-center gap-1.5 py-3 text-sm font-medium',
+            view === 'menu' ? 'text-primary' : 'text-muted-foreground',
           )}
-        </div>
-      )}
-
-      {variationItem && (
-        <VariationModal
-          item={variationItem}
-          onSelect={(item, variation) => {
-            addItemMut.mutate({ id: item.id, variation })
-            setVariationItem(null)
-          }}
-          onClose={() => setVariationItem(null)}
-        />
-      )}
+        >
+          <UtensilsCrossed size={16} /> Menu
+        </button>
+        <button
+          onClick={() => setView('cart')}
+          className={cn(
+            'flex flex-1 items-center justify-center gap-1.5 py-3 text-sm font-medium',
+            view === 'cart' ? 'text-primary' : 'text-muted-foreground',
+          )}
+        >
+          <ShoppingCart size={16} /> Cart ({cartBadgeCount})
+        </button>
+      </div>
     </div>
   )
 }

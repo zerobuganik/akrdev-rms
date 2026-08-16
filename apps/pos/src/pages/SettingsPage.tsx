@@ -3,6 +3,7 @@ import { apiClient } from '@/lib/apiClient'
 import { resolveImageUrl } from '@/lib/imageBaseUrl'
 import { toast } from '@/stores/useToastStore'
 import { useState, useEffect, useRef } from 'react'
+import QRCode from 'qrcode'
 import { Plus, Pencil, Trash2, Save, Phone, Mail, Globe, Camera, CheckCircle2, QrCode, Copy, RefreshCw, Monitor } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { PrinterList } from '@/components/printers/PrinterList'
@@ -90,6 +91,36 @@ export default function SettingsPage() {
   const [pairingLoading, setPairingLoading] = useState(false)
   const [pairingTimer, setPairingTimer] = useState<ReturnType<typeof setInterval> | null>(null)
   const [pairingError, setPairingError] = useState('')
+  const [lanIp, setLanIp] = useState('')
+  const [manualHost, setManualHost] = useState('')
+
+  useEffect(() => {
+    let cancelled = false
+    const fetchLanIp = async () => {
+      try {
+        const ip = await window.electron?.ipcRenderer.invoke('get-lan-ip')
+        if (!cancelled && typeof ip === 'string') setLanIp(ip)
+      } catch { /* ignore */ }
+    }
+    fetchLanIp()
+    return () => { cancelled = true }
+  }, [])
+
+  const detectedHost = lanIp || (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1' ? window.location.hostname : '')
+  const pairingHost = manualHost.trim() || detectedHost || '[Your-LAN-IP]'
+
+  const [qrDataUrl, setQrDataUrl] = useState('')
+
+  useEffect(() => {
+    if (!pairingCode) {
+      setQrDataUrl('')
+      return
+    }
+    const payload = JSON.stringify({ host: pairingHost, port: 3001, code: pairingCode })
+    QRCode.toDataURL(payload, { width: 240, margin: 1 })
+      .then(setQrDataUrl)
+      .catch(() => setQrDataUrl(''))
+  }, [pairingCode, pairingHost])
 
   const generatePairingCode = async () => {
     const localApiUrl = import.meta.env.VITE_LOCAL_API_URL
@@ -102,7 +133,7 @@ export default function SettingsPage() {
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), 5000)
     try {
-      const res = await fetch(`${localApiUrl}/api/v1/pair/generate`, {
+      const res = await fetch(`${localApiUrl}/pair/generate`, {
         signal: controller.signal,
       })
       if (!res.ok) throw new Error('Failed to generate code')
@@ -135,10 +166,7 @@ export default function SettingsPage() {
   }
 
   const copyPairingInfo = () => {
-    const lanIp = window.location.hostname !== 'localhost'
-      ? window.location.hostname
-      : '[Your-LAN-IP]'
-    const text = `POS: http://${lanIp}:3001\nPairing Code: ${pairingCode}`
+    const text = `POS: http://${pairingHost}:3001\nPairing Code: ${pairingCode}`
     navigator.clipboard.writeText(text).then(() => toast('Copied to clipboard', 'success')).catch(() => {})
   }
 
@@ -767,8 +795,20 @@ export default function SettingsPage() {
                 </p>
                 <div className="mt-3 inline-flex items-center gap-2 rounded-lg bg-background border border-border px-3 py-1.5 font-mono text-sm">
                   <span className="text-muted-foreground">http://</span>
-                  <span className="font-medium">{window.location.hostname}</span>
+                  <span className="font-medium">{pairingHost}</span>
                   <span className="text-muted-foreground">:3001</span>
+                </div>
+                <div className="mt-2 flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={manualHost}
+                    onChange={(e) => setManualHost(e.target.value)}
+                    placeholder="Override host (optional)"
+                    className="w-56 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-ring"
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                  />
+                  <span className="text-[11px] text-muted-foreground">Manual override for the QR/IP</span>
                 </div>
               </div>
             </div>
@@ -787,8 +827,16 @@ export default function SettingsPage() {
 
                 {pairingCode ? (
                   <div className="mt-4 space-y-3">
-                    <div className="inline-flex items-center gap-3 rounded-xl border-2 border-amber-200 bg-amber-50 px-6 py-3">
-                      <span className="text-3xl font-mono font-bold tracking-[0.3em] text-amber-800">{pairingCode}</span>
+                    <div className="flex flex-wrap items-center gap-5">
+                      <div className="inline-flex items-center gap-3 rounded-xl border-2 border-amber-200 bg-amber-50 px-6 py-3">
+                        <span className="text-3xl font-mono font-bold tracking-[0.3em] text-amber-800">{pairingCode}</span>
+                      </div>
+                      {qrDataUrl && (
+                        <div className="rounded-xl border border-border bg-white p-2">
+                          <img src={qrDataUrl} alt="Captain pairing QR code" className="h-36 w-36" />
+                          <p className="mt-1 text-center text-[10px] text-muted-foreground">Scan to pair Captain</p>
+                        </div>
+                      )}
                     </div>
                     <div className="flex items-center gap-3">
                       <p className="text-sm text-muted-foreground">
@@ -835,8 +883,8 @@ export default function SettingsPage() {
                 <p className="font-medium text-sm">On the Captain Device</p>
                 <ol className="mt-2 space-y-2 text-xs text-muted-foreground list-decimal list-inside">
                   <li>Open the Captain app</li>
-                  <li>Tap <strong>Enter Pairing Code</strong></li>
-                  <li>Enter the POS IP address shown above (e.g. http://192.168.1.100:3001)</li>
+                  <li>Tap <strong>Scan QR Code</strong> and point at the code above, or tap <strong>Enter Manually</strong></li>
+                  <li>Enter the POS IP address (e.g. http://192.168.1.100:3001)</li>
                   <li>Enter the 6-digit code</li>
                   <li>Tap <strong>Pair</strong></li>
                 </ol>

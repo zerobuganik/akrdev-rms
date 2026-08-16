@@ -1,9 +1,9 @@
 import axios from 'axios'
-import { getBaseUrl } from './connection-manager.js'
+import { getBaseUrl } from './connection'
 
 export const apiClient = axios.create({
   headers: { 'Content-Type': 'application/json' },
-  timeout: 10000,
+  timeout: 15000,
 })
 
 apiClient.interceptors.request.use((config) => {
@@ -24,8 +24,20 @@ apiClient.interceptors.response.use(
     if (error.response?.status === 401) {
       localStorage.removeItem('accessToken')
       localStorage.removeItem('user')
-      window.location.href = '/login'
+      const path = window.location.pathname
+      if (!path.startsWith('/login') && !path.startsWith('/pair')) {
+        window.location.href = '/login'
+      }
     }
     return Promise.reject(error)
   },
 )
+
+export function getApiErrorMessage(err: unknown, fallback = 'Something went wrong'): string {
+  const data = (err as { response?: { data?: { error?: { message?: string } | string } } })?.response?.data
+  const e = data?.error
+  if (typeof e === 'string') return e
+  if (e && typeof e.message === 'string') return e.message
+  if (err instanceof Error && err.message) return err.message
+  return fallback
+}

@@ -1,4 +1,5 @@
 import { app, BrowserWindow as BW, ipcMain, type BrowserWindow } from 'electron'
+import os from 'os'
 import path from 'path'
 import { config } from 'dotenv'
 import { createLocalApiServer, setSystemPrinterResolver } from './api-local.bundle.js'
@@ -190,6 +191,25 @@ function registerIpcHandlers() {
     await syncQueueService.enqueue(action as never, payload as Record<string, unknown>)
     return { ok: true }
   })
+
+  // ── Network ──
+  ipcMain.handle('get-lan-ip', () => {
+    const virtual = /virtual|vmware|vbox|docker|wsl|hyper-v|teredo|loopback|tunneling|vpn/i
+    const virtualSubnets = [/^192\.168\.56\./, /^192\.168\.99\./, /^10\.0\.2\./, /^10\.37\.129\./, /^169\.254\./]
+    const interfaces = os.networkInterfaces()
+    const candidates: string[] = []
+    for (const [name, addrs] of Object.entries(interfaces)) {
+      if (!addrs || virtual.test(name)) continue
+      for (const addr of addrs) {
+        if (addr.family === 'IPv4' && !addr.internal && !virtualSubnets.some((re) => re.test(addr.address))) {
+          candidates.push(addr.address)
+        }
+      }
+    }
+    // Prefer a common private-LAN range over virtual adapters/APIPA.
+    const privateIp = candidates.find((ip) => /^192\.168\./.test(ip) || /^10\./.test(ip) || /^172\.(1[6-9]|2\d|3[01])\./.test(ip))
+    return privateIp ?? candidates[0] ?? null
+  })
 }
 
 async function discoverSystemPrinters() {
@@ -236,7 +256,9 @@ app.whenReady().then(async () => {
 })
 
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
+  // In dev mode, keep the local API (and Captain connectivity) alive even if the
+  // POS window is closed. Production keeps the normal quit-on-close behavior.
+  if (process.platform !== 'darwin' && !isDev) {
     app.quit()
   }
 })

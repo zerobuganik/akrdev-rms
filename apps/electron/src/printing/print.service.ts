@@ -454,7 +454,7 @@ export class PrintService {
           lines.push(`${' '.repeat(qtyColW + 2)}  (Cancelled)`)
         }
         if (item.note && !isCancelled) {
-          lines.push(' '.repeat(qtyColW + 2) + `${item.note}`)
+          lines.push(' '.repeat(qtyColW + 2) + `(${item.note})`)
         }
       }
     }

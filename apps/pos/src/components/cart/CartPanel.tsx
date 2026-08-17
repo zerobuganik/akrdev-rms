@@ -524,7 +524,7 @@ export function CartPanel({ tableId }: { tableId: string | null }) {
                       <Ban size={14} />
                     </button>
                   )}
-                  <span className="flex-1 text-sm font-medium">{m.name}</span>
+                  <span className="flex-1 text-sm font-medium">{m.name}{m.note ? ` (${m.note})` : ''}</span>
                   <span className="text-xs text-muted-foreground shrink-0">×{m.quantity}</span>
                   <span className="text-xs font-medium shrink-0">₹{m.lineTotal.toLocaleString()}</span>
                 </div>

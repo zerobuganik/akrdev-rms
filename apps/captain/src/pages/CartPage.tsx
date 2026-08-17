@@ -151,13 +151,6 @@ export default function CartPage() {
     void runMutation(() => apiClient.put('/cart/item-note', { orderItemId, note }))
   }
 
-  const handleOrderNote = (note: string) => {
-    setOrderNote(note)
-    if (order) {
-      void runMutation(() => apiClient.put('/cart/order-note', { orderId: order.id, note }))
-    }
-  }
-
   const handleGuestCount = (guestCount: number) => {
     setGuestCount(guestCount)
     if (order) {
@@ -375,7 +368,6 @@ export default function CartPage() {
             printingBill={printingBill}
             cartItems={items}
             guestCount={guestCount}
-            orderNote={orderNote}
             onLocalSetQty={updateItemQty}
             onLocalRemove={removeItem}
             onLocalItemNote={updateItemNote}
@@ -383,7 +375,6 @@ export default function CartPage() {
             onServerRemove={handleServerRemove}
             onServerItemNote={handleServerItemNote}
             onCancel={handleCancel}
-            onOrderNote={handleOrderNote}
             onGuestCount={handleGuestCount}
             onAssignCustomer={handleAssignCustomer}
             onSendKOT={() => void handleSendKOT()}

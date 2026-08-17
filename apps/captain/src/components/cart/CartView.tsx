@@ -24,6 +24,7 @@ interface MergedItem {
   quantity: number
   unitPrice: number
   lineTotal: number
+  note?: string
 }
 
 interface CartViewProps {
@@ -33,7 +34,6 @@ interface CartViewProps {
   printingBill: boolean
   cartItems: CaptainCartItem[]
   guestCount: number
-  orderNote: string
   onLocalSetQty: (id: string, quantity: number) => void
   onLocalRemove: (id: string) => void
   onLocalItemNote: (id: string, note: string) => void
@@ -41,7 +41,6 @@ interface CartViewProps {
   onServerRemove: (orderItemId: string) => void
   onServerItemNote: (orderItemId: string, note: string) => void
   onCancel: (orderItemIds: string[]) => void
-  onOrderNote: (note: string) => void
   onGuestCount: (count: number) => void
   onAssignCustomer: (phone: string, name?: string) => void
   onSendKOT: () => void
@@ -67,7 +66,8 @@ function LocalItemRow({
   onLocalRemove: (id: string) => void
   onLocalItemNote: (id: string, note: string) => void
 }) {
-  const displayName = item.variationName ? `${item.itemName} (${item.variationName})` : item.itemName
+  const baseName = item.variationName ? `${item.itemName} (${item.variationName})` : item.itemName
+  const displayName = item.note ? `${baseName} (${item.note})` : baseName
   return (
     <div className="rounded-lg border bg-card px-3 py-2 shadow-sm">
       <div className="flex items-start justify-between gap-2">
@@ -135,7 +135,8 @@ function NewItemRow({
   onServerRemove: (orderItemId: string) => void
   onServerItemNote: (orderItemId: string, note: string) => void
 }) {
-  const displayName = itemVariationName(item) ? `${itemName(item)} (${itemVariationName(item)})` : itemName(item)
+  const baseName = itemVariationName(item) ? `${itemName(item)} (${itemVariationName(item)})` : itemName(item)
+  const displayName = item.note ? `${baseName} (${item.note})` : baseName
   return (
     <div className="rounded-lg border bg-card px-3 py-2 shadow-sm">
       <div className="flex items-start justify-between gap-2">
@@ -199,7 +200,6 @@ export function CartView(props: CartViewProps) {
     printingBill,
     cartItems,
     guestCount,
-    orderNote,
     onLocalSetQty,
     onLocalRemove,
     onLocalItemNote,
@@ -207,7 +207,6 @@ export function CartView(props: CartViewProps) {
     onServerRemove,
     onServerItemNote,
     onCancel,
-    onOrderNote,
     onGuestCount,
     onAssignCustomer,
     onSendKOT,
@@ -239,8 +238,9 @@ export function CartView(props: CartViewProps) {
         existing.quantity += i.quantity
         existing.lineTotal += i.lineTotal
         existing.ids.push(i.id)
+        if (i.note && !existing.note) existing.note = i.note
       } else {
-        map.set(key, { ids: [i.id], name: displayName, quantity: i.quantity, unitPrice: i.unitPrice, lineTotal: i.lineTotal })
+        map.set(key, { ids: [i.id], name: displayName, quantity: i.quantity, unitPrice: i.unitPrice, lineTotal: i.lineTotal, note: i.note ?? undefined })
       }
     }
     return Array.from(map.values())
@@ -398,7 +398,7 @@ export function CartView(props: CartViewProps) {
                       <XCircle size={15} />
                     </button>
                   )}
-                  <span className="min-w-0 flex-1 text-sm font-medium leading-tight">{m.name}</span>
+                  <span className="min-w-0 flex-1 text-sm font-medium leading-tight">{m.name}{m.note ? ` (${m.note})` : ''}</span>
                   <span className="shrink-0 text-xs text-muted-foreground">×{m.quantity}</span>
                   <span className="shrink-0 text-sm font-bold">{formatCurrency(m.lineTotal)}</span>
                 </div>
@@ -420,20 +420,6 @@ export function CartView(props: CartViewProps) {
       </div>
 
       <div className="shrink-0 border-t bg-card px-4 py-3">
-        <div className="mb-2 flex items-center gap-2">
-          <StickyNote size={14} className="text-muted-foreground" />
-          <input
-            key={`order-${order?.id ?? 'new'}`}
-            defaultValue={orderNote}
-            placeholder="Add order note"
-            onBlur={(e) => {
-              const v = e.target.value.trim()
-              if (v !== orderNote) onOrderNote(v)
-            }}
-            className="w-full rounded-md border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary/20"
-          />
-        </div>
-
         <div className="space-y-1 text-sm">
           <div className="flex justify-between text-muted-foreground">
             <span>Subtotal</span>

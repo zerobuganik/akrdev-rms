@@ -942,6 +942,13 @@ async function upsertLocalOrderFromCloud(o: Record<string, unknown>): Promise<bo
         syncStatus: 'Synced',
       },
     }).catch(() => {})
+  } else if (local.syncStatus !== 'Synced') {
+    // Order already exists in cloud with the same (or newer local) status — mark it
+    // as synced once. Guarded so this doesn't bump `updatedAt` on every poll.
+    await localPrisma.localOrder.update({
+      where: { id: o.id as string },
+      data: { syncStatus: 'Synced' },
+    }).catch(() => {})
   }
   return false
 }
@@ -1283,12 +1290,26 @@ app.put('/api/v1/employees/:id/change-password', async (req, res) => {
 app.post('/api/v1/orders/:id/void', async (req, res) => {
   try {
     const { id } = req.params
+    const existing = await localPrisma.localOrder.findUnique({ where: { id } }).catch(() => null)
     await localPrisma.localOrder.update({
       where: { id },
       data: { status: 'Cancelled', subtotal: 0, taxTotal: 0, discountTotal: 0, grandTotal: 0 },
     }).catch(() => {})
+    // Cancel remaining active items so they don't reappear in the cart
+    await localPrisma.localOrderItem.updateMany({
+      where: { orderId: id, status: { not: 'Cancelled' } },
+      data: { status: 'Cancelled', lineTotal: 0, cancelledAt: new Date().toISOString() },
+    }).catch(() => {})
+    // Free the table so it doesn't stay occupied
+    if (existing?.tableId) {
+      await localPrisma.cachedTable.update({
+        where: { id: existing.tableId },
+        data: { status: 'Available' },
+      }).catch(() => {})
+    }
     if (io) {
       io.emit('order:updated', { orderId: id, action: 'voided' })
+      io.emit('tables:updated')
     }
     syncQueueService.enqueue('admin-put', { path: `/orders/${id}/void` }).catch(() => {})
     res.json({ ok: true })
@@ -1667,7 +1688,7 @@ app.get('/api/v1/orders/:tableId/active', async (req, res) => {
   try {
     const { tableId } = req.params
     const order = await localPrisma.localOrder.findFirst({
-      where: { tableId: tableId as string, status: { not: 'Settled' } },
+      where: { tableId: tableId as string, status: { notIn: ['Settled', 'Cancelled', 'Merged'] } },
       include: { items: true, kots: true, settlement: true },
     })
     // Fallback: try by order ID directly (for takeaway orders)

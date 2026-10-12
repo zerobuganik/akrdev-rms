@@ -1473,7 +1473,7 @@ app.get('/api/v1/tables', async (req, res) => {
           : null
         const tableStatus = local
           ? (local.status === 'Bill_Printed' ? 'Billed'
-            : (hasKot || local.status === 'KOT_Sent' || local.status === 'Ready') ? 'Occupied'
+            : (hasKot || local.status === 'KOT_Sent' || local.status === 'Ready' || local.status === 'Draft') ? 'Occupied'
             : t.status)
           : t.status
         return {
@@ -1511,7 +1511,7 @@ app.get('/api/v1/tables', async (req, res) => {
           : null
         const tableStatus = local
           ? (local.status === 'Bill_Printed' ? 'Billed'
-            : (hasKot || local.status === 'KOT_Sent' || local.status === 'Ready') ? 'Occupied'
+            : (hasKot || local.status === 'KOT_Sent' || local.status === 'Ready' || local.status === 'Draft') ? 'Occupied'
             : ct.status ?? 'Available')
           : ct.status ?? 'Available'
         return {

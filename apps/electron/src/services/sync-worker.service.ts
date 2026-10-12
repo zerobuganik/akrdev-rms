@@ -1,5 +1,5 @@
 import { syncQueueService } from './sync-queue.service.js'
-import { getCloudAccessToken } from '../lib/token-store.js'
+import { getCloudAccessToken, setCloudAccessToken, getCloudRefreshToken, setCloudRefreshToken } from '../lib/token-store.js'
 
 function getCloudApiBase(): string {
   return process.env.CLOUD_API_URL ?? 'http://localhost:3000/api/v1'
@@ -81,7 +81,6 @@ export class SyncWorkerService {
     const token = this.cloudToken ?? getCloudAccessToken()
     const headers: Record<string, string> = { 'Content-Type': 'application/json' }
     if (token) headers['Authorization'] = `Bearer ${token}`
-
     switch (action) {
       case 'create-order': {
         await this.fetchWithRetry(`${getCloudApiBase()}/orders`, {
@@ -174,11 +173,48 @@ export class SyncWorkerService {
     }
   }
 
+  private async refreshCloudToken(): Promise<string | null> {
+    const refreshToken = getCloudRefreshToken()
+    if (!refreshToken) return null
+    try {
+      const res = await fetch(`${getCloudApiBase()}/auth/refresh`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refreshToken }),
+        signal: AbortSignal.timeout(10_000),
+      })
+      if (!res.ok) return null
+      const data = await res.json() as { accessToken?: string; refreshToken?: string }
+      if (!data.accessToken) return null
+      setCloudAccessToken(data.accessToken)
+      if (data.refreshToken) setCloudRefreshToken(data.refreshToken)
+      this.cloudToken = data.accessToken
+      return data.accessToken
+    } catch {
+      return null
+    }
+  }
+
   private async fetchWithRetry(url: string, options: RequestInit, retries = MAX_RETRIES): Promise<Response> {
     for (let attempt = 0; attempt < retries; attempt++) {
       try {
         const response = await fetch(url, { ...options, signal: AbortSignal.timeout(10_000) })
         if (response.ok) return response
+
+        // The cloud access token expires (15m) — refresh once and retry with the new token.
+        if (response.status === 401) {
+          const newToken = await this.refreshCloudToken()
+          if (newToken) {
+            const newHeaders = { ...(options.headers as Record<string, string>), Authorization: `Bearer ${newToken}` }
+            const retryRes = await fetch(url, { ...options, headers: newHeaders, signal: AbortSignal.timeout(10_000) })
+            if (retryRes.ok) return retryRes
+            if (retryRes.status !== 401) {
+              const retryBody = await retryRes.text()
+              throw new Error(`HTTP ${retryRes.status}: ${retryBody}`)
+            }
+          }
+        }
+
         const body = await response.text()
         throw new Error(`HTTP ${response.status}: ${body}`)
       } catch (err) {

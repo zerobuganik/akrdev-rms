@@ -11,7 +11,7 @@ import { printService } from '../printing/print.service.js'
 import { calculateTax, calculateRounding } from '@akrdev/shared'
 import { syncQueueService } from '../services/sync-queue.service.js'
 import { syncWorkerService } from '../services/sync-worker.service.js'
-import { getCloudAccessToken, setCloudAccessToken } from '../lib/token-store.js'
+import { getCloudAccessToken, setCloudAccessToken, getCloudRefreshToken, setCloudRefreshToken } from '../lib/token-store.js'
 
 
 let io: SocketIOServer | null = null
@@ -171,7 +171,7 @@ function verifyLocalToken(token: string): { userId: string; role: string } | nul
   }
 }
 
-async function authenticateCloud(phone: string, password: string): Promise<string | null> {
+async function authenticateCloud(phone: string, password: string): Promise<{ accessToken: string; refreshToken: string } | null> {
   try {
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), 25_000)
@@ -183,8 +183,9 @@ async function authenticateCloud(phone: string, password: string): Promise<strin
     })
     clearTimeout(timeout)
     if (!res.ok) return null
-    const data = await res.json() as { accessToken?: string }
-    return data.accessToken ?? null
+    const data = await res.json() as { accessToken?: string; refreshToken?: string }
+    if (!data.accessToken) return null
+    return { accessToken: data.accessToken, refreshToken: data.refreshToken ?? '' }
   } catch (err) {
     console.warn('[cloud-auth] Could not authenticate with cloud:', (err as Error).message)
     return null
@@ -194,19 +195,20 @@ async function authenticateCloud(phone: string, password: string): Promise<strin
 async function syncFromCloud(phone: string, password: string) {
   console.log('[cloud-sync] Starting cloud sync...')
   try {
-    const token = await authenticateCloud(phone, password)
-    if (!token) {
+    const auth = await authenticateCloud(phone, password)
+    if (!auth) {
       console.log('[cloud-sync] Cloud authentication failed — using local cache')
       return
     }
     console.log('[cloud-sync] Cloud authenticated, fetching data...')
-    cloudAccessToken = token
-    setCloudAccessToken(token)
-    syncWorkerService.setCloudToken(token)
+    cloudAccessToken = auth.accessToken
+    setCloudAccessToken(auth.accessToken)
+    setCloudRefreshToken(auth.refreshToken)
+    syncWorkerService.setCloudToken(auth.accessToken)
 
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), 30_000)
-    const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
+    const headers = { Authorization: `Bearer ${auth.accessToken}`, 'Content-Type': 'application/json' }
     const [tablesRes, areasRes, itemsRes, settingsRes, categoriesRes, taxSlabsRes, employeesRes, ordersRes] = await Promise.all([
       fetch(`${getCloudApiBase()}/tables`, { headers, signal: controller.signal }),
       fetch(`${getCloudApiBase()}/areas`, { headers, signal: controller.signal }),
@@ -351,19 +353,21 @@ async function syncWithProgress(phone?: string, password?: string): Promise<void
 
   syncPromise = (async () => {
     try {
-    let token = cloudAccessToken ?? getCloudAccessToken()
+    let token = getCloudAccessToken() ?? cloudAccessToken
     console.log('[sync-progress] Starting. storedToken:', !!token, 'hasPhone:', !!phone, 'hasPassword:', !!password)
     if (!token && phone && password) {
       console.log('[sync-progress] Authenticating with cloud...')
-      token = await authenticateCloud(phone, password)
-      console.log('[sync-progress] Auth result:', !!token ? 'SUCCESS' : 'FAILED')
-      if (!token) {
+      const auth = await authenticateCloud(phone, password)
+      console.log('[sync-progress] Auth result:', auth ? 'SUCCESS' : 'FAILED')
+      if (!auth) {
         syncProgress = { total: 8, completed: 0, phase: 'error', error: 'Cloud authentication failed — check internet or credentials' }
         return
       }
-      cloudAccessToken = token
-      setCloudAccessToken(token)
-      syncWorkerService.setCloudToken(token)
+      token = auth.accessToken
+      cloudAccessToken = auth.accessToken
+      setCloudAccessToken(auth.accessToken)
+      setCloudRefreshToken(auth.refreshToken)
+      syncWorkerService.setCloudToken(auth.accessToken)
     }
     if (!token) {
       syncProgress = { total: 8, completed: 0, phase: 'error', error: 'No cloud token — log in with password first' }

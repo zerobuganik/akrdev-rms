@@ -355,19 +355,20 @@ async function syncWithProgress(phone?: string, password?: string): Promise<void
     try {
     let token = getCloudAccessToken() ?? cloudAccessToken
     console.log('[sync-progress] Starting. storedToken:', !!token, 'hasPhone:', !!phone, 'hasPassword:', !!password)
-    if (!token && phone && password) {
+    if (phone && password) {
       console.log('[sync-progress] Authenticating with cloud...')
       const auth = await authenticateCloud(phone, password)
       console.log('[sync-progress] Auth result:', auth ? 'SUCCESS' : 'FAILED')
-      if (!auth) {
+      if (auth) {
+        token = auth.accessToken
+        cloudAccessToken = auth.accessToken
+        setCloudAccessToken(auth.accessToken)
+        setCloudRefreshToken(auth.refreshToken)
+        syncWorkerService.setCloudToken(auth.accessToken)
+      } else if (!token) {
         syncProgress = { total: 8, completed: 0, phase: 'error', error: 'Cloud authentication failed — check internet or credentials' }
         return
       }
-      token = auth.accessToken
-      cloudAccessToken = auth.accessToken
-      setCloudAccessToken(auth.accessToken)
-      setCloudRefreshToken(auth.refreshToken)
-      syncWorkerService.setCloudToken(auth.accessToken)
     }
     if (!token) {
       syncProgress = { total: 8, completed: 0, phase: 'error', error: 'No cloud token — log in with password first' }

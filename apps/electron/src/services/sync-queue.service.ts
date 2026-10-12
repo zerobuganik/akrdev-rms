@@ -113,6 +113,11 @@ export class SyncQueueService {
       where: { status: 'Syncing' },
       data: { status: 'Pending' },
     })
+    // Clear a stuck in-progress flag (crash/kill mid-sync) so the worker isn't stalled forever
+    await localPrisma.syncState.updateMany({
+      where: { syncInProgress: true },
+      data: { syncInProgress: false },
+    })
   }
 }
 

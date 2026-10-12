@@ -246,6 +246,53 @@ export function CartPanel({ tableId }: { tableId: string | null }) {
     },
   })
 
+  const saveCart = useMutation({
+    mutationFn: async () => {
+      const isTakeaway = tableId === 'takeaway-new' || order?.orderType === 'Takeaway'
+      const hasOrder = !!order
+      const { data } = await apiClient.post('/kot/send-with-items', {
+        tableId: (tableId === 'takeaway-new' || hasOrder) ? undefined : tableId,
+        orderId: order?.id,
+        tableName: undefined,
+        guestCount,
+        orderType: isTakeaway ? 'Takeaway' : 'DineIn',
+        sentBy: user?.name ?? 'User',
+        note: orderNote || undefined,
+        saveOnly: true,
+        items: cartItems.map((i) => ({
+          itemId: i.itemId,
+          itemName: i.itemName,
+          variationId: i.variationId,
+          variationName: i.variationName,
+          quantity: i.quantity,
+          unitPrice: i.unitPrice,
+          note: i.note,
+        })),
+      })
+      return data as { orderId: string }
+    },
+    onSuccess: (result) => {
+      toast('Cart saved', 'success')
+      useCartStore.getState().clearCart()
+      queryClient.invalidateQueries({ queryKey: ['order', tableId] })
+      queryClient.invalidateQueries({ queryKey: ['tables'] })
+      queryClient.invalidateQueries({ queryKey: ['takeaway-orders'] })
+      queryClient.refetchQueries({ queryKey: ['takeaway-orders'] })
+      queryClient.refetchQueries({ queryKey: ['tables'] })
+      if (tableId === 'takeaway-new') {
+        navigate(`/cart/${result.orderId}`, { replace: true })
+      }
+    },
+    onError: (err: unknown) => {
+      const data = (err as { response?: { data?: { error?: { message?: string } | string } } })?.response?.data
+      const e = data?.error
+      const msg = typeof e === 'string' ? e : e?.message
+        ?? (err as Error)?.message
+        ?? 'Failed to save cart'
+      toast(String(msg), 'error')
+    },
+  })
+
   const generateBill = useMutation({
     mutationFn: async () => { if (order) await apiClient.put(`/orders/${order.id}`, { status: 'Bill_Printed' }) },
     onSuccess: () => {
@@ -589,12 +636,22 @@ export function CartPanel({ tableId }: { tableId: string | null }) {
           </div>
         )}
 
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {hasCartItems && (
             <button
-              disabled={sendKOT.isPending || cartItems.length === 0}
+              disabled={saveCart.isPending || sendKOT.isPending || cartItems.length === 0}
+              onClick={() => saveCart.mutate()}
+              className="min-w-[90px] flex-1 rounded-lg border border-gray-300 bg-white py-2 text-sm font-bold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+            >
+              {saveCart.isPending ? 'Saving...' : 'Save'}
+            </button>
+          )}
+
+          {hasCartItems && (
+            <button
+              disabled={sendKOT.isPending || saveCart.isPending || cartItems.length === 0}
               onClick={() => sendKOT.mutate()}
-              className="flex-1 rounded-lg bg-yellow-500 py-2 text-sm font-bold text-black hover:bg-yellow-400 disabled:opacity-50"
+              className="min-w-[90px] flex-1 rounded-lg bg-yellow-500 py-2 text-sm font-bold text-black hover:bg-yellow-400 disabled:opacity-50"
             >
               {sendKOT.isPending ? 'Sending KOT...' : 'Send KOT'}
             </button>

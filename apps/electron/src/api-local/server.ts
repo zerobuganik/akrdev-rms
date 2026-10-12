@@ -2364,7 +2364,7 @@ app.post('/api/v1/kot/send', async (req, res) => {
 
 app.post('/api/v1/kot/send-with-items', async (req, res, next) => {
   try {
-    const { tableId, tableName, guestCount, orderType, sentBy, note, items, orderId: providedOrderId } = req.body
+    const { tableId, tableName, guestCount, orderType, sentBy, note, items, orderId: providedOrderId, saveOnly } = req.body
 
     if (!items || !Array.isArray(items) || items.length === 0) {
       res.status(400).json({ error: 'No items provided' })
@@ -2422,7 +2422,7 @@ app.post('/api/v1/kot/send-with-items', async (req, res, next) => {
           tableName: resolvedTableName,
           guestCount: guestCount ?? 2,
           orderType: orderType ?? 'DineIn',
-          status: 'KOT_Sent',
+          status: saveOnly ? 'Draft' : 'KOT_Sent',
           note: note ?? null,
           subtotal: 0,
           taxTotal: 0,
@@ -2432,9 +2432,13 @@ app.post('/api/v1/kot/send-with-items', async (req, res, next) => {
       })
     }
 
-    await localPrisma.localKOT.create({
-      data: { id: kotId, orderId, kotNumber, sentBy: sentBy ?? 'User' },
-    })
+    // When saving only (no KOT), items are kept as "New" so they stay on the bill
+    // and in the cart without being sent to the kitchen.
+    if (!saveOnly) {
+      await localPrisma.localKOT.create({
+        data: { id: kotId, orderId, kotNumber, sentBy: sentBy ?? 'User' },
+      })
+    }
 
     const createdItemIds: string[] = []
     for (const item of items) {
@@ -2451,8 +2455,8 @@ app.post('/api/v1/kot/send-with-items', async (req, res, next) => {
           lineTotal: (item.unitPrice ?? 0) * (item.quantity ?? 1),
           variationId: item.variationId ?? null,
           variationName: item.variationName ?? null,
-          status: 'Sent',
-          kotId,
+          status: saveOnly ? 'New' : 'Sent',
+          kotId: saveOnly ? null : kotId,
           note: item.note ?? null,
         },
       })
@@ -2483,7 +2487,7 @@ app.post('/api/v1/kot/send-with-items', async (req, res, next) => {
 
     if (isNewOrder) {
       syncQueueService.enqueue('send-kot-with-items', {
-        orderId, kotId, tableId, tableName: resolvedTableName, guestCount, orderType, sentBy, note,
+        orderId, kotId, tableId, tableName: resolvedTableName, guestCount, orderType, sentBy, note, saveOnly: !!saveOnly,
         items: items.map((i: { itemId: string; itemName: string; variationId?: string; variationName?: string; quantity: number; unitPrice: number; note?: string }, idx: number) => ({
           id: createdItemIds[idx], itemId: i.itemId, itemName: i.itemName, variationId: i.variationId, variationName: i.variationName, quantity: i.quantity, unitPrice: i.unitPrice, note: i.note,
         })),
@@ -2499,7 +2503,9 @@ app.post('/api/v1/kot/send-with-items', async (req, res, next) => {
           note: item.note,
         }).catch((err) => console.warn('[kot] Sync add-item failed:', (err as Error).message))
       }
-      syncQueueService.enqueue('send-kot', { orderId, sentBy }).catch((err) => console.warn('[kot] Sync send-kot failed:', (err as Error).message))
+      if (!saveOnly) {
+        syncQueueService.enqueue('send-kot', { orderId, sentBy }).catch((err) => console.warn('[kot] Sync send-kot failed:', (err as Error).message))
+      }
     }
 
     res.status(201).json({ orderId, kotNumber })

@@ -48,8 +48,8 @@ export const kotService = {
   },
 
   async sendWithItems(data: Record<string, unknown>, sentBy: string) {
-    const { tableId, guestCount, orderType, note, items, orderId: providedOrderId, kotId: providedKotId } = data as {
-      tableId?: string; guestCount: number; orderType?: string; note?: string; orderId?: string; kotId?: string
+    const { tableId, guestCount, orderType, note, items, orderId: providedOrderId, kotId: providedKotId, saveOnly } = data as {
+      tableId?: string; guestCount: number; orderType?: string; note?: string; orderId?: string; kotId?: string; saveOnly?: boolean
       items: Array<{ itemId: string; itemName: string; id?: string; variationId?: string; variationName?: string; quantity: number; unitPrice: number; note?: string }>
     }
 
@@ -63,7 +63,8 @@ export const kotService = {
         if (existingActive) {
           order = await tx.order.update({
             where: { id: existingActive.id },
-            data: { status: 'KOT_Sent', guestCount: guestCount ?? 2, note: note ?? null },
+            // When saving only, don't advance the order to KOT_Sent.
+            data: { status: saveOnly ? undefined : 'KOT_Sent', guestCount: guestCount ?? 2, note: note ?? null },
           })
         }
       }
@@ -75,7 +76,7 @@ export const kotService = {
             tableId: (tableId as string) ?? null,
             guestCount: guestCount ?? 2,
             orderType: (orderType ?? 'DineIn') as 'DineIn' | 'Takeaway',
-            status: 'KOT_Sent',
+            status: saveOnly ? 'Draft' : 'KOT_Sent',
             note: note ?? null,
             subtotal: 0,
             taxTotal: 0,
@@ -93,9 +94,13 @@ export const kotService = {
       })
       const nextKotNumber = (lastKot?.kotNumber ?? 0) + 1
 
-      const kot = await tx.kOT.create({
-        data: { ...(providedKotId ? { id: providedKotId } : {}), orderId: order.id, kotNumber: nextKotNumber, sentBy },
-      })
+      // Saving only keeps items as "New" on the bill without creating a KOT.
+      let kot: { id: string } | null = null
+      if (!saveOnly) {
+        kot = await tx.kOT.create({
+          data: { ...(providedKotId ? { id: providedKotId } : {}), orderId: order.id, kotNumber: nextKotNumber, sentBy },
+        })
+      }
 
       const createdItems: Array<{ id: string; lineTotal: number }> = []
       for (const item of items) {
@@ -108,8 +113,8 @@ export const kotService = {
             unitPrice: item.unitPrice ?? 0,
             lineTotal: (item.unitPrice ?? 0) * (item.quantity ?? 1),
             variationId: item.variationId ?? null,
-            status: 'Sent',
-            kotId: kot.id,
+            status: saveOnly ? 'New' : 'Sent',
+            kotId: saveOnly ? null : kot!.id,
             note: item.note ?? null,
           },
         })
@@ -134,10 +139,10 @@ export const kotService = {
         data: { subtotal, taxTotal, grandTotal },
       })
 
-      return { orderId: order.id, kotNumber: nextKotNumber, itemsSent: createdItems.length }
+      return { orderId: order.id, kotNumber: saveOnly ? 0 : nextKotNumber, itemsSent: createdItems.length }
     })
 
-    if (tableId) {
+    if (tableId && !saveOnly) {
       await prisma.table.update({ where: { id: tableId as string }, data: { status: 'Occupied' } }).catch(() => {})
     }
 

@@ -10,11 +10,17 @@ const tabs = [
 
 export function AppShell() {
   return (
-    <div className="flex h-full flex-col bg-background">
+    <div
+      className="flex h-full flex-col bg-background"
+      style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
+    >
       <main className="min-h-0 flex-1 overflow-hidden">
         <Outlet />
       </main>
-      <nav className="flex shrink-0 border-t border-border bg-card">
+      <nav
+        className="flex shrink-0 border-t border-border bg-card"
+        style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+      >
         {tabs.map(({ to, label, icon: Icon }) => (
           <NavLink
             key={to}

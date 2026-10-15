@@ -18,6 +18,7 @@ export class SettingsService {
     printLogoUrl: string
     headerText: string
     footerText: string
+    notePresets: string | null
     taxType: 'Inclusive' | 'Exclusive'
   }>) {
     return prisma.storeSettings.upsert({

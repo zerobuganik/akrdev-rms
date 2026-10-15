@@ -324,6 +324,7 @@ model StoreSettings {
   printLogoUrl String? @map("print_logo_url")
   headerText  String? @map("header_text")
   footerText  String? @map("footer_text")
+  notePresets String? @map("note_presets")
   taxType     TaxType @default(Exclusive) @map("tax_type")
 
   @@map("store_settings")

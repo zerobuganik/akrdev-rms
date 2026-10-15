@@ -8,7 +8,7 @@ import { useCartStore } from '@/stores/useCartStore'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { toast } from '@/stores/useToastStore'
 import { printerApi } from '@/lib/printerApi'
-import { formatPrintDate } from '@/lib/utils'
+import { formatPrintDate, parseNotePresets } from '@/lib/utils'
 import { resolveImageUrl } from '@/lib/imageBaseUrl'
 import { SettlementModal } from '@/components/settlement/SettlementModal'
 import { PaymentChangeModal } from '@/components/settlement/PaymentChangeModal'
@@ -97,7 +97,7 @@ export function CartPanel({ tableId }: { tableId: string | null }) {
     refetchOnMount: true,
   })
 
-  const { data: settings } = useQuery<{ taxType?: string; companyName?: string; address?: string; phone?: string; email?: string; website?: string; fssai?: string; gstin?: string; headerText?: string; footerText?: string; printLogoUrl?: string }>({
+  const { data: settings } = useQuery<{ taxType?: string; companyName?: string; address?: string; phone?: string; email?: string; website?: string; fssai?: string; gstin?: string; headerText?: string; footerText?: string; printLogoUrl?: string; notePresets?: string | null }>({
     queryKey: ['settings'],
     queryFn: async () => { const { data } = await apiClient.get('/settings'); return data },
     staleTime: 300_000,
@@ -411,6 +411,7 @@ export function CartPanel({ tableId }: { tableId: string | null }) {
   const totalSubtotal = order ? order.subtotal + cartItems.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0) : cartItems.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0)
   const hasCartItems = cartItems.length > 0
   const defaultTaxPercent = taxSlabs.find((t) => t.isDefault)?.percent ?? taxSlabs[0]?.percent ?? 0
+  const notePresets = parseNotePresets(settings?.notePresets)
 
   const kotsWithItems: { kot: KOT; items: ApiOrderItem[] }[] = []
   if (order?.kots?.length) {
@@ -505,9 +506,20 @@ export function CartPanel({ tableId }: { tableId: string | null }) {
                   </button>
                 </div>
                 {editingNote === item.id && (
-                  <div className="ml-6 mt-1 flex gap-1">
-                    <input value={noteValue} onChange={(e) => setNoteValue(e.target.value)} placeholder="Item note" className="flex-1 rounded border px-1 py-0.5 text-xs" autoFocus onKeyDown={(e) => { if (e.key === 'Enter') { updateCartItemNote(item.id, noteValue); setEditingNote(null); setNoteValue('') } }} />
-                    <button onClick={() => { updateCartItemNote(item.id, noteValue); setEditingNote(null); setNoteValue('') }} className="rounded bg-primary px-2 py-0.5 text-xs text-primary-foreground">Ok</button>
+                  <div className="ml-6 mt-1">
+                    <div className="flex gap-1">
+                      <input value={noteValue} onChange={(e) => setNoteValue(e.target.value)} placeholder="Item note" className="flex-1 rounded border px-1 py-0.5 text-xs" autoFocus onKeyDown={(e) => { if (e.key === 'Enter') { updateCartItemNote(item.id, noteValue); setEditingNote(null); setNoteValue('') } }} />
+                      <button onClick={() => { updateCartItemNote(item.id, noteValue); setEditingNote(null); setNoteValue('') }} className="rounded bg-primary px-2 py-0.5 text-xs text-primary-foreground">Ok</button>
+                    </div>
+                    {notePresets.length > 0 && (
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        {notePresets.map((preset) => (
+                          <button key={preset} type="button" onClick={() => { updateCartItemNote(item.id, preset); setEditingNote(null); setNoteValue('') }} className="rounded-full border border-primary/30 bg-primary/5 px-2 py-0.5 text-xs text-primary hover:bg-primary/10">
+                            {preset}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
                 {item.note && editingNote !== item.id && <p className="ml-6 text-xs text-muted-foreground">{item.note}</p>}
@@ -545,9 +557,20 @@ export function CartPanel({ tableId }: { tableId: string | null }) {
                   </button>
                 </div>
                 {editingNote === item.id && (
-                  <div className="ml-6 mt-1 flex gap-1">
-                    <input value={noteValue} onChange={(e) => setNoteValue(e.target.value)} placeholder="Item note" className="flex-1 rounded border px-1 py-0.5 text-xs" autoFocus onKeyDown={(e) => { if (e.key === 'Enter') saveNote(item.id) }} />
-                    <button onClick={() => saveNote(item.id)} className="rounded bg-primary px-2 py-0.5 text-xs text-primary-foreground">Ok</button>
+                  <div className="ml-6 mt-1">
+                    <div className="flex gap-1">
+                      <input value={noteValue} onChange={(e) => setNoteValue(e.target.value)} placeholder="Item note" className="flex-1 rounded border px-1 py-0.5 text-xs" autoFocus onKeyDown={(e) => { if (e.key === 'Enter') saveNote(item.id) }} />
+                      <button onClick={() => saveNote(item.id)} className="rounded bg-primary px-2 py-0.5 text-xs text-primary-foreground">Ok</button>
+                    </div>
+                    {notePresets.length > 0 && (
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        {notePresets.map((preset) => (
+                          <button key={preset} type="button" onClick={() => { updateNoteMut.mutate({ orderItemId: item.id, note: preset }); setEditingNote(null); setNoteValue('') }} className="rounded-full border border-primary/30 bg-primary/5 px-2 py-0.5 text-xs text-primary hover:bg-primary/10">
+                            {preset}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
                 {item.note && editingNote !== item.id && <p className="ml-6 text-xs text-muted-foreground">{item.note}</p>}

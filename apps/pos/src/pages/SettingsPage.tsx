@@ -21,6 +21,7 @@ interface Settings {
   printLogoUrl: string | null
   headerText: string | null
   footerText: string | null
+  notePresets: string | null
   taxType: string
 }
 
@@ -605,6 +606,21 @@ export default function SettingsPage() {
                   />
                 </div>
               </div>
+            </div>
+
+            <div className="pt-4 border-t border-border">
+              <label className="block mb-2 text-xs font-semibold tracking-[0.05em] uppercase text-foreground">
+                Item Note Presets <span className="text-xs font-normal tracking-normal text-muted-foreground lowercase ml-1">OPTIONAL · comma separated</span>
+              </label>
+              <input
+                value={form.notePresets ?? ''}
+                onChange={(e) => setForm((f) => ({ ...f, notePresets: e.target.value }))}
+                className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:ring-1 focus:ring-ring focus:border-ring text-sm transition-colors"
+                placeholder="Running, Parcel, No Spicy, Less Spicy"
+              />
+              <p className="mt-2 text-xs text-muted-foreground">
+                Shown as one-click chips when adding a note to a product in the cart. Leave empty to use the defaults.
+              </p>
             </div>
 
             <div className="flex items-center justify-end pt-6 border-t border-border">

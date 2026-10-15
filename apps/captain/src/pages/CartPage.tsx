@@ -11,7 +11,7 @@ import { MenuView } from '@/components/menu/MenuView'
 import { CartView } from '@/components/cart/CartView'
 import { getItemDisplayName } from '@/lib/format'
 import { ArrowLeft, ChevronLeft, ChevronRight, ShoppingCart, UtensilsCrossed } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { cn, parseNotePresets } from '@/lib/utils'
 import type { CaptainOrder, CaptainTable, MenuItem } from '@/lib/types'
 
 export default function CartPage() {
@@ -68,6 +68,13 @@ export default function CartPage() {
     staleTime: 10_000,
   })
   const tables = tablesQuery.data ?? []
+
+  const settingsQuery = useQuery({
+    queryKey: ['settings'],
+    queryFn: async () => (await apiClient.get<{ notePresets?: string | null }>('/settings')).data,
+    staleTime: 300_000,
+  })
+  const notePresets = parseNotePresets(settingsQuery.data?.notePresets)
 
   useEffect(() => {
     if (!entityId || isTakeaway) return
@@ -368,6 +375,7 @@ export default function CartPage() {
             printingBill={printingBill}
             cartItems={items}
             guestCount={guestCount}
+            notePresets={notePresets}
             onLocalSetQty={updateItemQty}
             onLocalRemove={removeItem}
             onLocalItemNote={updateItemNote}

@@ -19,3 +19,13 @@ export function formatPrintTime(date: Date = new Date()): string {
   const min = String(date.getMinutes()).padStart(2, '0')
   return `${hh}:${min}`
 }
+
+export const DEFAULT_NOTE_PRESETS = ['Running', 'Parcel', 'No Spicy', 'Less Spicy']
+
+export function parseNotePresets(notePresets?: string | null): string[] {
+  const presets = (notePresets ?? '')
+    .split(',')
+    .map((p) => p.trim())
+    .filter(Boolean)
+  return presets.length > 0 ? presets : DEFAULT_NOTE_PRESETS
+}

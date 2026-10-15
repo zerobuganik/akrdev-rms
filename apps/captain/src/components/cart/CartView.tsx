@@ -34,6 +34,7 @@ interface CartViewProps {
   printingBill: boolean
   cartItems: CaptainCartItem[]
   guestCount: number
+  notePresets: string[]
   onLocalSetQty: (id: string, quantity: number) => void
   onLocalRemove: (id: string) => void
   onLocalItemNote: (id: string, note: string) => void
@@ -57,11 +58,13 @@ function itemVariationName(item: CaptainOrderItem): string | undefined {
 
 function LocalItemRow({
   item,
+  notePresets,
   onLocalSetQty,
   onLocalRemove,
   onLocalItemNote,
 }: {
   item: CaptainCartItem
+  notePresets: string[]
   onLocalSetQty: (id: string, quantity: number) => void
   onLocalRemove: (id: string) => void
   onLocalItemNote: (id: string, note: string) => void
@@ -120,17 +123,28 @@ function LocalItemRow({
           </button>
         </div>
       </div>
+      {notePresets.length > 0 && (
+        <div className="mt-1.5 flex flex-wrap gap-1">
+          {notePresets.map((preset) => (
+            <button key={preset} type="button" onClick={() => onLocalItemNote(item.id, preset)} className="rounded-full border border-primary/30 bg-primary/5 px-2 py-0.5 text-[11px] font-medium text-primary active:scale-95">
+              {preset}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
 
 function NewItemRow({
   item,
+  notePresets,
   onServerSetQty,
   onServerRemove,
   onServerItemNote,
 }: {
   item: CaptainOrderItem
+  notePresets: string[]
   onServerSetQty: (orderItemId: string, quantity: number) => void
   onServerRemove: (orderItemId: string) => void
   onServerItemNote: (orderItemId: string, note: string) => void
@@ -189,6 +203,15 @@ function NewItemRow({
           </button>
         </div>
       </div>
+      {notePresets.length > 0 && (
+        <div className="mt-1.5 flex flex-wrap gap-1">
+          {notePresets.map((preset) => (
+            <button key={preset} type="button" onClick={() => onServerItemNote(item.id, preset)} className="rounded-full border border-primary/30 bg-primary/5 px-2 py-0.5 text-[11px] font-medium text-primary active:scale-95">
+              {preset}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -200,6 +223,7 @@ export function CartView(props: CartViewProps) {
     printingBill,
     cartItems,
     guestCount,
+    notePresets,
     onLocalSetQty,
     onLocalRemove,
     onLocalItemNote,
@@ -352,6 +376,7 @@ export function CartView(props: CartViewProps) {
                 <LocalItemRow
                   key={item.id}
                   item={item}
+                  notePresets={notePresets}
                   onLocalSetQty={onLocalSetQty}
                   onLocalRemove={onLocalRemove}
                   onLocalItemNote={onLocalItemNote}
@@ -371,6 +396,7 @@ export function CartView(props: CartViewProps) {
                 <NewItemRow
                   key={item.id}
                   item={item}
+                  notePresets={notePresets}
                   onServerSetQty={onServerSetQty}
                   onServerRemove={onServerRemove}
                   onServerItemNote={onServerItemNote}

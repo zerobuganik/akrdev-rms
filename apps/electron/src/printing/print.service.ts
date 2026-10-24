@@ -63,7 +63,7 @@ export type PrintType = 'kot' | 'bill' | 'reprint-bill' | 'test-print'
 const PAPER_80MM = 48 // 80mm = 48 chars at default font
 const PAPER_58MM = 34 // 58mm = 34 chars at default font
 
-const ESC_POS_CUT = Buffer.from([0x1D, 0x56, 0x42, 0x00])
+const ESC_POS_CUT = Buffer.from([0x0A, 0x1D, 0x56, 0x41, 20])
 
 // ESC/POS command bytes
 const ESC = '\x1b'
@@ -78,7 +78,11 @@ const CMD = {
   DOUBLE_WIDTH: `${ESC}!\x20`,
   DOUBLE_BOTH: `${ESC}!\x30`,
   NORMAL: `${ESC}!\x00`,
+  FONT_B: `${ESC}M\x01`,
+  SIZE_DOUBLE: '\x1d!\x11',
   LINE_SPACING_0: `${ESC}3\x00`,
+  LINE_SPACING_36: `${ESC}3\x24`,
+  LINE_SPACING_48: `${ESC}3\x30`,
   LINE_SPACING_2: `${ESC}3\x02`,
   LINE_SPACING_4: `${ESC}3\x04`,
   LINE_SPACING_24: `${ESC}3\x18`,
@@ -387,12 +391,21 @@ export class PrintService {
     const lines: string[] = []
     let current = ''
     for (const word of words) {
-      const test = current ? current + ' ' + word : word
+      let remaining = word
+      while (remaining.length > maxWidth) {
+        if (current) {
+          lines.push(current)
+          current = ''
+        }
+        lines.push(remaining.slice(0, maxWidth))
+        remaining = remaining.slice(maxWidth)
+      }
+      const test = current ? current + ' ' + remaining : remaining
       if (test.length <= maxWidth) {
         current = test
       } else {
         if (current) lines.push(current)
-        current = word.length > maxWidth ? word.slice(0, maxWidth) : word
+        current = remaining
       }
     }
     if (current) lines.push(current)
@@ -405,12 +418,10 @@ export class PrintService {
   private formatKOT(data: PrintData, paperWidth: number): Buffer {
     const w = this.width(paperWidth)
     const tableLabel = data.orderType === 'Takeaway' ? 'Takeaway' : `Table: ${data.tableName ?? '—'}`
+    const tableLabelLines = this.wrapText(tableLabel, Math.max(1, Math.floor(w / 2)))
     const lines: string[] = [
-      CMD.ALIGN_CENTER,
-      CMD.DOUBLE_BOTH,
-      tableLabel,
-      CMD.NORMAL,
-      CMD.DIVIDER.slice(0, w),
+      CMD.NORMAL + CMD.ALIGN_CENTER + CMD.LINE_SPACING_48 + CMD.DOUBLE_BOTH + tableLabelLines.join('\n') + CMD.NORMAL,
+      CMD.LINE_SPACING_24 + CMD.DIVIDER.slice(0, w),
     ]
 
     // Two-line info: left=KOT/Date, right=Type/By
@@ -419,51 +430,48 @@ export class PrintService {
     const typeRight = data.orderType ? `Type: ${data.orderType}` : ''
     const byRight = data.serverName ? `By: ${data.serverName}` : (data.serverName === '' ? '' : '')
 
-    lines.push(CMD.ALIGN_LEFT)
-    lines.push(this.lineLeftRight(kotLeft, typeRight, w))
-    lines.push(this.lineLeftRight(dateLeft, byRight, w))
-    lines.push(CMD.DIVIDER.slice(0, w))
+    lines.push(
+      CMD.ALIGN_LEFT + this.lineLeftRight(kotLeft, typeRight, w),
+      this.lineLeftRight(dateLeft, byRight, w),
+      CMD.DIVIDER.slice(0, w),
+    )
 
     // Column header — Qty centered in first 6 chars, Item left-aligned in remaining width
-    const qtyColW = 6
-    const itemColW = w - qtyColW - 2
-    const qtyHdr = this.centerIn('Qty', qtyColW)
-    const itemHdr = this.pad('Item', itemColW)
+    const scaledWidth = Math.max(1, Math.floor(w * 2 / 3))
+    const qtyColW = 4
+    const columnGap = 2
+    const itemColW = Math.max(1, scaledWidth - qtyColW - columnGap)
+    const headerQtyColW = Math.round(qtyColW * 1.5)
+    const headerGap = ' '.repeat(Math.round(columnGap * 1.5))
+    const headerItemColW = Math.max(1, w - headerQtyColW - headerGap.length)
+    const qtyHdr = this.centerIn('Qty', headerQtyColW)
+    const itemHdr = this.pad('Item', headerItemColW)
 
     lines.push(
-      CMD.BOLD_ON,
-      qtyHdr + '  ' + itemHdr,
-      CMD.BOLD_OFF,
-      CMD.DIVIDER.slice(0, w),
+      CMD.LINE_SPACING_24 + qtyHdr + headerGap + itemHdr,
+      CMD.LINE_SPACING_36 + CMD.DIVIDER.slice(0, w),
     )
 
-    lines.push(CMD.LINE_SPACING_4)
-
-    if (data.items) {
+    if (data.items?.length) {
       for (const item of data.items) {
         const qtyStr = this.centerIn(String(item.quantity), qtyColW)
-        const nameStr = this.pad(item.name, itemColW)
+        const itemNameLines = this.wrapText(item.name, itemColW)
         const isCancelled = item.status === 'Cancelled'
-        const itemLine = qtyStr + '  ' + nameStr
-        lines.push(
-          CMD.BOLD_ON,
-          itemLine,
-          CMD.BOLD_OFF,
-        )
+        for (const [lineIndex, nameLine] of itemNameLines.entries()) {
+          const prefix = lineIndex === 0 ? qtyStr + ' '.repeat(columnGap) : ' '.repeat(qtyColW + columnGap)
+          lines.push(CMD.LINE_SPACING_36 + CMD.FONT_B + CMD.SIZE_DOUBLE + prefix + nameLine + CMD.NORMAL)
+        }
         if (isCancelled) {
-          lines.push(`${' '.repeat(qtyColW + 2)}  (Cancelled)`)
+          lines.push(`${' '.repeat(qtyColW + columnGap)}  (Cancelled)`)
         }
         if (item.note && !isCancelled) {
-          lines.push(' '.repeat(qtyColW + 2) + `(${item.note})`)
+          lines.push(' '.repeat(qtyColW + columnGap) + `(${item.note})`)
         }
+        lines.push(CMD.LINE_SPACING_36 + CMD.NORMAL + CMD.ALIGN_LEFT + CMD.DIVIDER.slice(0, w))
       }
+    } else {
+      lines.push(CMD.LINE_SPACING_24 + CMD.NORMAL + CMD.ALIGN_LEFT + CMD.DIVIDER.slice(0, w))
     }
-
-    lines.push(CMD.LINE_SPACING_24)
-    lines.push(
-      CMD.DIVIDER.slice(0, w),
-      CMD.SPACER,
-    )
 
     const textBuf = Buffer.from(lines.filter(Boolean).join('\n'), 'utf-8')
     return Buffer.concat([textBuf, ESC_POS_CUT])
@@ -594,6 +602,7 @@ export class PrintService {
       }
     }
     if (data.phone) lines.push(`Ph: ${data.phone}`)
+    if (data.email) lines.push(...this.wrapText(`Email: ${data.email}`, w))
     if (data.gstin) lines.push(`GST: ${data.gstin}`)
     if (data.fssai) lines.push(`FSSAI: ${data.fssai}`)
     if (data.website) lines.push(data.website.slice(0, w))
@@ -733,12 +742,9 @@ export class PrintService {
       lines.push(CMD.DIVIDER.slice(0, w))
     }
 
-    lines.push(CMD.ALIGN_CENTER)
     if (data.footerText) {
-      lines.push(data.footerText.slice(0, w))
+      lines.push(CMD.ALIGN_CENTER + CMD.BOLD_ON + data.footerText.slice(0, w) + CMD.BOLD_OFF)
     }
-
-    lines.push(CMD.SPACER)
 
     const textBuf = Buffer.from(lines.filter(Boolean).join('\n'), 'utf-8')
     const initBuf = Buffer.from(CMD.INIT, 'utf-8')

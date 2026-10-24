@@ -171,21 +171,35 @@ function verifyLocalToken(token: string): { userId: string; role: string } | nul
   }
 }
 
-async function authenticateCloud(phone: string, password: string): Promise<{ accessToken: string; refreshToken: string } | null> {
+interface CloudUser {
+  id: string
+  name: string
+  phone: string
+  role: string
+  imageUrl?: string | null
+}
+
+interface CloudAuthResult {
+  accessToken: string
+  refreshToken: string
+  user?: CloudUser
+}
+
+async function authenticateCloud(phone: string, credentials: { password?: string; pin?: string }): Promise<CloudAuthResult | null> {
   try {
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), 25_000)
     const res = await fetch(`${getCloudApiBase()}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phone, password }),
+      body: JSON.stringify({ phone, ...credentials }),
       signal: controller.signal,
     })
     clearTimeout(timeout)
     if (!res.ok) return null
-    const data = await res.json() as { accessToken?: string; refreshToken?: string }
+    const data = await res.json() as { accessToken?: string; refreshToken?: string; user?: CloudUser }
     if (!data.accessToken) return null
-    return { accessToken: data.accessToken, refreshToken: data.refreshToken ?? '' }
+    return { accessToken: data.accessToken, refreshToken: data.refreshToken ?? '', user: data.user }
   } catch (err) {
     console.warn('[cloud-auth] Could not authenticate with cloud:', (err as Error).message)
     return null
@@ -195,7 +209,7 @@ async function authenticateCloud(phone: string, password: string): Promise<{ acc
 async function syncFromCloud(phone: string, password: string) {
   console.log('[cloud-sync] Starting cloud sync...')
   try {
-    const auth = await authenticateCloud(phone, password)
+    const auth = await authenticateCloud(phone, { password })
     if (!auth) {
       console.log('[cloud-sync] Cloud authentication failed — using local cache')
       return
@@ -346,7 +360,7 @@ function rawOrdersCount(): number {
 }
 
 // Sync with progress tracking for the frontend polling
-async function syncWithProgress(phone?: string, password?: string): Promise<void> {
+async function syncWithProgress(phone?: string, password?: string, pin?: string, initialAuth?: CloudAuthResult): Promise<void> {
   if (syncPromise) return syncPromise
   syncInProgress = true
   syncProgress = { total: 8, completed: 0, phase: 'authenticating', error: null }
@@ -354,10 +368,11 @@ async function syncWithProgress(phone?: string, password?: string): Promise<void
   syncPromise = (async () => {
     try {
     let token = getCloudAccessToken() ?? cloudAccessToken
-    console.log('[sync-progress] Starting. storedToken:', !!token, 'hasPhone:', !!phone, 'hasPassword:', !!password)
-    if (phone && password) {
+    const credentials = { ...(password ? { password } : {}), ...(pin ? { pin } : {}) }
+    console.log('[sync-progress] Starting. storedToken:', !!token, 'hasPhone:', !!phone, 'hasPassword:', !!password, 'hasPin:', !!pin)
+    if (phone && (password || pin)) {
       console.log('[sync-progress] Authenticating with cloud...')
-      const auth = await authenticateCloud(phone, password)
+      const auth = initialAuth ?? await authenticateCloud(phone, credentials)
       console.log('[sync-progress] Auth result:', auth ? 'SUCCESS' : 'FAILED')
       if (auth) {
         token = auth.accessToken
@@ -754,30 +769,57 @@ app.post('/api/v1/auth/login', async (req, res) => {
     const { phone, password, pin } = req.body
     console.log('[login] Attempt:', { phone, hasPassword: !!password, hasPin: !!pin })
 
-    // Query local SQLite credential store ONLY — no cloud dependency
-    const credential = await localPrisma.localCredential.findUnique({ where: { phone } })
-
-    if (!credential) {
-      console.log('[login] No credential found for phone:', phone)
-      res.status(401).json({ error: { message: 'Invalid credentials', statusCode: 401 } })
-      return
-    }
-
-    // Verify PIN or password against local hash
+    let credential = await localPrisma.localCredential.findUnique({ where: { phone } })
     let valid = false
-    console.log('[login] hasPinHash:', !!credential.pinHash)
-    if (pin) {
-      if (!credential.pinHash) {
-        res.status(401).json({ error: { message: 'PIN not set — use password login', statusCode: 401 } })
-        return
+    if (credential) {
+      console.log('[login] hasPinHash:', !!credential.pinHash)
+      if (pin) {
+        valid = credential.pinHash ? await argon2.verify(credential.pinHash, pin) : false
+      } else {
+        valid = await argon2.verify(credential.passwordHash, password ?? '')
       }
-      valid = await argon2.verify(credential.pinHash, pin)
-    } else {
-      const input = password ?? ''
-      valid = await argon2.verify(credential.passwordHash, input)
     }
-    console.log('[login] Argon2 verification result:', valid)
+
+    let cloudAuth: CloudAuthResult | undefined
     if (!valid) {
+      const credentials = pin ? { pin } : password ? { password } : null
+      if (credentials) {
+        const authenticated = await authenticateCloud(phone, credentials)
+        if (authenticated?.user) {
+          const cloudUser = authenticated.user
+          const localPasswordHash = password ? await argon2.hash(password) : null
+          const localPinHash = pin ? await argon2.hash(pin) : null
+          const createPasswordHash = localPasswordHash ?? await argon2.hash(crypto.randomBytes(32).toString('hex'))
+          credential = await localPrisma.localCredential.upsert({
+            where: { phone },
+            create: {
+              id: cloudUser.id || crypto.randomUUID(),
+              phone,
+              passwordHash: createPasswordHash,
+              pinHash: localPinHash,
+              name: cloudUser.name ?? '',
+              role: cloudUser.role ?? 'Cashier',
+              imageUrl: cloudUser.imageUrl ?? null,
+            },
+            update: {
+              name: cloudUser.name ?? '',
+              role: cloudUser.role ?? 'Cashier',
+              imageUrl: cloudUser.imageUrl ?? null,
+              ...(localPasswordHash ? { passwordHash: localPasswordHash } : {}),
+              ...(localPinHash ? { pinHash: localPinHash } : {}),
+            },
+          })
+          cloudAuth = authenticated
+          cloudAccessToken = authenticated.accessToken
+          setCloudAccessToken(authenticated.accessToken)
+          setCloudRefreshToken(authenticated.refreshToken)
+          syncWorkerService.setCloudToken(authenticated.accessToken)
+          valid = true
+        }
+      }
+    }
+
+    if (!credential || !valid) {
       res.status(401).json({ error: { message: 'Invalid credentials', statusCode: 401 } })
       return
     }
@@ -791,12 +833,10 @@ app.post('/api/v1/auth/login', async (req, res) => {
     }
     const tokens = generateLocalToken(user)
 
-    // Fire cloud sync in background with progress tracking
-    if (password) {
-      syncWithProgress(phone, password).catch((err) => console.warn('[login] Sync error:', (err as Error).message))
+    if (password || pin) {
+      syncWithProgress(phone, password, pin, cloudAuth).catch((err) => console.warn('[login] Sync error:', (err as Error).message))
     }
 
-    // Respond immediately — cloud data arrives asynchronously, frontend polls progress
     const hasCloudData = cachedCloudTables && cachedCloudTables.length > 0
     console.log('[login] Login complete. Has cloud data:', hasCloudData)
     res.json({ ...tokens, user, cloudSynced: hasCloudData, syncRequired: !hasCloudData })
@@ -1198,9 +1238,21 @@ app.delete('/api/v1/areas/:id', async (req, res) => {
   }
 })
 
-app.put('/api/v1/settings', (req, res) => {
-  syncQueueService.enqueue('admin-put', { path: '/settings', body: req.body }).catch(() => {})
-  adminQueued(res)
+app.put('/api/v1/settings', async (req, res) => {
+  const updatedSettings = { ...(cachedSettings ?? {}), ...(req.body as Record<string, unknown>) }
+  try {
+    await localPrisma.cachedSetting.upsert({
+      where: { id: 'default' },
+      create: { id: 'default', data: JSON.stringify(updatedSettings) },
+      update: { data: JSON.stringify(updatedSettings) },
+    })
+    cachedSettings = updatedSettings
+    await syncQueueService.enqueue('admin-put', { path: '/settings', body: req.body })
+    adminQueued(res)
+  } catch (err) {
+    console.error('[settings] Update failed:', (err as Error).message)
+    res.status(500).json({ error: { message: 'Failed to update settings' } })
+  }
 })
 
 app.post('/api/v1/tax-slabs', (req, res) => {
@@ -1235,7 +1287,10 @@ app.post('/api/v1/employees', async (req, res) => {
     } else {
       cachedCloudEmployees = [entry]
     }
-    syncQueueService.enqueue('admin-create', { path: '/employees', body: { ...req.body, id } }).catch(() => {})
+    await syncQueueService.enqueue('admin-create', { path: '/employees', body: { ...req.body, id } })
+    if (getCloudAccessToken() || cloudAccessToken) {
+      syncWorkerService.processQueue().catch((syncError) => console.warn('[employees] Cloud sync failed:', (syncError as Error).message))
+    }
     res.json({ ok: true, id })
   } catch (err) {
     console.error('[employees] Create error:', err)
